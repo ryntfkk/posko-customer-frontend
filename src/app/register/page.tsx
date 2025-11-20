@@ -354,10 +354,26 @@ export default function RegisterPage() {
 
                                     {/* Grid untuk field pendek (Tgl Lahir & Gender) */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="label-text">Tanggal Lahir</label>
-                                            <input type="date" name="birthDate" value={formData.birthDate} onChange={handleChange} className="input-field"/>
-                                        </div>
+<div className="flex flex-col gap-2">
+    <label className="label-text">Tanggal Lahir</label>
+    <div className="relative w-full">
+        <input 
+            type="date" 
+            name="birthDate" 
+            value={formData.birthDate} 
+            onChange={handleChange} 
+            /* pr-10: Memberi ruang di kanan agar teks tidak menabrak ikon */
+            className="input-field pr-10" 
+        />
+        
+        {/* ICON: Tambahkan 'pointer-events-none' agar bisa ditembus klik */}
+        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+        </div>
+    </div>
+</div>
                                         <div className="flex flex-col gap-2">
                                             <label className="label-text">Jenis Kelamin</label>
                                             <div className="relative">
@@ -514,18 +530,50 @@ export default function RegisterPage() {
             </div>
         </div>
 
-        <style jsx>{`
+<style jsx>{`
             /* Custom Utilities */
             .label-text { 
                 @apply block text-[11px] font-bold text-gray-500 uppercase mb-2 tracking-wide; 
             }
             
-            /* Input Styling: Consistent Height (48px / h-12) & States */
+            /* Input Styling Standard */
             .input-field { 
                 @apply w-full h-12 px-4 rounded-xl bg-gray-50 border border-gray-200 text-sm text-gray-900 
                 placeholder-gray-400 transition-all duration-200 ease-in-out
                 focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 
                 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed;
+            }
+
+            /* --- FIX KHUSUS TANGGAL (SAFARI iOS & CHROME) --- */
+            
+            /* 1. Reset tampilan default iOS */
+            input[type="date"] {
+                -webkit-appearance: none;
+                appearance: none;
+                position: relative;
+                display: block;
+                width: 100%;
+            }
+
+            /* 2. Fix text invisible/kosong di iOS */
+            input[type="date"]::-webkit-date-and-time-value {
+                text-align: left;
+                min-height: 1.2em; /* Wajib ada agar text punya tinggi */
+                display: block; 
+            }
+
+            /* 3. Sembunyikan icon bawaan browser (agar pakai icon custom kita) */
+            /* Kita buat lebar 100% agar di Desktop bisa klik dimanapun untuk buka kalender */
+            input[type="date"]::-webkit-calendar-picker-indicator {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100%;
+                height: 100%;
+                opacity: 0;
+                cursor: pointer;
             }
 
             /* Animasi Halaman */
