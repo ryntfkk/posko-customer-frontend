@@ -2,15 +2,31 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { registerUser } from '@/features/auth/api';
 import { RegisterPayload } from '@/features/auth/types';
+
+// Interface untuk Data Wilayah API
+interface Region {
+  id: string;
+  name: string;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // State Data Wilayah
+  const [provinces, setProvinces] = useState<Region[]>([]);
+  const [cities, setCities] = useState<Region[]>([]);
+  const [districts, setDistricts] = useState<Region[]>([]);
+  
+  // State Pilihan ID Wilayah (Untuk fetching API)
+  const [selectedProvId, setSelectedProvId] = useState('');
+  const [selectedCityId, setSelectedCityId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -19,17 +35,99 @@ export default function RegisterPage() {
     phoneNumber: '',
     password: '',
     confirmPassword: '',
-    // Struktur Address sesuai Backend User.js
+    // Address
+    addressProvince: '',
     addressCity: '',
     addressDistrict: '',
+    addressPostalCode: '',
     addressDetail: '',
   });
 
+  // --- 1. FETCH PROVINSI SAAT LOAD ---
+  useEffect(() => {
+    fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json')
+      .then((res) => res.json())
+      .then((data) => setProvinces(data))
+      .catch((err) => console.error('Gagal ambil provinsi:', err));
+  }, []);
+
+  // --- 2. FETCH KOTA SAAT PROVINSI DIPILIH ---
+  useEffect(() => {
+    if (selectedProvId) {
+      fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${selectedProvId}.json`)
+        .then((res) => res.json())
+        .then((data) => setCities(data))
+        .catch((err) => console.error('Gagal ambil kota:', err));
+    } else {
+      setCities([]);
+    }
+  }, [selectedProvId]);
+
+  // --- 3. FETCH KECAMATAN SAAT KOTA DIPILIH ---
+  useEffect(() => {
+    if (selectedCityId) {
+      fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${selectedCityId}.json`)
+        .then((res) => res.json())
+        .then((data) => setDistricts(data))
+        .catch((err) => console.error('Gagal ambil kecamatan:', err));
+    } else {
+      setDistricts([]);
+    }
+  }, [selectedCityId]);
+
+  // --- 4. OTOMATIS ISI KODE POS SAAT KECAMATAN DIPILIH ---
+  useEffect(() => {
+    if (selectedDistrictId) {
+      // Kita fetch kelurahan untuk mendapatkan sampel kode pos
+      fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${selectedDistrictId}.json`)
+        .then((res) => res.json())
+        .then((data) => {
+          // Ambil kode pos dari data desa pertama (biasanya satu kecamatan kode posnya mirip/sama)
+          // Atau biarkan user mengedit jika berbeda
+          if (data && data.length > 0) {
+             // API ini tidak selalu return postal code di root object, 
+             // jadi kita coba simulasi atau cari API yang menyediakan postal code.
+             // CATATAN: API Emsifa publik kadang tidak menyertakan postal_code di respon villages.
+             // Jika API tidak ada, kita kosongkan atau minta user isi.
+             // Namun, anggaplah kita mencoba best effort.
+             setFormData(prev => ({ ...prev, addressPostalCode: '' })); 
+          }
+        })
+        .catch((err) => console.error('Gagal ambil kelurahan:', err));
+        
+       // JIKA INGIN MOCKUP OTOMATIS (karena API publik sering tidak konsisten soal kode pos):
+       // Anda bisa membuat logic mapping sendiri atau membiarkan user mengetik.
+       // Disini saya biarkan kosong agar user mengisi, tapi fokus dropdown wilayah sudah jalan.
+    }
+  }, [selectedDistrictId]);
+
+
+  // Handler Change Input Biasa
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Validasi Password sesuai validator backend
+  // Handler Change Dropdown Wilayah
+  const handleRegionChange = (type: 'province' | 'city' | 'district', e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    const index = e.target.selectedIndex;
+    const text = e.target.options[index].text; // Ambil Nama Wilayahnya (bukan ID)
+
+    if (type === 'province') {
+      setSelectedProvId(id);
+      setSelectedCityId(''); 
+      setSelectedDistrictId('');
+      setFormData(prev => ({ ...prev, addressProvince: text, addressCity: '', addressDistrict: '' }));
+    } else if (type === 'city') {
+      setSelectedCityId(id);
+      setSelectedDistrictId('');
+      setFormData(prev => ({ ...prev, addressCity: text, addressDistrict: '' }));
+    } else if (type === 'district') {
+      setSelectedDistrictId(id);
+      setFormData(prev => ({ ...prev, addressDistrict: text }));
+    }
+  };
+
   const validatePasswordStrong = (pwd: string) => {
     const hasMinLength = pwd.length >= 8;
     const hasLowercase = /[a-z]/.test(pwd);
@@ -52,20 +150,26 @@ export default function RegisterPage() {
       return;
     }
 
+    // Validasi Alamat
+    if (!selectedProvId || !selectedCityId || !selectedDistrictId) {
+        setErrorMsg('Mohon lengkapi pilihan wilayah alamat.');
+        return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Mapping state ke Payload Backend
       const payload: RegisterPayload = {
         fullName: formData.fullName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         password: formData.password,
-        roles: ['customer'], // Hardcode ke customer
+        roles: ['customer'],
         address: {
-          province: '', // Bisa ditambahkan inputnya jika perlu, atau biarkan string kosong sesuai default backend
+          province: formData.addressProvince,
           city: formData.addressCity,
           district: formData.addressDistrict,
+          postalCode: formData.addressPostalCode, // Kirim Kode Pos
           detail: formData.addressDetail,
         },
       };
@@ -77,10 +181,8 @@ export default function RegisterPage() {
 
     } catch (error: any) {
       console.error('Register Error:', error);
-      // Backend mengirim error dalam format: { messageKey, message, errors: [] }
       const backendMsg = error.response?.data?.message;
-      const validationDetails = error.response?.data?.errors?.[0]?.message; // Ambil detail error validasi pertama jika ada
-      
+      const validationDetails = error.response?.data?.errors?.[0]?.message;
       setErrorMsg(validationDetails || backendMsg || 'Gagal mendaftar. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
@@ -119,6 +221,7 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleRegister} className="space-y-4">
+                {/* Data Diri */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Nama Lengkap</label>
@@ -138,25 +241,84 @@ export default function RegisterPage() {
                         className="w-full px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none text-sm" />
                 </div>
 
-                {/* Alamat Section (Sesuai Backend Structure) */}
+                {/* Alamat Dropdown Section */}
                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <p className="text-xs font-bold text-gray-500 uppercase mb-3">Alamat Domisili</p>
+                    
+                    {/* Provinsi & Kota */}
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                        <input name="addressCity" type="text" placeholder="Kota / Kab" value={formData.addressCity} onChange={handleChange} 
-                            className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm" />
-                        <input name="addressDistrict" type="text" placeholder="Kecamatan" value={formData.addressDistrict} onChange={handleChange} 
-                            className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm" />
+                        <div>
+                           <label className="text-[10px] text-gray-400 font-semibold">Provinsi</label>
+                           <select 
+                              className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm"
+                              value={selectedProvId}
+                              onChange={(e) => handleRegionChange('province', e)}
+                              required
+                           >
+                              <option value="">Pilih Provinsi</option>
+                              {provinces.map((p) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                              ))}
+                           </select>
+                        </div>
+                        <div>
+                           <label className="text-[10px] text-gray-400 font-semibold">Kota/Kab</label>
+                           <select 
+                              className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm disabled:bg-gray-100"
+                              value={selectedCityId}
+                              onChange={(e) => handleRegionChange('city', e)}
+                              disabled={!selectedProvId}
+                              required
+                           >
+                              <option value="">Pilih Kota</option>
+                              {cities.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                           </select>
+                        </div>
                     </div>
-                    <textarea name="addressDetail" rows={2} placeholder="Jalan, No Rumah, RT/RW..." value={formData.addressDetail} onChange={handleChange} 
-                        className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm resize-none" />
+
+                    {/* Kecamatan & Kode Pos */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                           <label className="text-[10px] text-gray-400 font-semibold">Kecamatan</label>
+                           <select 
+                              className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm disabled:bg-gray-100"
+                              value={selectedDistrictId}
+                              onChange={(e) => handleRegionChange('district', e)}
+                              disabled={!selectedCityId}
+                              required
+                           >
+                              <option value="">Pilih Kecamatan</option>
+                              {districts.map((d) => (
+                                <option key={d.id} value={d.id}>{d.name}</option>
+                              ))}
+                           </select>
+                        </div>
+                        <div>
+                           <label className="text-[10px] text-gray-400 font-semibold">Kode Pos</label>
+                           <input 
+                              name="addressPostalCode" 
+                              type="text" 
+                              placeholder="12345" 
+                              value={formData.addressPostalCode} 
+                              onChange={handleChange} 
+                              className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm" 
+                           />
+                        </div>
+                    </div>
+
+                    <label className="text-[10px] text-gray-400 font-semibold">Detail Alamat (Jalan, No Rumah, RT/RW)</label>
+                    <textarea name="addressDetail" rows={2} placeholder="Jl. Merdeka No. 10..." value={formData.addressDetail} onChange={handleChange} 
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-red-500 outline-none text-sm resize-none mt-1" required />
                 </div>
 
+                {/* Password */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Password</label>
                         <input name="password" type="password" placeholder="******" value={formData.password} onChange={handleChange} required 
                             className="w-full px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none text-sm" />
-                        <p className="text-[10px] text-gray-400 mt-1">Min. 8 karakter, Huruf Besar, Angka.</p>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Konfirmasi</label>
@@ -164,6 +326,7 @@ export default function RegisterPage() {
                             className="w-full px-4 py-2.5 rounded-lg bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none text-sm" />
                     </div>
                 </div>
+                <p className="text-[10px] text-gray-400 mt-0">Min. 8 karakter, Huruf Besar, Kecil & Angka.</p>
 
                 <div className="pt-2">
                     <button type="submit" disabled={isLoading} className="w-full bg-red-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-200 hover:bg-red-700 hover:-translate-y-0.5 transition-all disabled:bg-gray-300">
