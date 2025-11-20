@@ -187,7 +187,7 @@ export default function RegisterPage() {
         <div className="bg-red-600 text-white p-8 md:w-1/3 flex flex-col justify-between relative overflow-hidden">
            <div className="absolute -top-20 -left-20 w-60 h-60 bg-red-500 rounded-full opacity-40 blur-3xl animate-pulse"></div>
            <div className="relative z-10">
-                <Link href="/" className="text-3xl font-extrabold mb-2 block tracking-tight">Posko.</Link>
+                <Link href="/" className="text-3xl font-extrabold mb-2 block tracking-tight text-white hover:text-red-100 transition-colors decoration-0">Posko.</Link>
                 <p className="text-red-100 text-sm font-medium opacity-90">Solusi bantuan darurat terpercaya.</p>
            </div>
 

@@ -209,12 +209,12 @@ export default function HomePage() {
                 <span className="text-xl font-bold text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
               </Link>
               
-              <nav className="flex gap-6 text-sm font-medium text-gray-600">
-                <Link href="#" className="hover:text-red-600 transition-colors">Beranda</Link>
-                <Link href="#" className="hover:text-red-600 transition-colors">Jasa</Link>
-                <Link href="#" className="hover:text-red-600 transition-colors">Mitra</Link>
-                <Link href="#" className="hover:text-red-600 transition-colors">Tentang Kami</Link>
-              </nav>
+            <nav className="flex gap-6 text-sm font-medium">
+              <Link href="#" className="text-gray-600 hover:text-red-600 transition-colors">Beranda</Link>
+              <Link href="#" className="text-gray-600 hover:text-red-600 transition-colors">Jasa</Link>
+              <Link href="#" className="text-gray-600 hover:text-red-600 transition-colors">Mitra</Link>
+              <Link href="#" className="text-gray-600 hover:text-red-600 transition-colors">Tentang Kami</Link>
+            </nav>
             </div>
 
             <div className="flex items-center gap-4">

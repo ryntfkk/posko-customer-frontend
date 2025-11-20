@@ -45,11 +45,11 @@ export default function LoginPage() {
       {/* Bagian Kiri: Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-24 py-12">
         <div className="mb-10">
-          <Link href="/" className="flex items-center gap-2 mb-8 w-fit group">
+          <Link href="/" className="flex items-center gap-2 mb-8 w-fit group text-gray-900">
             <div className="w-8 h-8 relative">
                 <Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/>
             </div>
-            <span className="text-xl font-bold text-gray-900 group-hover:text-red-600 transition-colors">Posko<span className="text-red-600">.</span></span>
+            <span className="text-xl font-bold group-hover:text-red-600 transition-colors">Posko<span className="text-red-600">.</span></span>
           </Link>
           <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Selamat Datang Kembali</h1>
           <p className="text-gray-500">Masuk untuk mengelola pesanan atau mencari jasa.</p>
