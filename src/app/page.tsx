@@ -206,7 +206,7 @@ export default function HomePage() {
                      className="object-contain"
                    />
                 </div>
-                <span className="text-xl font-bold text-gray-900 tracking-tight">Posko<span className="text-red-600">.</span></span>
+                <span className="text-xl font-bold text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
               </Link>
               
               <nav className="flex gap-6 text-sm font-medium text-gray-600">
@@ -264,34 +264,35 @@ export default function HomePage() {
               </div>
             </div>
             
-                {/* Desktop Hero Illustration */}
-                <div className="relative h-96 rounded-3xl bg-gray-100 border border-gray-200 overflow-hidden group shadow-xl">
-                  
-                  {/* 1. GAMBAR UTAMA */}
-                  {/* Saya menambahkan class 'absolute inset-0' agar gambar memenuhi parent div */}
-                  <img 
-                    src="https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?q=80&w=2070&auto=format&fit=crop" 
-                    alt="Teknisi Profesional"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
+              {/* Desktop Hero Illustration */}
+              <div className="relative h-96 w-full rounded-3xl bg-gray-100 border border-gray-200 overflow-hidden group shadow-xl">
+                
+                {/* 1. Optimized Image Component */}
+                <Image 
+                  // Link ini sudah dikonversi ke format 'export=view' agar bisa langsung tampil
+                  src="https://drive.google.com/uc?export=view&id=1izUc0As5ae1dFrNaiZcWGqDn28nSRnsY" 
+                  alt="Ilustrasi Teknisi (Google Drive Source)"
+                  fill
+                  className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
 
-                  {/* 2. GRADIENT OVERLAY (Opsional) */}
-                  {/* Ini membuat tulisan atau badge lebih kontras dan memberikan efek saat hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+                {/* 2. Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
 
-                  {/* 3. FLOATING BADGE (Status Terverifikasi) */}
-                  {/* Saya tambahkan z-10 agar badge selalu muncul di atas gambar */}
-                  <div className="absolute top-10 left-10 bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg flex items-center gap-3 animate-bounce-slow z-10 border border-white/50">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-lg">
-                      ✅
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Status</p>
-                      <p className="text-sm font-bold text-gray-900">Terverifikasi</p>
-                    </div>
+                {/* 3. Floating Badge */}
+                <div className="absolute top-6 left-6 z-10 flex items-center gap-3 p-3 bg-white/90 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/50 animate-bounce-slow">
+                  <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full text-lg shadow-sm">
+                    ✅
                   </div>
-
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Status Mitra</span>
+                    <span className="text-sm font-extrabold text-gray-900 leading-none mt-0.5">Terverifikasi</span>
+                  </div>
                 </div>
+
+              </div>
           </div>
         </section>
 
