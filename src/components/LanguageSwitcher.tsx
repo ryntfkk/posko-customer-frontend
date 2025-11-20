@@ -12,27 +12,29 @@ export default function LanguageSwitcher() {
   }, []);
 
   const toggleLanguage = () => {
-    // Logika toggle: Jika ID ubah ke EN, jika EN ubah ke ID
     const newLang = lang === 'id' ? 'en' : 'id';
     
-    // 1. Simpan ke localStorage agar dibaca oleh src/lib/axios.ts
+    // 1. Simpan ke localStorage
     localStorage.setItem('posko_lang', newLang);
     setLang(newLang);
 
-    // 2. Reload halaman agar konfigurasi Axios diperbarui dan request ulang ke backend
+    // 2. Reload halaman agar konfigurasi Axios diperbarui
     window.location.reload();
   };
 
   return (
     <button
       onClick={toggleLanguage}
-      className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-md border border-gray-200 rounded-full shadow-sm hover:shadow-md hover:bg-gray-50 transition-all group"
+      // PERBAIKAN POSISI:
+      // 1. bottom-24 right-4: Pada HP, posisi agak naik (96px) agar tidak menutupi Bottom Nav
+      // 2. lg:bottom-8 lg:right-8: Pada Laptop/PC, posisi standar di pojok kanan bawah
+      className="fixed bottom-24 right-4 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur-md border border-gray-200 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:shadow-xl hover:scale-105 hover:bg-white transition-all duration-300 group"
       title="Ganti Bahasa / Change Language"
     >
-      <span className="text-xl leading-none">
+      <span className="text-lg leading-none drop-shadow-sm">
         {lang === 'id' ? '🇮🇩' : '🇺🇸'}
       </span>
-      <span className="text-sm font-bold text-gray-600 group-hover:text-red-600">
+      <span className="text-xs font-bold text-gray-600 group-hover:text-red-600 transition-colors">
         {lang === 'id' ? 'ID' : 'EN'}
       </span>
     </button>
