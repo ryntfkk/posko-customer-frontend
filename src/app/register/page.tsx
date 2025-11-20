@@ -50,7 +50,7 @@ export default function RegisterPage() {
   // Form State
   const [formData, setFormData] = useState({
     email: '', password: '', confirmPassword: '',
-    fullName: '', phoneNumber: '', birthDate: '', gender: '',
+    fullName: '', phoneNumber: '', birthDate: '2000-01-01', gender: '',
     addressProvince: '', addressCity: '', addressDistrict: '',
     addressVillage: '', addressPostalCode: '', addressDetail: '',
     latitude: 0, longitude: 0,
