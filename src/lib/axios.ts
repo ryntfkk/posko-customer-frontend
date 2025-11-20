@@ -1,6 +1,6 @@
+// src/lib/axios.ts
 import axios from 'axios';
 
-// 1. Buat instance axios yang mengarah ke Backend Anda
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api',
   headers: {
@@ -8,16 +8,18 @@ const api = axios.create({
   },
 });
 
-// 2. Pasang "Interceptor" (Satpam)
-// Setiap kali request dikirim, cek apakah ada token di saku (localStorage)
-// Jika ada, tempelkan token tersebut ke header request.
 api.interceptors.request.use((config) => {
-  // Kita cek apakah kode ini jalan di browser (bukan di server Next.js)
   if (typeof window !== 'undefined') {
+    // 1. Pasang Token
     const token = localStorage.getItem('posko_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // 2. Integrasi Bahasa Backend
+    // Backend membaca header 'accept-language'. Default ke 'id'.
+    const lang = localStorage.getItem('posko_lang') || 'id';
+    config.headers['Accept-Language'] = lang;
   }
   return config;
 });
