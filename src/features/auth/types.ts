@@ -42,6 +42,14 @@ export interface AuthResponse {
   };
 }
 
+export interface ProfileResponse {
+  messageKey: string;
+  message: string;
+  data: {
+    profile: User;
+  };
+}
+
 export interface LoginPayload {
   email: string;
   password: string;

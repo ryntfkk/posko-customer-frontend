@@ -3,8 +3,10 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState, useRef } from 'react';
+  import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { fetchProfile } from '@/features/auth/api';
+import { User } from '@/features/auth/types';
 
 // --- DATA KATEGORI ---
 const categories = [
@@ -70,20 +72,50 @@ const chats = [
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+
   // State untuk UI Interaktif Desktop
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
   const router = useRouter();
 
+    const profileName = userProfile?.fullName || 'User Posko';
+  const profileEmail = userProfile?.email || '-';
+  const profileBadge = userProfile?.activeRole
+    ? userProfile.activeRole.charAt(0).toUpperCase() + userProfile.activeRole.slice(1)
+    : 'Member';
+  const profileAvatar = userProfile?.profilePictureUrl
+    || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`;
+
   useEffect(() => {
     const token = localStorage.getItem('posko_token');
     setIsLoggedIn(!!token);
+
+    if (!token) {
+      setIsLoadingProfile(false);
+      return;
+    }
+
+    const loadProfile = async () => {
+      try {
+        const result = await fetchProfile();
+        setUserProfile(result.data.profile);
+      } catch (error) {
+        localStorage.removeItem('posko_token');
+        setIsLoggedIn(false);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('posko_token');
+    setUserProfile(null);
     setIsLoggedIn(false);
     setIsProfileOpen(false); // Tutup dropdown
     router.refresh();
@@ -225,11 +257,11 @@ export default function HomePage() {
                         className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all group"
                     >
                         <div className="text-right hidden xl:block">
-                            <p className="text-xs font-bold text-gray-900">Halo, User</p>
-                            <p className="text-[10px] text-gray-500 font-medium">Member Gold</p>
+                            <p className="text-xs font-bold text-gray-900">Halo, {isLoadingProfile ? 'Memuat...' : profileName}</p>
+                            <p className="text-[10px] text-gray-500 font-medium">{isLoadingProfile ? 'Memuat profil...' : profileBadge}</p>
                         </div>
                         <div className="w-9 h-9 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
-                             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=User" alt="Profile" className="w-full h-full object-cover" />
+                             <img src={profileAvatar} alt="Profile" className="w-full h-full object-cover" />
                         </div>
                         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
@@ -242,8 +274,8 @@ export default function HomePage() {
                             
                             <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden z-50 animate-fadeIn origin-top-right">
                                 <div className="p-4 border-b border-gray-50">
-                                    <p className="text-sm font-bold text-gray-900">User Posko</p>
-                                    <p className="text-xs text-gray-500 truncate">user@example.com</p>
+                                    <p className="text-sm font-bold text-gray-900">{isLoadingProfile ? 'Memuat profil...' : profileName}</p>
+                                    <p className="text-xs text-gray-500 truncate">{isLoadingProfile ? '...' : profileEmail}</p>
                                 </div>
                                 <div className="py-2">
                                     <Link href="#" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors">
