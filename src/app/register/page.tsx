@@ -458,16 +458,6 @@ export default function RegisterPage() {
                                                 <label className="label-text mb-0">Titik Lokasi Rumah</label>
                                                 {formData.latitude !== 0 && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">Koordinat Tersimpan</span>}
                                             </div>
-                                            
-                                            {/* [Fitur 3] Tombol Deteksi Lokasi untuk iOS/Safari */}
-                                            <button 
-                                                type="button"
-                                                onClick={handleGetCurrentLocation}
-                                                className="w-full flex items-center justify-center gap-2 bg-red-50 border border-red-200 text-red-600 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors mb-1"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                Gunakan Lokasi Saya Saat Ini
-                                            </button>
 
                                             <div className="w-full h-56 md:h-64 lg:h-full min-h-[240px] rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm relative z-0 group hover:border-red-100 transition-colors">
                                                 {/* Oper coordinates ke LocationPicker agar peta update saat tombol ditekan */}
@@ -477,7 +467,7 @@ export default function RegisterPage() {
                                                     initialLng={formData.longitude}
                                                 />
                                             </div>
-                                            <p className="text-[10px] text-gray-400 leading-normal">*Geser pin merah di peta ke lokasi tepat rumah Anda untuk memudahkan pencarian teknisi terdekat.</p>
+                                            <p className="text-[10px] text-gray-400 leading-normal">*Ketuk lokasi anda di peta dan pin akan terpasang untuk memudahkan pencarian teknisi terdekat.</p>
                                         </div>
                                     </div>
                                 </div>

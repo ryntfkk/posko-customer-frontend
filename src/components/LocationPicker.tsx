@@ -1,20 +1,22 @@
+// src/components/LocationPicker.tsx
 'use client';
 
-import { MapContainer, TileLayer, Marker, useMapEvents, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
-// --- 1. Konfigurasi Icon Leaflet ---
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+// --- 1. Konfigurasi Icon Leaflet (MERAH) ---
+const RedIcon = L.icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
-L.Marker.prototype.options.icon = DefaultIcon;
+
+L.Marker.prototype.options.icon = RedIcon;
 
 interface LocationPickerProps {
   onLocationSelect: (lat: number, lng: number) => void;
@@ -22,23 +24,22 @@ interface LocationPickerProps {
   initialLng?: number;
 }
 
-// --- 2. Komponen Logic GPS & Marker ---
+// --- 2. Komponen Marker & Logic Peta ---
 function LocationMarker({ 
   onLocationSelect, 
-  onStartLocate,
   onEndLocate,
   onError,
   initialLat,
   initialLng
 }: { 
   onLocationSelect: (lat: number, lng: number) => void,
-  onStartLocate: () => void,
   onEndLocate: () => void,
-  onError: () => void,
+  onError: (e: any) => void,
   initialLat?: number,
   initialLng?: number
 }) {
   const [position, setPosition] = useState<L.LatLng | null>(null);
+  
   const map = useMapEvents({
     click(e) {
       setPosition(e.latlng);
@@ -46,19 +47,16 @@ function LocationMarker({
       map.flyTo(e.latlng, map.getZoom());
     },
     locationfound(e) {
-      onEndLocate();
+      onEndLocate(); // Matikan loading
       setPosition(e.latlng);
       onLocationSelect(e.latlng.lat, e.latlng.lng);
       map.flyTo(e.latlng, 16);
     },
     locationerror(e) {
-      onEndLocate();
-      console.error("GPS Error:", e);
-      onError();
+      onError(e); // Kirim error ke handler
     },
   });
 
-  // Efek: Update posisi jika ada initialLat/Lng (misal dari tombol parent)
   useEffect(() => {
     if (initialLat && initialLng) {
       const newPos = new L.LatLng(initialLat, initialLng);
@@ -67,40 +65,64 @@ function LocationMarker({
     }
   }, [initialLat, initialLng, map]);
 
-  // Custom Control: Tombol GPS & Manual di Peta
+  return position === null ? null : (
+    <Marker position={position}>
+      <Popup>Lokasi Terpilih</Popup>
+    </Marker>
+  );
+}
+
+// --- 3. Komponen Custom Controls (Zoom & GPS) ---
+function MapControls({ onStartLocate }: { onStartLocate: () => void }) {
+  const map = useMap();
+
   useEffect(() => {
     const customControl = L.Control.extend({
       options: { position: 'bottomright' },
       onAdd: function () {
-        const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control flex flex-col gap-2');
+        const container = L.DomUtil.create('div', 'leaflet-control flex flex-col gap-2 !mb-14 !mr-4');
         
+        const createBtn = (iconSvg: string, onClick: (e: MouseEvent) => void, title: string) => {
+            const btn = L.DomUtil.create('button', 'bg-white w-10 h-10 flex items-center justify-center cursor-pointer rounded-lg hover:bg-gray-50 transition-colors shadow-none border-none outline-none', container);
+            btn.innerHTML = iconSvg;
+            btn.title = title;
+            btn.type = "button";
+            btn.onclick = (e: any) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClick(e);
+            };
+            return btn;
+        };
+
+        // Zoom In
+        createBtn(
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-gray-600"><path d="M12 4.5v15m7.5-7.5h-15"/></svg>`,
+            () => map.zoomIn(),
+            "Perbesar"
+        );
+
+        // Zoom Out
+        createBtn(
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 text-gray-600"><path d="M5 12h14"/></svg>`,
+            () => map.zoomOut(),
+            "Perkecil"
+        );
+
+        L.DomUtil.create('div', 'h-1', container);
+
         // Tombol GPS
-        const btnGPS = L.DomUtil.create('button', 'bg-white p-2 cursor-pointer text-xs font-bold rounded border border-gray-300 shadow-sm hover:bg-gray-50 block w-full min-w-[100px]', container);
-        btnGPS.innerHTML = '📍 Lokasi Saya';
-        btnGPS.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation(); // Mencegah klik tembus ke peta
-            onStartLocate();
-            
-            // Timeout guard: 8 detik
-            setTimeout(() => {}, 8000); 
+        createBtn(
+            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-red-600"><path fill-rule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 00-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>`,
+            () => {
+                onStartLocate(); // Aktifkan status loading
+                // Meminta Leaflet mencari lokasi
+                map.locate({ enableHighAccuracy: true }); 
+            },
+            "Lokasi Saya"
+        );
 
-            map.locate({ 
-                enableHighAccuracy: true,
-                timeout: 8000
-            }); 
-        }
-
-        // Tombol Manual
-        const btnManual = L.DomUtil.create('button', 'bg-white p-2 cursor-pointer text-xs font-bold rounded border border-gray-300 shadow-sm hover:bg-gray-50 block w-full mt-1 text-gray-500', container);
-        btnManual.innerHTML = '👆 Pilih Manual';
-        btnManual.onclick = function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          map.stopLocate();
-          onEndLocate();
-        }
-
+        L.DomEvent.disableClickPropagation(container);
         return container;
       },
     });
@@ -111,25 +133,18 @@ function LocationMarker({
     return () => {
       map.removeControl(controlInstance);
     };
-  }, [map, onStartLocate, onEndLocate]);
+  }, [map, onStartLocate]);
 
-  return position === null ? null : (
-    <Marker position={position}>
-      <Popup>Lokasi Terpilih</Popup>
-    </Marker>
-  );
+  return null;
 }
 
-// --- 3. Modal Tutorial & Fallback (High Z-Index) ---
+// --- 4. Modal Tutorial & Fallback ---
 function PermissionHelpModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   if (!isOpen) return null;
 
   return (
-    // PERBAIKAN: z-[9999] agar di atas layer peta Leaflet
     <div className="absolute inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xs p-6 text-center animate-fadeIn border border-gray-100 relative">
-        
-        {/* Tombol Close (X) di Pojok Kanan Atas */}
         <button 
           onClick={onClose}
           className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
@@ -143,22 +158,12 @@ function PermissionHelpModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
         </div>
         
         <p className="text-xs text-gray-500 mb-1 leading-relaxed">
-            Browser tidak memberikan akses GPS. Mohon izinkan akses atau pilih lokasi secara manual.
+            Gagal mendapatkan lokasi. Pastikan GPS aktif dan izinkan akses lokasi.
         </p>
-
-        {/* Tutorial Kecil */}
-        <div className="bg-gray-50 rounded-xl p-1 text-left mb-1 border border-gray-100 opacity-80">
-          <p className="text-[10px] font-bold text-gray-500 mb-1 uppercase tracking-wider">Tips Safari (iOS):</p>
-          <ol className="text-[10px] text-gray-500 space-y-1 list-decimal pl-4">
-            <li>Ketuk ikon <span className="font-bold">"Aa"</span> di address bar.</li>
-            <li>Pilih <span className="font-bold">Website Settings</span>.</li>
-            <li>Ubah Location jadi <span className="font-bold text-green-600">Allow</span>.</li>
-          </ol>
-        </div>
 
         <button 
           onClick={onClose}
-          className="w-full py-3 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-transform hover:-translate-y-0.5 shadow-lg shadow-red-200"
+          className="w-full py-3 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-transform hover:-translate-y-0.5 shadow-lg shadow-red-200 mt-3"
         >
           Pilih Manual di Peta
         </button>
@@ -167,38 +172,40 @@ function PermissionHelpModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   );
 }
 
-// --- 4. Komponen Utama ---
+// --- 5. Komponen Utama ---
 export default function LocationPicker({ onLocationSelect, initialLat, initialLng }: LocationPickerProps) {
   const [showHelp, setShowHelp] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleStartLocate = () => {
+  // 1. Handle Selesai (Sukses)
+  const handleEndLocate = useCallback(() => {
+    setIsLocating(false);
+  }, []);
+
+  // 2. Handle Error
+  const handleError = useCallback((e: any) => {
+    // Filter error kosong (bug Leaflet di beberapa browser/ekstensi)
+    if (!e || (!e.code && !e.message)) {
+        return; 
+    }
+    
+    setIsLocating(false); // Matikan loading jika error valid
+    console.error("GPS Error:", e);
+    setShowHelp(true); // Tampilkan modal bantuan
+  }, []);
+
+  // 3. Handle Mulai (Tanpa Timer Manual)
+  const handleStartLocate = useCallback(() => {
     setIsLocating(true);
     setShowHelp(false);
-    
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    
-    // Fallback: Jika dalam 8 detik masih loading (GPS macet), stop dan munculkan modal
-    timeoutRef.current = setTimeout(() => {
-        if (isLocating) {
-            setIsLocating(false);
-            setShowHelp(true);
-        }
-    }, 8000);
-  };
-
-  const handleEndLocate = () => {
-    setIsLocating(false);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-  };
+  }, []);
 
   return (
     <div className="relative w-full h-full z-0 group overflow-hidden rounded-xl bg-gray-100">
       
       <PermissionHelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
-      {/* Loading Overlay - z-index diset tinggi tapi dibawah modal */}
+      {/* Loading Overlay */}
       {isLocating && (
         <div className="absolute inset-0 z-[5000] bg-white/60 backdrop-blur-[1px] flex items-center justify-center pointer-events-none">
             <div className="bg-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-pulse border border-red-100">
@@ -212,6 +219,7 @@ export default function LocationPicker({ onLocationSelect, initialLat, initialLn
         center={[-6.200000, 106.816666]} 
         zoom={13} 
         scrollWheelZoom={true} 
+        zoomControl={false} 
         className="h-full w-full z-0"
         style={{ height: '100%', minHeight: '300px' }}
       >
@@ -219,27 +227,17 @@ export default function LocationPicker({ onLocationSelect, initialLat, initialLn
           attribution='&copy; OpenStreetMap'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        
         <LocationMarker 
             onLocationSelect={onLocationSelect} 
-            onStartLocate={handleStartLocate}
             onEndLocate={handleEndLocate}
-            onError={() => {
-                handleEndLocate();
-                setShowHelp(true);
-            }}
+            onError={handleError}
             initialLat={initialLat}
             initialLng={initialLng}
         />
+
+        <MapControls onStartLocate={handleStartLocate} />
       </MapContainer>
-      
-      {/* Instruksi Statis */}
-      {!showHelp && !isLocating && (
-        <div className="absolute top-3 right-3 z-[400] pointer-events-none">
-            <div className="bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-[10px] font-semibold text-gray-600 border border-gray-200/50">
-                Ketuk dan pin akan tertitik di lokasi
-            </div>
-        </div>
-      )}
     </div>
   );
 }
