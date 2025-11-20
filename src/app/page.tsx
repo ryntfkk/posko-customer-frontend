@@ -1,27 +1,22 @@
 // src/app/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return Boolean(localStorage.getItem('posko_token'));
+  });
   const router = useRouter();
 
-  // Cek status login saat halaman dibuka
-  useEffect(() => {
-    const token = localStorage.getItem('posko_token');
-    if (token) {
-      setIsLoggedIn(true);
-    }
-  }, []);
-
   const handleLogout = () => {
-    // Hapus token dari saku celana (localStorage)
     localStorage.removeItem('posko_token');
     setIsLoggedIn(false);
     alert('Anda berhasil keluar.');
+    router.refresh();
   };
 
   return (
@@ -34,7 +29,7 @@ export default function HomePage() {
           {/* Tampilkan tombol berbeda tergantung status login */}
           {isLoggedIn ? (
             <>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="px-4 py-2 text-red-500 font-medium hover:text-red-700"
               >
@@ -45,8 +40,8 @@ export default function HomePage() {
               </div>
             </>
           ) : (
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="px-6 py-2 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition"
             >
               Masuk / Daftar
@@ -61,7 +56,7 @@ export default function HomePage() {
           Solusi Jasa <span className="text-blue-600">Cepat & Aman</span>
         </h1>
         <p className="text-xl text-gray-500 max-w-2xl mb-10">
-          Posko menghubungkan Anda dengan penyedia jasa profesional di sekitar Anda. 
+          Posko menghubungkan Anda dengan penyedia jasa profesional di sekitar Anda.
           Mulai dari perbaikan rumah hingga layanan darurat.
         </p>
         

@@ -1,10 +1,13 @@
 // src/features/auth/api.ts
 import api from '@/lib/axios';
-import { LoginResponse } from './types';
+import { AuthResponse, LoginPayload, RegisterPayload } from './types';
 
-export const loginUser = async (credentials: { email: string; password: string }) => {
-  // Backend route Anda ada di: /api/auth/login
-  // Axios base URL sudah /api, jadi kita tinggal tambah /auth/login
-  const response = await api.post<LoginResponse>('/auth/login', credentials);
+export const loginUser = async (credentials: LoginPayload) => {
+  const response = await api.post<AuthResponse>('/auth/login', credentials);
+  return response.data;
+};
+
+export const registerUser = async (payload: RegisterPayload) => {
+  const response = await api.post<AuthResponse>('/auth/register', payload);
   return response.data;
 };
