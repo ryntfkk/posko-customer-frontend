@@ -48,8 +48,14 @@ export default function LoginPage() {
 
     try {
       const result = await loginUser({ email, password });
-      // Simpan token
+      // --- PERUBAHAN DISINI ---
+      // 1. Simpan Token
       localStorage.setItem('posko_token', result.data.tokens.accessToken);
+      
+      // 2. Simpan Data User (Profile) agar bisa dibaca di halaman lain
+      // Kita ubah object menjadi string JSON
+      localStorage.setItem('posko_user', JSON.stringify(result.data.profile));
+      // ------------------------
       
       // Redirect & Refresh
       router.push('/');
