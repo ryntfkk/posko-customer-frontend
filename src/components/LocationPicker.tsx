@@ -1,77 +1,72 @@
-// src/components/LocationPicker.tsx
 'use client';
 
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useEffect, useState } from 'react';
 
-// Fix icon marker leaflet yang hilang di Next.js
-const icon = L.icon({
-  iconUrl: '/icons/marker-icon.png', // Kita pakai icon default leaflet atau custom
-  iconRetinaUrl: '/icons/marker-icon-2x.png',
-  shadowUrl: '/icons/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-// Workaround agar gambar marker muncul (pakai CDN leaflet jika file lokal tidak ada)
-L.Marker.prototype.options.icon = L.icon({
+// Konfigurasi Icon agar tidak error di Next.js
+const DefaultIcon = L.icon({
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
 });
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface LocationPickerProps {
   onLocationSelect: (lat: number, lng: number) => void;
+  initialLat?: number;
+  initialLng?: number;
 }
 
 function LocationMarker({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
   const [position, setPosition] = useState<L.LatLng | null>(null);
-
-  // Event saat peta diklik
-  useMapEvents({
+  const map = useMapEvents({
     click(e) {
       setPosition(e.latlng);
       onLocationSelect(e.latlng.lat, e.latlng.lng);
+      map.flyTo(e.latlng, map.getZoom());
     },
-    // Otomatis deteksi lokasi saat pertama buka
     locationfound(e) {
       setPosition(e.latlng);
       onLocationSelect(e.latlng.lat, e.latlng.lng);
+      map.flyTo(e.latlng, 15);
     },
   });
 
-  // Trigger locate saat pertama render
-  const map = useMapEvents({});
   useEffect(() => {
     map.locate();
   }, [map]);
 
   return position === null ? null : (
-    <Marker position={position}></Marker>
+    <Marker position={position}>
+      <Popup>Lokasi Terpilih</Popup>
+    </Marker>
   );
 }
 
 export default function LocationPicker({ onLocationSelect }: LocationPickerProps) {
   return (
-    <div className="h-64 w-full rounded-lg overflow-hidden border border-gray-300 z-0 relative">
+    <div className="relative w-full h-full z-0">
       <MapContainer 
-        center={[-6.200000, 106.816666]} // Default Jakarta
+        center={[-6.200000, 106.816666]} 
         zoom={13} 
         scrollWheelZoom={false} 
-        style={{ height: '100%', width: '100%' }}
+        className="h-full w-full rounded-xl"
+        style={{ height: '100%', minHeight: '300px' }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <LocationMarker onLocationSelect={onLocationSelect} />
       </MapContainer>
-      <div className="absolute bottom-2 left-2 bg-white px-2 py-1 text-xs rounded shadow z-[1000] opacity-80 pointer-events-none">
-        Klik peta untuk set lokasi
+      
+      <div className="absolute top-3 right-3 z-[400] bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-xs font-semibold text-gray-600">
+        Klik peta untuk tandai lokasi
       </div>
     </div>
   );

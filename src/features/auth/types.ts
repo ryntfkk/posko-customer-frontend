@@ -5,7 +5,14 @@ export interface Address {
   province: string;
   district: string;
   city: string;
+  village: string;
+  postalCode: string;
   detail: string;
+}
+
+export interface GeoLocation {
+  type: 'Point';
+  coordinates: number[];
 }
 
 export interface User {
@@ -15,7 +22,9 @@ export interface User {
   roles: Role[];
   activeRole: Role;
   phoneNumber?: string;
+  birthDate?: string; 
   address?: Address;
+  location?: GeoLocation; 
   profilePictureUrl?: string;
 }
 
@@ -42,7 +51,10 @@ export interface RegisterPayload {
   fullName: string;
   email: string;
   password: string;
-  phoneNumber: string; // Wajib di backend
-  roles: Role[];       // Default ['customer']
-  address: Address;    // Sesuai skema User.js
+  phoneNumber: string;
+  birthDate: string;
+  gender: string;
+  roles: Role[];
+  address: Address;
+  location?: GeoLocation;
 }
