@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Geist, Geist_Mono } from "next/font/google"; // Gunakan import ini
 import "./globals.css";
-// [BARU] Import komponen switcher
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
+// Konfigurasi Font dari Google (Otomatis Download)
+const geistSans = Geist({
   variable: "--font-geist-sans",
-  weight: "100 900",
+  subsets: ["latin"],
 });
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
+
+const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  weight: "100 900",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -29,10 +28,9 @@ export default function RootLayout({
     <html lang="id">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}
+        suppressHydrationWarning={true}
       >
-        {/* [BARU] Tambahkan komponen disini agar muncul di semua halaman */}
         <LanguageSwitcher />
-        
         {children}
       </body>
     </html>
