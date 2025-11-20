@@ -33,5 +33,5 @@ export interface RegisterPayload {
   fullName: string;
   email: string;
   password: string;
-  role?: Extract<Role, 'customer' | 'provider'>;
+  roles: Role[]; // Ubah dari 'role' (string) menjadi 'roles' (array)
 }

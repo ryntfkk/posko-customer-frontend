@@ -1,11 +1,10 @@
-// src/app/register/page.tsx
 'use client';
 
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { registerUser } from '@/features/auth/api';
-import { RegisterPayload } from '@/features/auth/types';
+import { RegisterPayload, Role } from '@/features/auth/types';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,7 +12,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<RegisterPayload['role']>('customer');
+  const [role, setRole] = useState<Role>('customer');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -26,6 +25,12 @@ export default function RegisterPage() {
       return;
     }
 
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setErrorMsg('Password harus minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -33,16 +38,26 @@ export default function RegisterPage() {
         fullName,
         email,
         password,
-        role,
+        roles: [role],
       };
 
+      // PERBAIKAN: Backend register mengembalikan data user langsung, bukan { data: { profile: ... } }
+      // Dan backend register TIDAK mengembalikan token.
       const result = await registerUser(payload);
-      localStorage.setItem('posko_token', result.data.tokens.accessToken);
-      alert(`Pendaftaran berhasil, selamat datang ${result.data.profile.fullName}!`);
-      router.push('/');
-    } catch (error: unknown) {
-      const apiError = error as { response?: { data?: { message?: string } } };
-      const message = apiError.response?.data?.message || 'Gagal mendaftar, coba lagi nanti.';
+      
+      // Kita ambil nama dari result.data (karena backend mengirim user object langsung ke 'data')
+      // Gunakan 'any' sementara untuk bypass strict typing AuthResponse yang tidak sesuai untuk register
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userData = result.data as any; 
+
+      alert(`Pendaftaran berhasil! Silakan login, ${userData.fullName || fullName}.`);
+      
+      // Arahkan ke halaman login karena kita belum punya token
+      router.push('/login'); 
+
+    } catch (error: any) {
+      console.error('Register Error:', error);
+      const message = error.response?.data?.message || 'Gagal mendaftar, coba lagi nanti.';
       setErrorMsg(message);
     } finally {
       setIsLoading(false);
@@ -62,6 +77,7 @@ export default function RegisterPage() {
         )}
 
         <form onSubmit={handleRegister} className="space-y-4">
+          {/* ... (Bagian Form Input Tetap Sama) ... */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <label className="block text-gray-700 text-sm font-semibold mb-2">Nama Lengkap</label>
@@ -95,10 +111,9 @@ export default function RegisterPage() {
                 placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                minLength={8}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">Minimal 8 karakter untuk keamanan lebih baik.</p>
+              <p className="text-xs text-gray-500 mt-1">Min 8 karakter, Huruf Besar, Kecil & Angka.</p>
             </div>
 
             <div>
@@ -109,7 +124,6 @@ export default function RegisterPage() {
                 placeholder="********"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                minLength={8}
                 required
               />
             </div>
@@ -127,7 +141,7 @@ export default function RegisterPage() {
                   }`}
                 >
                   <span className="block font-semibold">Customer</span>
-                  <span className="text-xs text-gray-500">Cari layanan terbaik untuk kebutuhanmu.</span>
+                  <span className="text-xs text-gray-500">Saya ingin mencari jasa.</span>
                 </button>
                 <button
                   type="button"
@@ -139,7 +153,7 @@ export default function RegisterPage() {
                   }`}
                 >
                   <span className="block font-semibold">Provider</span>
-                  <span className="text-xs text-gray-500">Tawarkan jasa dan kelola order dengan mudah.</span>
+                  <span className="text-xs text-gray-500">Saya ingin menawarkan jasa.</span>
                 </button>
               </div>
             </div>
