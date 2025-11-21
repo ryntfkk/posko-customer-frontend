@@ -1,204 +1,184 @@
-// src/app/services/[category]/page.tsx
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+import { useMemo } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 
-import { fetchServices } from '@/features/services/api';
-import { Service } from '@/features/services/types';
-import { useCart } from '@/features/cart/useCart'; // Import Hook Keranjang
-
-// Helper function untuk format mata uang
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(amount);
+type ProviderCard = {
+  id: string;
+  name: string;
+  specialty: string;
+  distance: string;
+  rating: number;
+  reviews: number;
+  startingPrice: string;
+  image: string;
+  categoryTags: string[];
 };
 
-// --- KOMPONEN KARTU KONFIGURASI LAYANAN (BARU) ---
-interface ServiceItemCardProps {
-    service: Service;
-}
+const providerList: ProviderCard[] = [
+  {
+    id: 'pwr-01',
+    name: 'Raka Putra',
+    specialty: 'Teknisi AC & Pendingin',
+    distance: '1.2 km',
+    rating: 4.9,
+    reviews: 120,
+    startingPrice: 'Mulai Rp 75.000',
+    image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Raka',
+    categoryTags: ['ac', 'ac-service', 'pendingin'],
+  },
+  {
+    id: 'pwr-02',
+    name: 'Dewi Pertiwi',
+    specialty: 'Pembersihan AC & Cuci Unit',
+    distance: '0.8 km',
+    rating: 5.0,
+    reviews: 85,
+    startingPrice: 'Mulai Rp 55.000',
+    image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Dewi',
+    categoryTags: ['ac', 'cuci-ac'],
+  },
+  {
+    id: 'pwr-03',
+    name: 'Budi Hartono',
+    specialty: 'Perawatan Berkala & Freon',
+    distance: '2.5 km',
+    rating: 4.7,
+    reviews: 210,
+    startingPrice: 'Mulai Rp 95.000',
+    image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Budi',
+    categoryTags: ['ac', 'freon', 'pendingin'],
+  },
+];
 
-function ServiceItemCard({ service }: ServiceItemCardProps) {
-    const { addItem } = useCart();
-    const [quantity, setQuantity] = useState(1);
-    const [orderType, setOrderType] = useState<'direct' | 'basic'>('basic'); // Default Basic
-
-    const handleAddToCart = useCallback(() => {
-        if (quantity < 1) {
-            alert('Kuantitas minimal 1.');
-            return;
-        }
-
-        addItem({
-            serviceId: service._id,
-            serviceName: service.name,
-            orderType: orderType,
-            quantity: quantity,
-            // Untuk Basic Order, harga per unit = BasePrice
-            // Untuk Direct Order, harga per unit juga BasePrice (sebagai estimasi awal)
-            pricePerUnit: service.basePrice, 
-        });
-
-        alert(`✅ Berhasil: ${service.name} (${quantity} unit) ditambahkan sebagai Order ${orderType.toUpperCase()}.`);
-        setQuantity(1); // Reset kuantitas setelah ditambahkan
-    }, [addItem, service, quantity, orderType]);
-
-    return (
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-lg flex flex-col lg:flex-row gap-4">
-            
-            {/* Bagian Kiri: Detail Layanan */}
-            <div className="flex-1 space-y-2 lg:border-r lg:pr-4">
-                <div className="flex items-start gap-4">
-                    <div className="relative w-12 h-12 shrink-0 rounded-xl bg-red-50 p-2">
-                        <Image src={service.iconUrl || '/icons/logo-posko.png'} alt={service.name} fill className="object-contain p-2"/>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-gray-900">{service.name}</h3>
-                        <p className="text-xs text-gray-500 mt-1">{service.description || 'Deskripsi belum tersedia.'}</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Bagian Tengah: Kuantitas & Harga */}
-            <div className="flex-1 flex flex-col justify-between pt-4 lg:pt-0 lg:px-4 lg:border-r border-gray-100">
-                <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-600">Kuantitas:</span>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                            className="w-8 h-8 bg-gray-100 rounded-lg text-gray-700 hover:bg-gray-200 transition-colors"
-                        >-</button>
-                        <span className="text-lg font-black text-gray-900 w-8 text-center">{quantity}</span>
-                        <button
-                            onClick={() => setQuantity(q => q + 1)}
-                            className="w-8 h-8 bg-red-600 rounded-lg text-white hover:bg-red-700 transition-colors"
-                        >+</button>
-                    </div>
-                </div>
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Harga/Unit (Standar)</span>
-                    <p className="text-red-600 font-bold text-xl">{formatCurrency(service.basePrice)}</p>
-                </div>
-            </div>
-
-            {/* Bagian Kanan: Tipe Order & Aksi */}
-            <div className="flex-1 flex flex-col justify-between pt-4 lg:pt-0 lg:pl-4">
-                <div className="space-y-3">
-                    <span className="text-sm font-semibold text-gray-600 block mb-2">Pilih Tipe Order:</span>
-                    
-                    <div 
-                        onClick={() => setOrderType('basic')}
-                        className={`p-3 rounded-xl cursor-pointer border-2 transition-all ${orderType === 'basic' ? 'bg-gray-50 border-gray-900' : 'bg-white border-gray-200 hover:border-gray-400'}`}
-                    >
-                        <h4 className="font-bold text-sm text-gray-900">Cari Cepat (Basic)</h4>
-                        <p className="text-xs text-gray-500">Harga standar aplikasi ({formatCurrency(service.basePrice)})</p>
-                    </div>
-
-                    <div 
-                        onClick={() => setOrderType('direct')}
-                        className={`p-3 rounded-xl cursor-pointer border-2 transition-all ${orderType === 'direct' ? 'bg-red-50 border-red-600' : 'bg-white border-gray-200 hover:border-gray-400'}`}
-                    >
-                        <h4 className="font-bold text-sm text-gray-900">Pilih Mitra (Direct)</h4>
-                        <p className="text-xs text-gray-500">Harga bervariasi (Ratecard Mitra)</p>
-                    </div>
-                </div>
-
-                <button
-                    onClick={handleAddToCart}
-                    className="mt-6 w-full bg-red-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-200 hover:bg-red-700 transition-transform hover:-translate-y-0.5 flex justify-center items-center gap-2"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    Tambahkan ke Keranjang
-                </button>
-            </div>
-        </div>
-    );
-}
-// --- END KOMPONEN KARTU KONFIGURASI LAYANAN ---
-
+const normalize = (value: string) => value.toLowerCase().replace(/-/g, ' ').trim();
 
 export default function ServiceCategoryPage() {
   const router = useRouter();
   const params = useParams();
-  const { totalItems } = useCart();
-  
   const categoryParam = Array.isArray(params.category) ? params.category[0] : params.category;
-  const categoryName = decodeURIComponent(categoryParam || '').replace(/-/g, ' ');
+  const categoryName = decodeURIComponent(categoryParam || 'AC').replace(/-/g, ' ');
 
-  const [allServices, setAllServices] = useState<Service[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const filteredProviders = useMemo(() => {
+    const activeCategory = categoryParam ? normalize(categoryParam) : 'ac';
 
-  useEffect(() => {
-    fetchServices()
-      .then(res => setAllServices(res.data || []))
-      .catch(err => console.error("Gagal memuat layanan:", err))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const filteredServices = useMemo(() => {
-    if (!categoryName) return [];
-    const normalizedCategory = categoryName.toLowerCase();
-
-    return allServices.filter(service => 
-      service.category.toLowerCase() === normalizedCategory
+    return providerList.filter((provider) =>
+      provider.categoryTags.some((tag) => normalize(tag) === activeCategory || normalize(tag).includes(activeCategory))
     );
-  }, [allServices, categoryName]);
+  }, [categoryParam]);
 
-  const hasServices = filteredServices.length > 0;
+  const handleBasicOrder = () => {
+    const categoryQuery = categoryParam || 'ac';
+    router.push(`/checkout?type=basic&category=${encodeURIComponent(categoryQuery)}`);
+  };
+
+  const handleOpenProvider = (providerId: string) => {
+    router.push(`/provider/${providerId}`);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
+    <div className="min-h-screen bg-gray-50 pb-16">
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 flex items-center gap-4">
+        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-4 flex items-center gap-4">
           <button onClick={() => router.push('/')} className="text-gray-600 hover:text-red-600">
-             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
           </button>
-          <h1 className="text-xl font-bold text-gray-900 capitalize">{categoryName}</h1>
-          
-          {/* Tombol Keranjang di Header Mobile/Desktop */}
-          <Link 
-            href="/checkout"
-            className="ml-auto flex items-center gap-2 bg-red-600 text-white px-3 py-1.5 rounded-full hover:bg-red-700 transition-colors"
+          <div className="flex flex-col">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Layanan</span>
+            <h1 className="text-xl font-bold text-gray-900 capitalize">{categoryName}</h1>
+          </div>
+          <button
+            onClick={handleBasicOrder}
+            className="ml-auto px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-full hover:bg-red-700 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            {totalItems > 0 && <span className="font-bold text-sm">{totalItems}</span>}
-          </Link>
+            Basic Order
+          </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
-        
-        {isLoading && (
-            <div className="grid grid-cols-1 gap-6 animate-pulse">
-                 {[1,2,3].map(i => <div key={i} className="h-40 bg-white rounded-2xl shadow-sm"></div>)}
-            </div>
-        )}
+      <main className="max-w-6xl mx-auto px-4 lg:px-8 py-8 space-y-8">
+        <section className="bg-gradient-to-r from-red-600 to-red-500 text-white rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-lg shadow-red-200/60">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/80">Pilih Mitra</p>
+            <h2 className="text-2xl font-black leading-tight">Temukan teknisi AC terbaik untuk Anda</h2>
+            <p className="text-white/90 text-sm max-w-2xl">
+              Lihat rating, jarak, dan estimasi harga dari mitra AC terverifikasi. Pesan basic order untuk proses tercepat.
+            </p>
+          </div>
+          <button
+            onClick={handleBasicOrder}
+            className="self-start lg:self-auto px-5 py-3 bg-white text-red-600 font-bold rounded-xl shadow hover:-translate-y-0.5 transition-transform"
+          >
+            Basic Order sekarang
+          </button>
+        </section>
 
-        {!isLoading && !hasServices && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mitra Terdekat</p>
+              <h3 className="text-lg font-bold text-gray-900">{categoryName} Service Providers</h3>
+            </div>
+            <span className="text-sm font-semibold text-gray-600 bg-white border border-gray-200 rounded-full px-3 py-1">
+              {filteredProviders.length} mitra siap membantu
+            </span>
+          </div>
+
+          {!filteredProviders.length && (
             <div className="text-center p-10 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-800">Tidak Ada Layanan</h2>
-                <p className="text-gray-500 mt-2">Belum ada item layanan yang terdaftar dalam kategori "{categoryName}".</p>
+              <h4 className="text-xl font-bold text-gray-800">Belum ada mitra tersedia</h4>
+              <p className="text-gray-500 mt-2">Kami belum menemukan mitra untuk kategori "{categoryName}" saat ini.</p>
             </div>
-        )}
+          )}
 
-        {!isLoading && hasServices && (
-            <>
-                <p className="text-sm text-gray-500 mb-6">Atur kuantitas dan tipe order untuk item dalam keranjang.</p>
-                
-                <div className="grid grid-cols-1 gap-6">
-                    {filteredServices.map(service => (
-                        <ServiceItemCard key={service._id} service={service} />
-                    ))}
-                </div>
-            </>
-        )}
+          {!!filteredProviders.length && (
+            <div className="grid grid-cols-1 gap-4">
+              {filteredProviders.map((provider) => (
+                <button
+                  key={provider.id}
+                  onClick={() => handleOpenProvider(provider.id)}
+                  className="w-full text-left bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
+                      <Image src={provider.image} alt={provider.name} fill className="object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-lg font-bold text-gray-900">{provider.name}</h4>
+                        <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-1">
+                          {provider.distance}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500">{provider.specialty}</p>
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-600">
+                        <span className="flex items-center gap-1 font-semibold text-yellow-500">
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.14 3.51a1 1 0 00.95.69h3.688c.969 0 1.371 1.24.588 1.81l-2.986 2.17a1 1 0 00-.364 1.118l1.14 3.51c.3.921-.755 1.688-1.54 1.118l-2.985-2.17a1 1 0 00-1.176 0l-2.985 2.17c-.784.57-1.838-.197-1.539-1.118l1.14-3.51a1 1 0 00-.364-1.118l-2.986-2.17c-.783-.57-.38-1.81.588-1.81h3.689a1 1 0 00.95-.69l1.14-3.51z" />
+                          </svg>
+                          {provider.rating}
+                        </span>
+                        <span>{provider.reviews} ulasan</span>
+                        <span className="font-bold text-gray-900">{provider.startingPrice}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-bold text-red-600">
+                      Lihat profil
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
+
 }

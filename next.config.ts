@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'api.dicebear.com',
+        // Opsional: Anda dapat membatasi path jika diperlukan, misalnya:
+        // pathname: '/7.x/avataaars/svg/**',
+      },
     ],
   },
 };
