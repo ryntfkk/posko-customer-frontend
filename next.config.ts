@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
         // Opsional: Anda dapat membatasi path jika diperlukan, misalnya:
         // pathname: '/7.x/avataaars/svg/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'randomuser.me',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Provider } from '@/features/providers/types';
 
+// --- Tipe Data untuk Tampilan UI ---
 type RateCard = {
   id: string;
   title: string;
@@ -21,7 +23,8 @@ type ProviderProfile = {
   ratecards: RateCard[];
 };
 
-const providerProfiles: ProviderProfile[] = [
+// --- Data Statis (Dummy) ---
+const staticProviderProfiles: ProviderProfile[] = [
   {
     id: 'pwr-01',
     name: 'Raka Putra',
@@ -32,170 +35,166 @@ const providerProfiles: ProviderProfile[] = [
     reviews: 120,
     bio: 'Spesialis perawatan dan perbaikan AC dengan pengalaman lebih dari 8 tahun. Berkomitmen pada kecepatan respon dan hasil rapih.',
     ratecards: [
-      {
-        id: 'rc-01',
-        title: 'Servis Ringan',
-        description: 'Pengecekan umum, pembersihan filter, dan uji fungsi dasar unit AC.',
-        price: 'Rp 75.000',
-      },
-      {
-        id: 'rc-02',
-        title: 'Cuci AC Lengkap',
-        description: 'Pembersihan evaporator, blower, dan kondensor untuk performa maksimal.',
-        price: 'Rp 120.000',
-      },
-      {
-        id: 'rc-03',
-        title: 'Pengisian Freon',
-        description: 'Isi ulang freon R32/R410A beserta pemeriksaan kebocoran.',
-        price: 'Mulai Rp 250.000',
-      },
+      { id: 'rc-01', title: 'Servis Ringan', description: 'Pengecekan umum, pembersihan filter.', price: 'Rp 75.000' },
+      { id: 'rc-02', title: 'Cuci AC Lengkap', description: 'Pembersihan evaporator dan blower.', price: 'Rp 120.000' },
     ],
   },
-  {
-    id: 'pwr-02',
-    name: 'Dewi Pertiwi',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Dewi',
-    specialty: 'Pembersihan AC & Cuci Unit',
-    distance: '0.8 km',
-    rating: 5.0,
-    reviews: 85,
-    bio: 'Teknisi pembersihan AC yang teliti dan ramah. Mengutamakan kebersihan area kerja dan edukasi perawatan ke pelanggan.',
-    ratecards: [
-      {
-        id: 'rc-04',
-        title: 'Cuci AC Standard',
-        description: 'Cuci indoor + outdoor, pengecekan aliran udara, dan deodorizing.',
-        price: 'Rp 90.000',
-      },
-      {
-        id: 'rc-05',
-        title: 'Deep Cleaning',
-        description: 'Pembongkaran dan pembersihan mendalam untuk AC yang jarang dirawat.',
-        price: 'Rp 160.000',
-      },
-    ],
-  },
-  {
-    id: 'pwr-03',
-    name: 'Budi Hartono',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Budi',
-    specialty: 'Perawatan Berkala & Freon',
-    distance: '2.5 km',
-    rating: 4.7,
-    reviews: 210,
-    bio: 'Berpengalaman menangani berbagai merek AC rumah tangga dan komersial. Siap membantu konsultasi dan jadwal perawatan rutin.',
-    ratecards: [
-      {
-        id: 'rc-06',
-        title: 'Maintenance Rutin',
-        description: 'Cek tekanan freon, arus listrik, dan kalibrasi suhu berkala.',
-        price: 'Rp 95.000',
-      },
-      {
-        id: 'rc-07',
-        title: 'Service + Freon',
-        description: 'Paket perawatan dan isi ulang freon untuk peningkatan performa.',
-        price: 'Rp 280.000',
-      },
-    ],
-  },
+  // ... (data dummy lainnya bisa tetap ada atau dihapus jika tidak perlu)
 ];
 
-function findProvider(providerId: string) {
-  return providerProfiles.find((provider) => provider.id === providerId);
+// --- Helper: Fetch Data dari API (Backend) ---
+async function fetchProviderFromApi(id: string): Promise<ProviderProfile | null> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+    const res = await fetch(`${apiUrl}/providers/${id}`, { cache: 'no-store' });
+    
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const data: Provider = json.data;
+
+    // Mapping data dari Backend ke format UI
+    return {
+      id: data._id,
+      name: data.userId?.fullName || 'Mitra Posko',
+      avatar: data.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.userId?.fullName}`,
+      specialty: data.services?.[0]?.serviceId?.name || 'Layanan Umum',
+      distance: 'Calculating...', // Jarak butuh lokasi user (client-side), di server kita set default
+      rating: data.rating || 5.0,
+      reviews: Math.floor(Math.random() * 50) + 10, // Dummy review count
+      bio: data.userId?.bio || 'Mitra profesional siap membantu kebutuhan Anda.',
+      ratecards: data.services.map((svc) => ({
+        id: svc._id,
+        title: svc.serviceId?.name || 'Layanan',
+        description: svc.serviceId?.category || 'Layanan profesional terpercaya.',
+        price: `Rp ${new Intl.NumberFormat('id-ID').format(svc.price)}`,
+      })),
+    };
+  } catch (error) {
+    console.error("Gagal fetch provider:", error);
+    return null;
+  }
 }
 
-export default function ProviderProfilePage({ params }: { params: { providerId: string } }) {
-  const provider = findProvider(params.providerId);
+// --- Helper: Cari Provider (Statis atau API) ---
+async function findProvider(providerId: string) {
+  // 1. Cek data statis dulu
+  const staticProfile = staticProviderProfiles.find((p) => p.id === providerId);
+  if (staticProfile) return staticProfile;
+
+  // 2. Jika tidak ada, cek ke API
+  return await fetchProviderFromApi(providerId);
+}
+
+// --- KOMPONEN UTAMA (Server Component) ---
+// Perhatikan: params sekarang bertipe Promise<{...}>
+export default async function ProviderProfilePage({ 
+  params 
+}: { 
+  params: Promise<{ providerId: string }> 
+}) {
+  // [FIX UTAMA] Await params sebelum digunakan
+  const { providerId } = await params;
+
+  const provider = await findProvider(providerId);
 
   if (!provider) {
     return notFound();
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
+    <div className="min-h-screen bg-gray-50 pb-12 font-sans">
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 lg:px-8 py-4 flex items-center gap-4">
-          <Link href="/services/ac" className="text-gray-600 hover:text-red-600 flex items-center gap-2 font-semibold">
+          <Link href="/" className="text-gray-600 hover:text-red-600 flex items-center gap-2 font-semibold transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>
-            Kembali
+            <span className="hidden sm:inline">Kembali</span>
           </Link>
           <div className="flex flex-col">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Profil Mitra</span>
-            <h1 className="text-xl font-bold text-gray-900">{provider.name}</h1>
+            <span className="text-[10px] lg:text-[11px] font-bold uppercase tracking-wide text-gray-400">Profil Mitra</span>
+            <h1 className="text-lg lg:text-xl font-bold text-gray-900 leading-none">{provider.name}</h1>
           </div>
           <Link
             href={`/checkout?type=direct&providerId=${provider.id}`}
-            className="ml-auto px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-full hover:bg-red-700 transition-colors"
+            className="ml-auto px-4 py-2 text-xs lg:text-sm font-bold text-white bg-red-600 rounded-full hover:bg-red-700 transition-transform hover:-translate-y-0.5 shadow-md shadow-red-100"
           >
-            Direct Order
+            Pesan Jasa
           </Link>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-4 lg:px-8 py-8 space-y-6">
-        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex flex-col lg:flex-row gap-6 items-start">
-            <div className="relative w-28 h-28 rounded-2xl overflow-hidden bg-gray-50 border border-gray-100">
+        {/* Hero Profile */}
+        <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 lg:p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-red-50 rounded-full blur-3xl -mr-10 -mt-10"></div>
+          
+          <div className="flex flex-col md:flex-row gap-6 items-center md:items-start relative z-10">
+            <div className="relative w-28 h-28 lg:w-32 lg:h-32 rounded-full border-4 border-white shadow-lg overflow-hidden shrink-0">
               <Image src={provider.avatar} alt={provider.name} fill className="object-cover" />
             </div>
-            <div className="flex-1 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-2xl font-black text-gray-900">{provider.name}</h2>
-                <span className="text-xs font-semibold text-gray-600 bg-gray-100 rounded-full px-2 py-1">{provider.distance}</span>
+            <div className="flex-1 space-y-3 text-center md:text-left">
+              <div>
+                <h2 className="text-2xl lg:text-3xl font-black text-gray-900 mb-1">{provider.name}</h2>
+                <div className="flex flex-wrap justify-center md:justify-start items-center gap-2">
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-100">
+                        {provider.specialty}
+                    </span>
+                    <span className="text-xs text-gray-400">•</span>
+                    <span className="text-xs text-gray-500">{provider.distance}</span>
+                </div>
               </div>
-              <p className="text-sm text-gray-500">{provider.specialty}</p>
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                <span className="flex items-center gap-1 font-semibold text-yellow-500">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.14 3.51a1 1 0 00.95.69h3.688c.969 0 1.371 1.24.588 1.81l-2.986 2.17a1 1 0 00-.364 1.118l1.14 3.51c.3.921-.755 1.688-1.54 1.118l-2.985-2.17a1 1 0 00-1.176 0l-2.985 2.17c-.784.57-1.838-.197-1.539-1.118l1.14-3.51a1 1 0 00-.364-1.118l-2.986-2.17c-.783-.57-.38-1.81.588-1.81h3.689a1 1 0 00.95-.69l1.14-3.51z" />
-                  </svg>
-                  {provider.rating}
-                </span>
-                <span>{provider.reviews} ulasan</span>
+              
+              <p className="text-gray-600 text-sm leading-relaxed max-w-2xl mx-auto md:mx-0">{provider.bio}</p>
+              
+              <div className="flex justify-center md:justify-start items-center gap-6 pt-2">
+                <div className="text-center md:text-left">
+                    <div className="flex items-center gap-1 justify-center md:justify-start">
+                        <span className="text-yellow-500">★</span>
+                        <span className="font-black text-gray-900">{provider.rating}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">Rating</p>
+                </div>
+                <div className="w-px h-8 bg-gray-200"></div>
+                <div className="text-center md:text-left">
+                    <p className="font-black text-gray-900">{provider.reviews}+</p>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">Ulasan</p>
+                </div>
               </div>
-              <p className="text-gray-700 leading-relaxed">{provider.bio}</p>
             </div>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href={`/checkout?type=direct&providerId=${provider.id}`}
-              className="px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors"
-            >
-              Direct Order
-            </Link>
-            <Link href="/services/ac" className="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 rounded-xl hover:bg-red-100">
-              Lihat mitra lain
-            </Link>
           </div>
         </section>
 
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ratecard</span>
-            <div className="h-px flex-1 bg-gray-200" />
+        {/* Ratecard Section */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-8 w-1 bg-red-600 rounded-full"></div>
+            <h3 className="text-lg font-bold text-gray-900">Daftar Layanan & Harga</h3>
           </div>
-          <div className="grid grid-cols-1 gap-4">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {provider.ratecards.map((item) => (
               <div
                 key={item.id}
-                className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
+                className="bg-white border border-gray-100 rounded-2xl p-5 hover:border-red-200 hover:shadow-lg transition-all group cursor-pointer"
               >
-                <div className="space-y-1">
-                  <h3 className="text-lg font-bold text-gray-900">{item.title}</h3>
-                  <p className="text-sm text-gray-600">{item.description}</p>
+                <div className="flex justify-between items-start gap-4">
+                    <div>
+                        <h4 className="font-bold text-gray-900 group-hover:text-red-600 transition-colors">{item.title}</h4>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <p className="text-sm font-black text-gray-900">{item.price}</p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-bold text-gray-900">{item.price}</span>
-                  <Link
-                    href={`/checkout?type=direct&providerId=${provider.id}`}
-                    className="px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-full hover:bg-red-700 transition-colors"
-                  >
-                    Pilih
-                  </Link>
+                <div className="mt-4 pt-4 border-t border-gray-50 flex justify-end">
+                    <Link
+                        href={`/checkout?type=direct&providerId=${provider.id}`}
+                        className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                    >
+                        Pilih Layanan <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                    </Link>
                 </div>
               </div>
             ))}
