@@ -268,7 +268,9 @@ export default function HomePage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 pb-5 pt-2 px-4 bg-gradient-to-t from-white via-white/90 to-transparent z-40">
           <nav className="bg-white border border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl px-6 py-3.5 flex justify-between items-center">
             <NavItem icon={<HomeIcon active={!isProviderMode} />} active={!isProviderMode} />
-            <NavItem icon={<OrderIcon />} />
+            <Link href="/orders" className="flex flex-col items-center justify-center gap-1 w-12 text-gray-400 hover:text-red-600 transition-colors">
+                <OrderIcon />
+            </Link>
             <NavItem icon={<ChatIcon />} />
             <Link href="/profile" className="flex flex-col items-center justify-center gap-1 w-12 text-gray-400 hover:text-red-600 transition-colors"><UserIcon /></Link>
           </nav>

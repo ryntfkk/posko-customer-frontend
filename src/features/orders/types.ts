@@ -1,36 +1,38 @@
-import { User } from "../auth/types";
-import { Service } from "../services/types";
+// src/features/orders/types.ts
 
-export type OrderStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
-
-export interface OrderItem {
-  serviceId: string | Service; // Bisa ID atau Object populate
-  serviceName: string;
+// Payload untuk item pesanan
+export interface OrderItemPayload {
+  serviceId: string;
+  name: string;
   quantity: number;
   price: number;
+  note?: string;
 }
 
+// Payload utama untuk membuat pesanan
+export interface CreateOrderPayload {
+  orderType: 'direct' | 'basic';
+  providerId?: string | null;
+  totalAmount: number;
+  items: OrderItemPayload[];
+}
+
+// [PERBAIKAN] Definisi Order ditambahkan kembali untuk mencegah error di api.ts
 export interface Order {
   _id: string;
-  userId: string | User;
-  providerId?: string | User; // Opsional jika basic order
-  items: OrderItem[];
+  userId: string;
+  providerId?: string | null;
+  items: any[];
   totalAmount: number;
-  status: OrderStatus;
-  address: {
-    detail: string;
-    city: string;
-    // tambahkan field lain sesuai backend nanti
-  };
+  status: string; // pending, searching, accepted, dll
+  orderType: 'direct' | 'basic';
   createdAt: string;
+  updatedAt: string;
 }
 
-export interface CreateOrderPayload {
-  providerId?: string; // Jika direct order
-  items: {
-    serviceId: string;
-    quantity: number;
-  }[];
-  totalAmount: number; // Opsional, tergantung backend hitung sendiri atau tidak
-  address: string; // Atau object address lengkap
+// Response dari backend
+export interface OrderResponse {
+  messageKey: string;
+  message: string;
+  data: Order;
 }
