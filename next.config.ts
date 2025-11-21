@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // [FIX] Izinkan SVG dari domain eksternal (Dicebear)
+    dangerouslyAllowSVG: true,
+    // Opsional: Tambahkan header keamanan untuk SVG
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
         protocol: 'https',
