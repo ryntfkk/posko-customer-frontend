@@ -143,7 +143,7 @@ export default function HomePage() {
       <div className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative w-8 h-8"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
-            <div><h1 className="text-base font-bold text-gray-900 leading-none">Posko</h1><p className="text-[10px] text-red-500 font-medium mt-0.5">Jasa Terdekat</p></div>
+            <div><h1 className="text-base font-bold text-gray-900 leading-none">POSKO</h1><p className="text-[10px] text-red-500 font-medium mt-0.5">Marketplace Jasa #1 di Indonesia</p></div>
           </div>
           <div>
             {isLoggedIn ? (
