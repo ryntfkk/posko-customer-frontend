@@ -1,8 +1,8 @@
 // src/app/checkout/page.tsx
 'use client';
 
-import Image from 'next/image'; // Pastikan Image diimport
-import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
+import { useEffect, useMemo, useState, useRef } from 'react'; // Tambah useRef
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
@@ -33,7 +33,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const { cart, upsertItem, totalAmount, totalItems, isHydrated } = useCart();
+  const { cart, upsertItem, clearCart, isHydrated } = useCart(); // Ambil clearCart
 
   // State Data
   const [services, setServices] = useState<Service[]>([]); 
@@ -45,6 +45,9 @@ export default function CheckoutPage() {
   const [checkoutType, setCheckoutType] = useState<CheckoutType>('basic');
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Ref untuk mencegah infinite loop saat auto-add
+  const hasAutoAdded = useRef(false);
 
   // 1. Sinkronisasi Query Params & State
   useEffect(() => {
@@ -112,21 +115,81 @@ export default function CheckoutPage() {
     return 'Memuat Nama Mitra...';
   }, [selectedProviderId, provider]);
 
+  // [PERBAIKAN LOGIKA 1] Filter keranjang agar HANYA menampilkan item yang sesuai dengan mode saat ini
+  const activeCartItems = useMemo(() => {
+    return cart.filter((item) => {
+        // Hanya tampilkan item dengan qty > 0
+        if (item.quantity <= 0) return false;
+        
+        // Filter Strict: Jika mode Basic, hanya tampilkan item Basic. 
+        // Jika mode Direct, hanya tampilkan item Direct dari Provider yang SEDANG dipilih.
+        if (checkoutType === 'basic') {
+            return item.orderType === 'basic';
+        } else {
+            return item.orderType === 'direct' && item.providerId === selectedProviderId;
+        }
+    });
+  }, [cart, checkoutType, selectedProviderId]);
+
+  // Hitung ulang total berdasarkan item yang difilter (bukan total global cart)
+  const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  // [PERBAIKAN LOGIKA 2] Auto-Add Service jika ada `serviceId` di URL
+  useEffect(() => {
+    const serviceIdParam = searchParams.get('serviceId');
+    
+    // Jalankan hanya jika data sudah siap, belum pernah auto-add, dan ada param
+    if (isHydrated && !hasAutoAdded.current && serviceIdParam && availableOptions.length > 0) {
+        const targetOption = availableOptions.find(o => o.id === serviceIdParam);
+        
+        if (targetOption) {
+            // Cek apakah sudah ada di cart agar tidak duplikat/reset berulang
+            const key = getCartItemId(targetOption.id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
+            const existing = cart.find(c => c.id === key);
+
+            if (!existing || existing.quantity === 0) {
+                upsertItem({
+                    serviceId: targetOption.id,
+                    serviceName: targetOption.name,
+                    orderType: checkoutType,
+                    quantity: 1, // Set default 1
+                    pricePerUnit: targetOption.price,
+                    providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
+                    providerName: checkoutType === 'direct' ? providerLabel : undefined,
+                });
+            }
+            hasAutoAdded.current = true; // Tandai sudah diproses
+            
+            // Opsional: Hapus param dari URL agar bersih (tanpa refresh page)
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.delete('serviceId');
+            window.history.replaceState(null, '', `?${newParams.toString()}`);
+        }
+    }
+  }, [isHydrated, searchParams, availableOptions, checkoutType, selectedProviderId, providerLabel, upsertItem, cart]);
+
+
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
     const existing = cart.find((item) => item.id === key);
     return existing?.quantity ?? 0;
   };
 
-  const activeCartItems = useMemo(() => cart.filter((item) => item.quantity > 0), [cart]);
-
   const handleConfirmOrder = async () => {
     if (!isHydrated) return;
-    if (cart.length === 0 || totalItems <= 0) {
+    
+    // Gunakan currentTotalItems (yang sudah difilter), bukan totalItems global
+    if (activeCartItems.length === 0 || currentTotalItems <= 0) {
       alert('Pilih minimal satu layanan sebelum melanjutkan.');
       return;
     }
 
+    // [PENTING] Saat lanjut ke summary, idealnya kita bersihkan item "sampah" (item dari mode lain)
+    // Tapi untuk sekarang, Summary Page juga harus difilter. 
+    // Agar aman, kita kirim state mode lewat URL query ke Summary Page juga bisa, 
+    // tapi lebih baik kita biarkan cart apa adanya dan handling di Summary.
+    
     setIsSubmitting(true);
     try {
       router.push('/order/summary');
@@ -136,6 +199,26 @@ export default function CheckoutPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSwitchMode = (targetMode: CheckoutType) => {
+      if (targetMode === 'direct' && !selectedProviderId) {
+          alert("Silakan pilih mitra dari halaman pencarian terlebih dahulu.");
+          return;
+      }
+      
+      // Reset flag auto-add saat ganti mode
+      hasAutoAdded.current = false;
+      
+      // Opsional: Anda bisa memanggil clearCart() di sini jika ingin 
+      // menghapus keranjang saat ganti mode secara ekstrem.
+      // clearCart(); 
+
+      setCheckoutType(targetMode);
+      if (targetMode === 'basic') {
+          setSelectedProviderId(null);
+          router.replace('/checkout?type=basic');
+      }
   };
 
   const renderServiceOption = (option: CheckoutOption) => {
@@ -258,11 +341,7 @@ export default function CheckoutPage() {
                         ? 'bg-white text-gray-900 shadow-sm'
                         : 'text-gray-500 hover:text-gray-900'
                     }`}
-                    onClick={() => {
-                        setCheckoutType('basic');
-                        setSelectedProviderId(null);
-                        router.replace('/checkout?type=basic');
-                    }}
+                    onClick={() => handleSwitchMode('basic')}
                   >
                     Basic
                   </button>
@@ -272,10 +351,7 @@ export default function CheckoutPage() {
                         ? 'bg-white text-blue-600 shadow-sm'
                         : 'text-gray-500 hover:text-gray-900'
                     }`}
-                    onClick={() => {
-                        if(!selectedProviderId) alert("Silakan pilih mitra dari halaman pencarian terlebih dahulu.");
-                        else setCheckoutType('direct');
-                    }}
+                    onClick={() => handleSwitchMode('direct')}
                   >
                     Direct
                   </button>
@@ -334,7 +410,12 @@ export default function CheckoutPage() {
 
                 {/* Kolom Kanan: Ringkasan Keranjang */}
                 <div className="p-5 border border-gray-200 rounded-2xl bg-gray-50/50 sticky top-24 space-y-4">
-                  <p className="text-sm font-bold text-gray-900 border-b border-gray-200 pb-2">Ringkasan Pesanan</p>
+                  <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                    <p className="text-sm font-bold text-gray-900">Ringkasan Pesanan</p>
+                    {activeCartItems.length > 0 && (
+                        <button onClick={clearCart} className="text-[10px] text-red-600 font-bold hover:underline">Hapus Semua</button>
+                    )}
+                  </div>
                   
                   {!isHydrated ? (
                     <p className="text-sm text-gray-500 animate-pulse">Memuat keranjang...</p>
@@ -366,11 +447,11 @@ export default function CheckoutPage() {
                   <div className="border-t border-gray-200 pt-3 space-y-1">
                     <div className="flex items-center justify-between text-sm font-bold text-gray-900">
                       <span>Total Estimasi</span>
-                      <span className="text-red-600">{formatCurrency(totalAmount)}</span>
+                      <span className="text-red-600">{formatCurrency(currentTotalAmount)}</span>
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-gray-500">
                       <span>Jumlah Layanan</span>
-                      <span>{totalItems} Item</span>
+                      <span>{currentTotalItems} Item</span>
                     </div>
                   </div>
                 </div>
@@ -381,7 +462,7 @@ export default function CheckoutPage() {
             <section className="sticky bottom-4 bg-white p-4 lg:p-6 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4 z-30">
               <div className="text-center sm:text-left w-full sm:w-auto">
                 <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Pembayaran</span>
-                <p className="text-2xl lg:text-3xl font-black text-gray-900">{formatCurrency(totalAmount)}</p>
+                <p className="text-2xl lg:text-3xl font-black text-gray-900">{formatCurrency(currentTotalAmount)}</p>
               </div>
               <button
                 onClick={handleConfirmOrder}

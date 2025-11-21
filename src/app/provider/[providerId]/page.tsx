@@ -24,7 +24,7 @@ const MOCK_SCHEDULE = [
   { day: 'Selasa', time: '08:00 - 20:00', status: 'open' },
   { day: 'Rabu', time: '08:00 - 20:00', status: 'open' },
   { day: 'Kamis', time: '08:00 - 20:00', status: 'open' },
-  { day: 'Jumat', time: '13:00 - 21:00', status: 'open' }, // Contoh beda jam
+  { day: 'Jumat', time: '13:00 - 21:00', status: 'open' },
   { day: 'Sabtu', time: '09:00 - 17:00', status: 'open' },
   { day: 'Minggu', time: 'Tutup', status: 'closed' },
 ];
@@ -97,13 +97,11 @@ export default function ProviderProfilePage() {
     loadData();
   }, [providerId]);
 
-  // [FIX] Perbaikan variabel userLat disini
   useEffect(() => {
     if (provider && currentUser?.location?.coordinates && provider.userId?.location?.coordinates) {
-       const [uLng, uLat] = currentUser.location.coordinates; // Destructuring yang benar
+       const [uLng, uLat] = currentUser.location.coordinates;
        const [pLng, pLat] = provider.userId.location.coordinates;
        
-       // Menggunakan uLat (bukan userLat)
        setDistance(uLat === 0 ? 'Set Alamat' : calculateDistance(uLat, uLng, pLat, pLng));
     }
   }, [provider, currentUser]);
@@ -241,6 +239,13 @@ export default function ProviderProfilePage() {
                                     <p className="font-black text-gray-900 text-sm">
                                         {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price)}
                                     </p>
+                                    {/* Tombol Pesan Khusus Layanan */}
+                                    <Link 
+                                        href={`/checkout?type=direct&providerId=${provider._id}&serviceId=${item.serviceId._id}`}
+                                        className="mt-1 inline-block text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded-md transition-colors"
+                                    >
+                                        Pilih
+                                    </Link>
                                 </div>
                             </div>
                         ))}
@@ -270,7 +275,7 @@ export default function ProviderProfilePage() {
             {/* KOLOM KANAN (Jadwal & Info Tambahan) */}
             <div className="space-y-6">
                 
-                {/* 4. SCHEDULE SECTION (BARU) */}
+                {/* 4. SCHEDULE SECTION */}
                 <section className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
@@ -306,7 +311,7 @@ export default function ProviderProfilePage() {
         </div>
       </main>
 
-      {/* STICKY BOTTOM CTA (Mobile Only) */}
+      {/* STICKY BOTTOM CTA (Mobile Only) - Perbaikan di sini: Link Umum */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 lg:hidden z-40 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
          <div className="flex flex-col flex-1">
             <span className="text-[10px] text-gray-500 font-bold uppercase">Harga Mulai</span>
@@ -316,13 +321,13 @@ export default function ProviderProfilePage() {
                     : 'Hubungi CS'}
             </span>
          </div>
-         <Link 
-            href={`/checkout?type=direct&providerId=${provider._id}`}
-            className="flex-[2] bg-gray-900 text-white font-bold py-3.5 px-6 rounded-xl text-center shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
-         >
+         <Link
+            href={`/checkout?type=direct&providerId=${provider._id}`} // Generic link untuk mobile CTA
+            className="px-6 py-3 rounded-xl bg-red-600 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-transform active:scale-95 flex items-center gap-2"
+        >
             Pesan Jasa
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-         </Link>
+        </Link>
       </div>
 
     </div>
