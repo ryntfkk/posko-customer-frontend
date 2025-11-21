@@ -102,12 +102,18 @@ export default function HomePage() {
       try {
         const result = await fetchProfile();
         setUserProfile(result.data.profile);
-      } catch (error) {
-        localStorage.removeItem('posko_token');
-        setIsLoggedIn(false);
-      } finally {
-        setIsLoadingProfile(false);
-      }
+        } catch (error: any) {
+          console.error("Gagal memuat profil:", error);
+          
+          // Hanya logout jika errornya adalah 401 (Unauthorized)
+          // Jika error server (500) atau koneksi, biarkan user tetap login
+          if (error.response && error.response.status === 401) {
+            localStorage.removeItem('posko_token');
+            setIsLoggedIn(false);
+          }
+        } finally {
+          setIsLoadingProfile(false);
+        }
     };
 
     loadProfile();
@@ -383,55 +389,97 @@ export default function HomePage() {
         <footer className="bg-gray-50 border-t border-gray-200 py-12 text-center"><p className="text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
 
         {/* --- FITUR FLOATING CHAT (Desktop) --- */}
-        {isLoggedIn && (
-          <>
-            {/* Jendela Chat Pop-up */}
-            {isChatOpen && (
-                <div className="fixed bottom-24 right-32 w-80 h-96 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 flex flex-col animate-fadeIn overflow-hidden">
-                    <div className="bg-red-600 p-4 flex justify-between items-center text-white shadow-sm">
-                        <h3 className="font-bold text-sm flex items-center gap-2">
-                            <ChatIcon /> Pesan (2)
-                        </h3>
-                        <button onClick={() => setIsChatOpen(false)} className="hover:bg-red-700 p-1 rounded transition-colors">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                        {chats.map(chat => (
-                            <div key={chat.id} className="flex gap-3 p-3 hover:bg-gray-50 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-gray-100">
-                                <div className="relative w-10 h-10 shrink-0">
-                                    <img src={chat.img} className="w-full h-full rounded-full bg-gray-100 border border-gray-200" />
-                                    {chat.unread > 0 && <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></div>}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex justify-between items-baseline">
-                                        <h4 className="text-sm font-bold text-gray-900 truncate">{chat.name}</h4>
-                                        <span className="text-[10px] text-gray-400">{chat.time}</span>
-                                    </div>
-                                    <p className={`text-xs truncate ${chat.unread > 0 ? 'font-bold text-gray-800' : 'text-gray-500'}`}>{chat.msg}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="p-3 border-t border-gray-100 bg-gray-50 text-center">
-                        <Link href="#" className="text-xs font-bold text-red-600 hover:underline">Lihat Semua Pesan</Link>
-                    </div>
+{/* --- FITUR FLOATING CHAT (MODERN PROFESSIONAL STYLE) --- */}
+{isLoggedIn && (
+  <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-sans">
+    
+    {/* Jendela Chat Pop-up */}
+    {isChatOpen && (
+        <div className="w-[360px] h-[500px] bg-white rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-gray-100 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300 origin-bottom-right overflow-hidden ring-1 ring-black/5">
+            
+            {/* Header: Minimalis Putih (Lebih Profesional) */}
+            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                <div>
+                    <h3 className="font-bold text-gray-900 text-base">Pesan</h3>
+                    <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                        Admin & Mitra Online
+                    </p>
                 </div>
-            )}
+                <div className="flex gap-1">
+                    <button className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                    </button>
+                    <button onClick={() => setIsChatOpen(false)} className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-600 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
 
-            {/* Tombol Chat Floating */}
-            <button 
-                onClick={() => setIsChatOpen(!isChatOpen)}
-                className="fixed bottom-8 right-32 z-40 bg-white hover:bg-gray-50 text-gray-800 border border-gray-200 shadow-[0_4px_20px_rgba(0,0,0,0.15)] px-5 py-3 rounded-full flex items-center gap-2.5 transition-all hover:-translate-y-1 hover:shadow-xl group"
-            >
-                <div className="relative">
-                    <ChatIcon className="w-6 h-6 text-red-600" />
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white"></span>
-                </div>
-                <span className="font-bold text-sm hidden group-hover:inline-block transition-all">Chat</span>
-            </button>
-          </>
+            {/* List Chat */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 scroll-smooth">
+                {chats.map(chat => (
+                    <div key={chat.id} className={`group flex gap-4 p-3.5 rounded-xl cursor-pointer transition-all duration-200 border border-transparent ${chat.unread > 0 ? 'bg-red-50/50 border-red-100/50' : 'hover:bg-gray-50 hover:border-gray-100'}`}>
+                        <div className="relative w-11 h-11 shrink-0">
+                            <img src={chat.img} className="w-full h-full rounded-full object-cover ring-2 ring-white shadow-sm" alt={chat.name} />
+                            {chat.unread > 0 && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>}
+                        </div>
+                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                            <div className="flex justify-between items-baseline mb-0.5">
+                                <h4 className={`text-sm truncate ${chat.unread > 0 ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{chat.name}</h4>
+                                <span className="text-[10px] text-gray-400 font-medium">{chat.time}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <p className={`text-xs truncate max-w-[180px] ${chat.unread > 0 ? 'font-semibold text-gray-800' : 'text-gray-500 group-hover:text-gray-600'}`}>{chat.msg}</p>
+                                {chat.unread > 0 && (
+                                    <span className="flex items-center justify-center w-4 h-4 bg-red-600 text-white text-[9px] font-bold rounded-full shadow-sm shadow-red-200">
+                                        {chat.unread}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+                
+                {/* State Kosong (Opsional) */}
+                {chats.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
+                        <ChatIcon className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="text-sm">Belum ada percakapan.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Footer / Input Placeholder */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                <button className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-sm font-bold rounded-xl shadow-lg shadow-gray-200 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                    Mulai Percakapan Baru
+                </button>
+            </div>
+        </div>
+    )}
+
+    {/* Tombol Floating Utama (Bulat & Besar) */}
+    <button 
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className={`relative group w-14 h-14 flex items-center justify-center rounded-full shadow-[0_8px_30px_rgba(220,38,38,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(220,38,38,0.4)] ${isChatOpen ? 'bg-white text-red-600 rotate-90' : 'bg-red-600 text-white'}`}
+    >
+        {isChatOpen ? (
+             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+        ) : (
+            <>
+                <ChatIcon className="w-6 h-6" />
+                {/* Notifikasi Badge */}
+                <span className="absolute top-0 right-0 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-white border-2 border-red-600"></span>
+                </span>
+            </>
         )}
+    </button>
+  </div>
+)}
 
       </div>
 
