@@ -3,18 +3,22 @@ import { useState, useEffect, useCallback } from 'react';
 
 // Tipe untuk satu item di Keranjang
 export interface CartItem {
-    id: string; // ID unik untuk item di keranjang (misal: serviceId-orderType)
+    id: string; // ID unik untuk item di keranjang (serviceId-orderType-[providerId])
     serviceId: string;
     serviceName: string;
     orderType: 'direct' | 'basic';
     quantity: number;
     pricePerUnit: number; // Harga yang disepakati (BasePrice saat ini)
     totalPrice: number;
-    providerId?: string; 
+    providerId?: string;
     providerName?: string;
 }
 
 const CART_KEY = 'posko_cart';
+
+export const getCartItemId = (serviceId: string, orderType: 'direct' | 'basic', providerId?: string | null) => {
+    return `${serviceId}-${orderType}-${providerId || 'default'}`;
+};
 
 export const useCart = () => {
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -41,21 +45,70 @@ export const useCart = () => {
         }
     }, [cart, isHydrated]);
 
-    const addItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
-        const itemId = `${item.serviceId}-${item.orderType}-${Date.now()}`; // Pastikan ID unik
-        const newItem: CartItem = {
-            ...item,
-            id: itemId,
-            totalPrice: item.quantity * item.pricePerUnit
-        };
-        
+    const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
+        const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
+
         setCart(prevCart => {
+            const existingIndex = prevCart.findIndex(existing => {
+                const existingKey = getCartItemId(existing.serviceId, existing.orderType, existing.providerId);
+                return existing.id === itemId || existingKey === itemId;
+            });
+
+            const totalPrice = item.quantity * item.pricePerUnit;
+
+            if (existingIndex >= 0) {
+                const updated = [...prevCart];
+                if (item.quantity <= 0) {
+                    updated.splice(existingIndex, 1);
+                    return updated;
+                }
+
+                updated[existingIndex] = {
+                    ...updated[existingIndex],
+                    ...item,
+                    id: itemId,
+                    totalPrice,
+                };
+                return updated;
+            }
+
+            if (item.quantity <= 0) return prevCart;
+
+            const newItem: CartItem = {
+                ...item,
+                id: itemId,
+                totalPrice,
+            };
+
             return [...prevCart, newItem];
         });
     }, []);
 
+    const updateItemQuantity = useCallback((itemId: string, quantity: number) => {
+        setCart(prevCart => {
+            return prevCart.reduce((acc, item) => {
+                const matches = item.id === itemId || getCartItemId(item.serviceId, item.orderType, item.providerId) === itemId;
+
+                if (!matches) {
+                    acc.push(item);
+                    return acc;
+                }
+
+                if (quantity <= 0) return acc;
+
+                acc.push({
+                    ...item,
+                    quantity,
+                    totalPrice: quantity * item.pricePerUnit,
+                });
+
+                return acc;
+            }, [] as CartItem[]);
+        });
+    }, []);
+
     const removeItem = useCallback((itemId: string) => {
-        setCart(prevCart => prevCart.filter(item => item.id !== itemId));
+        setCart(prevCart => prevCart.filter(item => item.id !== itemId && getCartItemId(item.serviceId, item.orderType, item.providerId) !== itemId));
     }, []);
 
     const clearCart = useCallback(() => {
@@ -67,11 +120,13 @@ export const useCart = () => {
 
     return {
         cart,
-        addItem,
+        addItem: upsertItem,
+        upsertItem,
         removeItem,
         clearCart,
         totalItems,
         totalAmount,
+        updateItemQuantity,
         isHydrated
     };
 };

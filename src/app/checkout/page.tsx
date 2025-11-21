@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
 import { Service } from '@/features/services/types';
+import { getCartItemId, useCart } from '@/features/cart/useCart';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -40,6 +41,8 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+const { cart, upsertItem, totalAmount, totalItems, isHydrated } = useCart();
+
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +50,6 @@ export default function CheckoutPage() {
   const [navigationState, setNavigationState] = useState<NavigationState>({});
   const [checkoutType, setCheckoutType] = useState<CheckoutType>('basic');
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Extract navigation state (e.g., when pushing with router.push(url, { state: {...} }))
@@ -63,11 +64,9 @@ export default function CheckoutPage() {
   useEffect(() => {
     const typeParam = (searchParams.get('type') as CheckoutType | null) || navigationState.type;
     const providerParam = searchParams.get('providerId') || navigationState.providerId || null;
-    const serviceParam = searchParams.get('serviceId') || navigationState.serviceId || null;
 
     setCheckoutType(typeParam === 'direct' ? 'direct' : 'basic');
     setSelectedProviderId(providerParam);
-    setSelectedServiceId(serviceParam);
   }, [navigationState, searchParams]);
 
   // Fetch service catalog
@@ -78,23 +77,6 @@ export default function CheckoutPage() {
       .catch(() => setError('Gagal memuat daftar layanan. Silakan coba lagi.'))
       .finally(() => setIsLoading(false));
   }, []);
-
-  const selectedService = useMemo(
-    () => services.find((service) => service._id === selectedServiceId) || null,
-    [services, selectedServiceId]
-  );
-
-  // Filter services by category for basic checkout so the user sees related services
-  const relatedServices = useMemo(() => {
-    if (!services.length) return [] as Service[];
-    if (checkoutType === 'direct') return services;
-
-    if (selectedService?.category) {
-      return services.filter((service) => service.category === selectedService.category);
-    }
-
-    return services;
-  }, [checkoutType, selectedService, services]);
 
   // Build ratecard for selected provider using current catalog as a baseline
   const ratecard = useMemo(() => {
@@ -110,58 +92,34 @@ export default function CheckoutPage() {
     });
   }, [selectedProviderId, services]);
 
-  const availableOptions: (Service | RateCardItem)[] = checkoutType === 'direct' ? ratecard : relatedServices;
-
-  useEffect(() => {
-    if (availableOptions.length === 0 || selectedServiceId) return;
-
-    const firstOptionId = checkoutType === 'direct'
-      ? (availableOptions[0] as RateCardItem).serviceId
-      : (availableOptions[0] as Service)._id;
-
-    setSelectedServiceId(firstOptionId);
-  }, [availableOptions, checkoutType, selectedServiceId]);
-
-  const pricePerUnit = useMemo(() => {
-    if (!selectedServiceId) return 0;
-
-    if (checkoutType === 'direct') {
-      const rate = ratecard.find((item) => item.serviceId === selectedServiceId);
-      return rate?.price ?? 0;
-    }
-
-    return selectedService?.basePrice ?? 0;
-  }, [checkoutType, ratecard, selectedService?.basePrice, selectedServiceId]);
-
-  const totalPrice = pricePerUnit * quantity;
+  const availableOptions: (Service | RateCardItem)[] = checkoutType === 'direct' ? ratecard : services;
 
   const providerLabel = useMemo(() => {
     if (!selectedProviderId) return 'Cari Cepat';
     return providerNames[selectedProviderId] || `Mitra #${selectedProviderId}`;
   }, [selectedProviderId]);
 
+    const getQuantityForService = (serviceId: string) => {
+    const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
+    const existing = cart.find(
+      (item) => item.id === key || getCartItemId(item.serviceId, item.orderType, item.providerId) === key
+    );
+
+    return existing?.quantity ?? 0;
+  };
+
+
   const handleConfirmOrder = async () => {
-    if (!selectedServiceId || pricePerUnit <= 0) {
-      alert('Pilih layanan terlebih dahulu sebelum melanjutkan.');
+    if (!isHydrated) return;
+    if (cart.length === 0 || totalItems <= 0) {
+      alert('Pilih minimal satu layanan sebelum melanjutkan.');
       return;
     }
 
     setIsSubmitting(true);
 
-    const payload = {
-      type: checkoutType,
-      providerId: selectedProviderId,
-      serviceId: selectedServiceId,
-      quantity,
-      pricePerUnit,
-      total: totalPrice,
-    };
-
     try {
-      // TODO: Ganti dengan pemanggilan API nyata
       await new Promise((resolve) => setTimeout(resolve, 700));
-      console.log('Submitting order payload', payload);
-      router.push(`/order/detail/${selectedServiceId}`);
     } catch (err) {
       console.error(err);
       alert('Terjadi kendala saat memproses pesanan. Silakan coba lagi.');
@@ -170,30 +128,36 @@ export default function CheckoutPage() {
     }
   };
 
+    const activeCartItems = useMemo(() => cart.filter((item) => item.quantity > 0), [cart]);
+
   const renderServiceOption = (option: Service | RateCardItem) => {
     const isDirect = checkoutType === 'direct';
     const id = isDirect ? (option as RateCardItem).serviceId : (option as Service)._id;
     const name = isDirect ? (option as RateCardItem).serviceName : (option as Service).name;
-    const category = !isDirect ? (option as Service).category : selectedService?.category;
+    const category = !isDirect ? (option as Service).category : undefined;
     const description = !isDirect ? (option as Service).description : 'Harga mengikuti ratecard mitra terpilih.';
     const price = isDirect ? (option as RateCardItem).price : (option as Service).basePrice;
+    const quantity = getQuantityForService(id);
+
+    const handleUpdateQuantity = (newQuantity: number) => {
+      upsertItem({
+        serviceId: id,
+        serviceName: name,
+        orderType: checkoutType,
+        quantity: newQuantity,
+        pricePerUnit: price,
+        providerId: isDirect ? selectedProviderId || undefined : undefined,
+        providerName: isDirect ? providerLabel : undefined,
+      });
+    };
 
     return (
-      <label
+      <div
         key={id}
-        className={`flex gap-4 p-4 border rounded-2xl cursor-pointer transition-all ${
-          selectedServiceId === id
-            ? 'border-red-600 bg-red-50 shadow-md'
-            : 'border-gray-200 bg-white hover:border-gray-400'
+        className={`flex gap-4 p-4 border rounded-2xl transition-all ${
+          quantity > 0 ? 'border-red-600 bg-red-50 shadow-md' : 'border-gray-200 bg-white hover:border-gray-400'
         }`}
       >
-        <input
-          type="radio"
-          name="service"
-          className="mt-1 h-4 w-4 text-red-600"
-          checked={selectedServiceId === id}
-          onChange={() => setSelectedServiceId(id)}
-        />
         <div className="flex-1 space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-bold text-gray-900">{name}</h3>
@@ -206,7 +170,27 @@ export default function CheckoutPage() {
           <p className="text-sm text-gray-600">{description}</p>
           <p className="text-base font-black text-red-700">{formatCurrency(price)}</p>
         </div>
-      </label>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => handleUpdateQuantity(Math.max(0, quantity - 1))}
+            className="w-10 h-10 rounded-lg bg-white border border-gray-200 hover:border-gray-400"
+          >
+            -
+          </button>
+          <span className="text-xl font-black text-gray-900 w-10 text-center">{quantity}</span>
+          <button
+            onClick={() => handleUpdateQuantity(quantity + 1)}
+            disabled={checkoutType === 'direct' && !selectedProviderId}
+            className={`w-10 h-10 rounded-lg font-bold ${
+              checkoutType === 'direct' && !selectedProviderId
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-red-600 text-white hover:bg-red-700'
+            }`}
+          >
+            +
+          </button>
+        </div>
+      </div>
     );
   };
 
@@ -269,6 +253,9 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 <div className="md:col-span-2 space-y-3">
                   <p className="text-sm font-semibold text-gray-700">Pilih layanan</p>
+                {checkoutType === 'direct' && !selectedProviderId && (
+                    <p className="text-xs text-red-600">Pilih Mitra terlebih dahulu dari halaman profil untuk melihat ratecard.</p>
+                )}
                   {availableOptions.length === 0 && (
                     <p className="text-sm text-gray-500">Belum ada layanan yang tersedia.</p>
                   )}
@@ -278,23 +265,39 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="p-4 border rounded-2xl bg-gray-50 space-y-4">
-                  <p className="text-sm font-semibold text-gray-700">Jumlah</p>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                      className="w-10 h-10 rounded-lg bg-white border border-gray-200 hover:border-gray-400"
-                    >
-                      -
-                    </button>
-                    <span className="text-2xl font-black text-gray-900 w-12 text-center">{quantity}</span>
-                    <button
-                      onClick={() => setQuantity((prev) => prev + 1)}
-                      className="w-10 h-10 rounded-lg bg-red-600 text-white font-bold hover:bg-red-700"
-                    >
-                      +
-                    </button>
+                  <p className="text-sm font-semibold text-gray-700">Ringkasan Pesanan</p>
+                  {!isHydrated ? (
+                    <p className="text-sm text-gray-500">Memuat keranjang...</p>
+                  ) : activeCartItems.length === 0 ? (
+                    <p className="text-sm text-gray-500">Belum ada layanan dipilih.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {activeCartItems.map((item) => (
+                        <div key={item.id} className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="text-sm font-bold text-gray-900 leading-tight">{item.serviceName}</p>
+                            <p className="text-[12px] text-gray-500">
+                              {item.orderType === 'direct' ? 'Direct Order' : 'Basic Order'}
+                              {item.providerName ? ` • ${item.providerName}` : ''}
+                            </p>
+                            <p className="text-[12px] text-gray-500">Qty {item.quantity} x {formatCurrency(item.pricePerUnit)}</p>
+                          </div>
+                          <div className="text-sm font-bold text-gray-900 whitespace-nowrap">{formatCurrency(item.totalPrice)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="border-t border-gray-200 pt-3 space-y-1">
+                    <div className="flex items-center justify-between text-sm font-semibold text-gray-900">
+                      <span>Subtotal</span>
+                      <span>{formatCurrency(totalAmount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Total Item</span>
+                      <span>{totalItems} layanan</span>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500">Jumlah unit/sesi yang akan dipesan.</p>
                 </div>
               </div>
             </section>
@@ -302,14 +305,14 @@ export default function CheckoutPage() {
             <section className="sticky bottom-0 bg-white p-6 rounded-2xl shadow-2xl border border-red-600/50 flex justify-between items-center">
               <div>
                 <span className="text-sm text-gray-500 font-medium">Estimasi Tagihan</span>
-                <p className="text-3xl font-black text-red-600">{formatCurrency(totalPrice)}</p>
-                <p className="text-xs text-gray-500">Harga per unit: {formatCurrency(pricePerUnit)}</p>
+                <p className="text-3xl font-black text-red-600">{formatCurrency(totalAmount)}</p>
+                <p className="text-xs text-gray-500">Total layanan dipilih: {totalItems}</p>
               </div>
               <button
                 onClick={handleConfirmOrder}
-                disabled={isSubmitting || !selectedServiceId || pricePerUnit <= 0}
+                disabled={isSubmitting || activeCartItems.length === 0}
                 className={`px-6 py-4 rounded-xl font-bold text-white flex items-center gap-2 shadow-xl shadow-red-200 transition-transform ${
-                  isSubmitting || !selectedServiceId || pricePerUnit <= 0
+                  isSubmitting || activeCartItems.length === 0
                     ? 'bg-gray-300 cursor-not-allowed'
                     : 'bg-red-600 hover:bg-red-700 hover:-translate-y-0.5'
                 }`}
