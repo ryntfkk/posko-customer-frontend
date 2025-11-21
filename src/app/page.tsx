@@ -3,12 +3,14 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-  import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchProfile } from '@/features/auth/api';
+import { fetchProfile, switchRole } from '@/features/auth/api'; 
 import { User } from '@/features/auth/types';
+// IMPORT KOMPONEN BARU
+import ProviderHome from '@/components/ProviderHome';
 
-// --- DATA KATEGORI ---
+// --- DATA KATEGORI (ASLI) ---
 const categories = [
   { title: 'AC', icon: '/icons/air-conditioner.png' },
   { title: 'Listrik', icon: '/icons/electrician.png' },
@@ -20,7 +22,7 @@ const categories = [
   { title: 'Lainnya', icon: '/icons/logo-posko.png' },
 ];
 
-// --- DATA TEKNISI ---
+// --- DATA TEKNISI (ASLI) ---
 const technicians = [
   {
     id: 1,
@@ -64,7 +66,7 @@ const technicians = [
   },
 ];
 
-// --- DUMMY CHAT DATA ---
+// --- DUMMY CHAT DATA (ASLI) ---
 const chats = [
     { id: 1, name: "Budi Hartono", msg: "Halo, bisa datang jam 3?", time: "10:30", unread: 1, img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi" },
     { id: 2, name: "Dewi Pertiwi", msg: "Terima kasih kak!", time: "Kemarin", unread: 0, img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Dewi" },
@@ -74,6 +76,7 @@ export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [switching, setSwitching] = useState(false);
 
   // State untuk UI Interaktif Desktop
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -81,7 +84,7 @@ export default function HomePage() {
   
   const router = useRouter();
 
-    const profileName = userProfile?.fullName || 'User Posko';
+  const profileName = userProfile?.fullName || 'User Posko';
   const profileEmail = userProfile?.email || '-';
   const profileBadge = userProfile?.activeRole
     ? userProfile.activeRole.charAt(0).toUpperCase() + userProfile.activeRole.slice(1)
@@ -104,9 +107,6 @@ export default function HomePage() {
         setUserProfile(result.data.profile);
         } catch (error: any) {
           console.error("Gagal memuat profil:", error);
-          
-          // Hanya logout jika errornya adalah 401 (Unauthorized)
-          // Jika error server (500) atau koneksi, biarkan user tetap login
           if (error.response && error.response.status === 401) {
             localStorage.removeItem('posko_token');
             setIsLoggedIn(false);
@@ -123,15 +123,42 @@ export default function HomePage() {
     localStorage.removeItem('posko_token');
     setUserProfile(null);
     setIsLoggedIn(false);
-    setIsProfileOpen(false); // Tutup dropdown
+    setIsProfileOpen(false); 
     router.refresh();
   };
+
+  // --- HANDLE SWITCH ROLE ---
+  const handleSwitchModeDesktop = async () => {
+    if (!userProfile) return;
+    setSwitching(true);
+
+    const isProvider = userProfile.roles.includes('provider');
+    
+    if (!isProvider) {
+        alert("Fitur pendaftaran mitra akan segera hadir!");
+        setSwitching(false);
+        return;
+    }
+
+    try {
+        const targetRole = userProfile.activeRole === 'provider' ? 'customer' : 'provider';
+        await switchRole(targetRole); 
+        window.location.reload();
+    } catch (error) {
+        console.error(error);
+        alert("Gagal pindah role");
+        setSwitching(false);
+    }
+  };
+
+  const isProviderMode = userProfile?.activeRole === 'provider';
+  const hasProviderRole = userProfile?.roles.includes('provider');
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100">
       
       {/* =========================================
-          TAMPILAN MOBILE (Tetap Sama)
+          TAMPILAN MOBILE
          ========================================= */}
       <div className="lg:hidden pb-24">
         
@@ -155,76 +182,86 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* Mobile Hero */}
-        <section className="px-4 pt-6 pb-2">
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">
-            Cari jasa apa <br/>
-            <span className="text-red-600 relative">
-              sekarang?
-              <svg className="absolute w-full h-2 -bottom-1 left-0 text-red-200 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" /></svg>
-            </span>
-          </h2>
-          <p className="text-xs text-gray-500 mb-6 max-w-[280px]">
-            Hubungkan dengan ratusan teknisi terverifikasi di sekitar Anda.
-          </p>
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-              <SearchIcon className="w-5 h-5 text-gray-400 group-focus-within:text-red-500" />
-            </div>
-            <input type="text" placeholder="Coba cari 'Servis AC'..." className="block w-full pl-11 pr-4 py-3.5 border-none rounded-2xl bg-white text-sm text-gray-900 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] ring-1 ring-gray-100 focus:ring-2 focus:ring-red-500 focus:outline-none" />
-          </div>
-        </section>
-
-        {/* Mobile Banner */}
-        <section className="mt-4 pl-4 overflow-x-auto no-scrollbar flex gap-3 pr-4">
-          <PromoCardMobile color="red" title="Diskon 50%" subtitle="Pengguna Baru" btn="Klaim" />
-          <PromoCardMobile color="dark" title="Garansi Puas" subtitle="Uang Kembali" btn="Cek Syarat" />
-        </section>
-
-        {/* Mobile Categories */}
-        <section className="px-4 mt-6">
-          <div className="flex justify-between items-end mb-4">
-            <h3 className="text-base font-bold text-gray-900">Layanan</h3>
-          </div>
-          <div className="grid grid-cols-4 gap-y-5 gap-x-2">
-            {categories.map((cat) => (
-              <div key={cat.title} className="flex flex-col items-center gap-2 active:scale-95 transition-transform">
-                <div className="relative w-[3.25rem] h-[3.25rem] bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden p-3">
-                  <Image src={cat.icon} alt={cat.title} width={32} height={32} className="object-contain" />
+        {/* KONTEN MOBILE: CEK MODE PROVIDER */}
+        {isProviderMode && userProfile ? (
+            // Menggunakan Component Terpisah (Responsive)
+            <ProviderHome user={userProfile} />
+        ) : (
+            <>
+                {/* Mobile Hero (Customer) */}
+                <section className="px-4 pt-6 pb-2">
+                <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">
+                    Cari jasa apa <br/>
+                    <span className="text-red-600 relative">
+                    sekarang?
+                    <svg className="absolute w-full h-2 -bottom-1 left-0 text-red-200 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" /></svg>
+                    </span>
+                </h2>
+                <p className="text-xs text-gray-500 mb-6 max-w-[280px]">
+                    Hubungkan dengan ratusan teknisi terverifikasi di sekitar Anda.
+                </p>
+                <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <SearchIcon className="w-5 h-5 text-gray-400 group-focus-within:text-red-500" />
+                    </div>
+                    <input type="text" placeholder="Coba cari 'Servis AC'..." className="block w-full pl-11 pr-4 py-3.5 border-none rounded-2xl bg-white text-sm text-gray-900 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] ring-1 ring-gray-100 focus:ring-2 focus:ring-red-500 focus:outline-none" />
                 </div>
-                <span className="text-[10px] font-medium text-gray-600 text-center line-clamp-1">{cat.title}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+                </section>
 
-        {/* Mobile Technicians */}
-        <section className="px-4 mt-8">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-base font-bold text-gray-900">Mitra Pilihan</h3>
-            <button className="text-xs font-bold text-red-600">Lihat Semua</button>
-          </div>
-          <div className="space-y-3">
-            {technicians.map((tech) => (
-              <TechCardMobile key={tech.id} tech={tech} />
-            ))}
-          </div>
-        </section>
+                {/* Mobile Banner */}
+                <section className="mt-4 pl-4 overflow-x-auto no-scrollbar flex gap-3 pr-4">
+                <PromoCardMobile color="red" title="Diskon 50%" subtitle="Pengguna Baru" btn="Klaim" />
+                <PromoCardMobile color="dark" title="Garansi Puas" subtitle="Uang Kembali" btn="Cek Syarat" />
+                </section>
+
+                {/* Mobile Categories */}
+                <section className="px-4 mt-6">
+                <div className="flex justify-between items-end mb-4">
+                    <h3 className="text-base font-bold text-gray-900">Layanan</h3>
+                </div>
+                <div className="grid grid-cols-4 gap-y-5 gap-x-2">
+                    {categories.map((cat) => (
+                    <div key={cat.title} className="flex flex-col items-center gap-2 active:scale-95 transition-transform">
+                        <div className="relative w-[3.25rem] h-[3.25rem] bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden p-3">
+                        <Image src={cat.icon} alt={cat.title} width={32} height={32} className="object-contain" />
+                        </div>
+                        <span className="text-[10px] font-medium text-gray-600 text-center line-clamp-1">{cat.title}</span>
+                    </div>
+                    ))}
+                </div>
+                </section>
+
+                {/* Mobile Technicians */}
+                <section className="px-4 mt-8">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-base font-bold text-gray-900">Mitra Pilihan</h3>
+                    <button className="text-xs font-bold text-red-600">Lihat Semua</button>
+                </div>
+                <div className="space-y-3">
+                    {technicians.map((tech) => (
+                    <TechCardMobile key={tech.id} tech={tech} />
+                    ))}
+                </div>
+                </section>
+            </>
+        )}
 
         {/* Mobile Bottom Nav */}
         <div className="fixed bottom-0 left-0 right-0 pb-5 pt-2 px-4 bg-gradient-to-t from-white via-white/90 to-transparent z-40">
           <nav className="bg-white border border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl px-6 py-3.5 flex justify-between items-center">
-            <NavItem icon={<HomeIcon active />} active />
+            <NavItem icon={<HomeIcon active={!isProviderMode} />} active={!isProviderMode} />
             <NavItem icon={<OrderIcon />} />
             <NavItem icon={<ChatIcon />} />
-            <NavItem icon={<UserIcon />} />
+            <Link href="/profile" className="flex flex-col items-center justify-center gap-1 w-12 text-gray-400 hover:text-red-600 transition-colors">
+                <UserIcon />
+            </Link>
           </nav>
         </div>
       </div>
 
 
       {/* =========================================
-          TAMPILAN DESKTOP (MODIFIKASI MARKETPLACE)
+          TAMPILAN DESKTOP
          ========================================= */}
       <div className="hidden lg:block">
         
@@ -241,20 +278,27 @@ export default function HomePage() {
               
             <nav className="flex gap-8 text-sm font-bold text-gray-600">
               <Link href="#" className="hover:text-red-600 transition-colors">Beranda</Link>
-              <Link href="#" className="hover:text-red-600 transition-colors">Jasa</Link>
-              <Link href="#" className="hover:text-red-600 transition-colors">Mitra</Link>
-              {/* Menu Pesanan dipindah ke Header agar mudah diakses */}
-              <Link href="#" className="hover:text-red-600 transition-colors">Pesanan</Link>
+              {/* Sembunyikan menu Jasa & Mitra jika mode Provider */}
+              {!isProviderMode && (
+                  <>
+                    <Link href="#" className="hover:text-red-600 transition-colors">Jasa</Link>
+                    <Link href="#" className="hover:text-red-600 transition-colors">Mitra</Link>
+                  </>
+              )}
+              {/* Tampilkan Pesanan hanya jika login */}
+              {isLoggedIn && <Link href="/orders" className="hover:text-red-600 transition-colors">Pesanan</Link>}
             </nav>
             </div>
 
             <div className="flex items-center gap-6">
-              <div className="relative w-72">
-                <input type="text" placeholder="Cari layanan atau teknisi..." className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all" />
-                <SearchIcon className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
-              </div>
+              {/* Sembunyikan Search Bar jika mode Provider (karena Provider menerima order, bukan cari) */}
+              {!isProviderMode && (
+                  <div className="relative w-72">
+                    <input type="text" placeholder="Cari layanan atau teknisi..." className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all" />
+                    <SearchIcon className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                  </div>
+              )}
               
-              {/* LOGIC LOGIN / PROFILE DROPDOWN */}
               {isLoggedIn ? (
                  <div className="relative">
                     {/* Tombol Profile */}
@@ -275,16 +319,51 @@ export default function HomePage() {
                     {/* DROPDOWN MENU */}
                     {isProfileOpen && (
                         <>
-                            {/* Backdrop transparan untuk menutup dropdown saat klik luar */}
                             <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
                             
-                            <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden z-50 animate-fadeIn origin-top-right">
+                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden z-50 animate-fadeIn origin-top-right">
                                 <div className="p-4 border-b border-gray-50">
                                     <p className="text-sm font-bold text-gray-900">{isLoadingProfile ? 'Memuat profil...' : profileName}</p>
                                     <p className="text-xs text-gray-500 truncate">{isLoadingProfile ? '...' : profileEmail}</p>
                                 </div>
+                                
                                 <div className="py-2">
-                                    <Link href="#" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors">
+                                    {/* Menu Pesanan (Baru) */}
+                                    <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors">
+                                        <OrderIcon className="w-5 h-5" />
+                                        Daftar Pesanan
+                                    </Link>
+
+                                    {/* Menu Switch Role (Baru) */}
+                                    <button 
+                                        onClick={handleSwitchModeDesktop}
+                                        disabled={switching}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors text-left"
+                                    >
+                                        {switching ? (
+                                            <span className="text-gray-400 flex items-center gap-2">
+                                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                Memproses...
+                                            </span>
+                                        ) : (
+                                            <>
+                                                {hasProviderRole ? (
+                                                    isProviderMode ? (
+                                                        <><span className="w-5 h-5 flex items-center justify-center text-blue-600">👤</span> Pindah ke Customer</>
+                                                    ) : (
+                                                        <><span className="w-5 h-5 flex items-center justify-center text-blue-600">💼</span> Pindah ke Provider</>
+                                                    )
+                                                ) : (
+                                                    <><span className="w-5 h-5 flex items-center justify-center text-green-600">🤝</span> Daftar Jadi Mitra</>
+                                                )}
+                                            </>
+                                        )}
+                                    </button>
+
+                                    <div className="border-t border-gray-50 my-1"></div>
+
+                                    {/* Menu Asli */}
+                                    <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors">
                                         <UserIcon /> Edit Profile
                                     </Link>
                                     <Link href="#" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors">
@@ -294,6 +373,7 @@ export default function HomePage() {
                                         <span className="w-5 h-5 flex items-center justify-center">❓</span> Bantuan
                                     </Link>
                                 </div>
+
                                 <div className="border-t border-gray-50 p-2">
                                     <button 
                                         onClick={handleLogout}
@@ -317,78 +397,86 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* Desktop Content (Hero, Categories, Grid) - SAMA SEPERTI SEBELUMNYA */}
-        <section className="relative bg-white border-b border-gray-100 overflow-hidden">
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-red-50/50 -skew-x-12 translate-x-20"></div>
-          <div className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-2 items-center relative z-10">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1 rounded-full text-xs font-bold mb-6 border border-red-100">
-                <span>🚀</span> Marketplace Jasa #1 di Indonesia
-              </div>
-              <h1 className="text-5xl font-black text-gray-900 leading-[1.15] mb-6">
-                Solusi Jasa Profesional <br/>
-                di <span className="text-red-600 relative inline-block">
-                  Ujung Jari
-                  <svg className="absolute w-full h-3 -bottom-1 left-0 text-red-200 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" /></svg>
-                </span>
-              </h1>
-              <p className="text-lg text-gray-500 mb-8 max-w-lg leading-relaxed">
-                Temukan teknisi AC, montir, hingga layanan kebersihan terbaik di sekitar Anda dengan harga transparan dan garansi layanan.
-              </p>
-              <div className="flex gap-4">
-                <button className="bg-red-600 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl shadow-red-200 hover:bg-red-700 transition-transform hover:-translate-y-1">Cari Jasa Sekarang</button>
-                <button className="bg-white text-gray-700 font-bold px-8 py-3.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">Gabung Mitra</button>
-              </div>
-            </div>
-            <div className="relative h-96 w-full rounded-3xl bg-gray-100 border border-gray-200 overflow-hidden group shadow-xl">
-                <Image src="https://drive.google.com/uc?export=view&id=1izUc0As5ae1dFrNaiZcWGqDn28nSRnsY" alt="Ilustrasi Teknisi" fill className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105" priority sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"/>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
-            </div>
-          </div>
-        </section>
-
-        <section className="max-w-7xl mx-auto px-8 py-16">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Jelajahi Kategori</h2>
-          <div className="grid grid-cols-8 gap-6">
-            {categories.map((cat) => (
-              <Link href="#" key={cat.title} className="group flex flex-col items-center gap-4 p-6 rounded-2xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-xl hover:shadow-red-50/50 transition-all duration-300">
-                <div className="relative w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-red-50 transition-all p-3">
-                  <Image src={cat.icon} alt={cat.title} width={40} height={40} className="object-contain"/>
+        {/* KONTEN DESKTOP: CEK MODE PROVIDER */}
+        {isProviderMode && userProfile ? (
+            // Menggunakan Component Terpisah
+            <ProviderHome user={userProfile} />
+        ) : (
+            <>
+                {/* Desktop Content (ASLI) */}
+                <section className="relative bg-white border-b border-gray-100 overflow-hidden">
+                <div className="absolute top-0 right-0 w-1/2 h-full bg-red-50/50 -skew-x-12 translate-x-20"></div>
+                <div className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-2 items-center relative z-10">
+                    <div>
+                    <div className="inline-flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1 rounded-full text-xs font-bold mb-6 border border-red-100">
+                        <span>🚀</span> Marketplace Jasa #1 di Indonesia
+                    </div>
+                    <h1 className="text-5xl font-black text-gray-900 leading-[1.15] mb-6">
+                        Solusi Jasa Profesional <br/>
+                        di <span className="text-red-600 relative inline-block">
+                        Ujung Jari
+                        <svg className="absolute w-full h-3 -bottom-1 left-0 text-red-200 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="8" fill="none" /></svg>
+                        </span>
+                    </h1>
+                    <p className="text-lg text-gray-500 mb-8 max-w-lg leading-relaxed">
+                        Temukan teknisi AC, montir, hingga layanan kebersihan terbaik di sekitar Anda dengan harga transparan dan garansi layanan.
+                    </p>
+                    <div className="flex gap-4">
+                        <button className="bg-red-600 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl shadow-red-200 hover:bg-red-700 transition-transform hover:-translate-y-1">Cari Jasa Sekarang</button>
+                        <button className="bg-white text-gray-700 font-bold px-8 py-3.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">Gabung Mitra</button>
+                    </div>
+                    </div>
+                    <div className="relative h-96 w-full rounded-3xl bg-gray-100 border border-gray-200 overflow-hidden group shadow-xl">
+                        <Image src="https://drive.google.com/uc?export=view&id=1izUc0As5ae1dFrNaiZcWGqDn28nSRnsY" alt="Ilustrasi Teknisi" fill className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105" priority sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"/>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
+                    </div>
                 </div>
-                <span className="font-semibold text-gray-700 group-hover:text-red-600 transition-colors">{cat.title}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
+                </section>
 
-        <section className="bg-white py-16 border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-8">
-            <div className="flex justify-between items-end mb-10">
-              <div><h2 className="text-3xl font-bold text-gray-900 mb-2">Rekomendasi di Sekitarmu</h2><p className="text-gray-500">Mitra teknisi dengan rating tertinggi minggu ini.</p></div>
-              <Link href="#" className="text-red-600 font-bold hover:underline decoration-2 underline-offset-4">Lihat Semua Mitra →</Link>
-            </div>
-            <div className="grid grid-cols-4 gap-8">
-              {technicians.map((tech) => (
-                <div key={tech.id} className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-gray-200/50 transition-all duration-300 hover:-translate-y-1">
-                  <div className="h-48 bg-gray-100 relative overflow-hidden">
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
-                     <img src={tech.image} alt={tech.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                     <div className="absolute bottom-3 left-3 text-white"><p className="text-xs font-medium opacity-90">{tech.distance}</p><p className="font-bold">{tech.skill}</p></div>
-                  </div>
-                  <div className="p-5">
-                    <div className="flex justify-between items-start mb-3"><h3 className="text-lg font-bold text-gray-900">{tech.name}</h3><div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100"><span className="text-xs text-yellow-600">★</span><span className="text-xs font-bold text-gray-900">{tech.rating}</span></div></div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-6"><span>💼 {tech.reviews} Pesanan</span></div>
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-50"><div className="flex flex-col"><span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Mulai Dari</span><span className="text-red-600 font-bold text-lg">{tech.price}</span></div><button className="bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-red-600 transition-colors">Pesan</button></div>
-                  </div>
+                <section className="max-w-7xl mx-auto px-8 py-16">
+                <h2 className="text-2xl font-bold text-gray-900 mb-8">Jelajahi Kategori</h2>
+                <div className="grid grid-cols-8 gap-6">
+                    {categories.map((cat) => (
+                    <Link href="#" key={cat.title} className="group flex flex-col items-center gap-4 p-6 rounded-2xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-xl hover:shadow-red-50/50 transition-all duration-300">
+                        <div className="relative w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-red-50 transition-all p-3">
+                        <Image src={cat.icon} alt={cat.title} width={40} height={40} className="object-contain"/>
+                        </div>
+                        <span className="font-semibold text-gray-700 group-hover:text-red-600 transition-colors">{cat.title}</span>
+                    </Link>
+                    ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
+                </section>
+
+                <section className="bg-white py-16 border-t border-gray-100">
+                <div className="max-w-7xl mx-auto px-8">
+                    <div className="flex justify-between items-end mb-10">
+                    <div><h2 className="text-3xl font-bold text-gray-900 mb-2">Rekomendasi di Sekitarmu</h2><p className="text-gray-500">Mitra teknisi dengan rating tertinggi minggu ini.</p></div>
+                    <Link href="#" className="text-red-600 font-bold hover:underline decoration-2 underline-offset-4">Lihat Semua Mitra →</Link>
+                    </div>
+                    <div className="grid grid-cols-4 gap-8">
+                    {technicians.map((tech) => (
+                        <div key={tech.id} className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-gray-200/50 transition-all duration-300 hover:-translate-y-1">
+                        <div className="h-48 bg-gray-100 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-60"></div>
+                            <img src={tech.image} alt={tech.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute bottom-3 left-3 text-white"><p className="text-xs font-medium opacity-90">{tech.distance}</p><p className="font-bold">{tech.skill}</p></div>
+                        </div>
+                        <div className="p-5">
+                            <div className="flex justify-between items-start mb-3"><h3 className="text-lg font-bold text-gray-900">{tech.name}</h3><div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100"><span className="text-xs text-yellow-600">★</span><span className="text-xs font-bold text-gray-900">{tech.rating}</span></div></div>
+                            <div className="flex items-center gap-2 text-sm text-gray-500 mb-6"><span>💼 {tech.reviews} Pesanan</span></div>
+                            <div className="flex items-center justify-between pt-4 border-t border-gray-50"><div className="flex flex-col"><span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Mulai Dari</span><span className="text-red-600 font-bold text-lg">{tech.price}</span></div><button className="bg-gray-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-red-600 transition-colors">Pesan</button></div>
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                </section>
+            </>
+        )}
         
         <footer className="bg-gray-50 border-t border-gray-200 py-12 text-center"><p className="text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
 
-   {/* --- FITUR CHAT DOCKED (LINKEDIN PROFESSIONAL STYLE) --- */}
+   {/* --- FITUR CHAT DOCKED (ASLI & BERFUNGSI) --- */}
 {isLoggedIn && (
   <div className="fixed bottom-0 right-4 z-50 flex flex-col items-end font-sans">
     
@@ -494,7 +582,7 @@ export default function HomePage() {
   );
 }
 
-// --- KOMPONEN KECIL (MOBILE) ---
+// --- KOMPONEN KECIL (MOBILE) --- (ASLI)
 
 function PromoCardMobile({ color, title, subtitle, btn }: { color: 'red'|'dark', title: string, subtitle: string, btn: string }) {
   const bgClass = color === 'red' ? 'bg-gradient-to-br from-red-600 to-orange-600 shadow-red-200' : 'bg-gray-900 shadow-gray-200';
@@ -545,9 +633,9 @@ function NavItem({ icon, active = false }: { icon: React.ReactNode; active?: boo
   );
 }
 
-// --- ICONS (SVG) ---
+// --- ICONS (SVG) --- (ASLI)
 const SearchIcon = ({ className }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
 const HomeIcon = ({ active }: { active?: boolean }) => <svg className="w-6 h-6" fill={active ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>;
-const OrderIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>;
+const OrderIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>;
 const ChatIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>;
-const UserIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>;
+const UserIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>;
