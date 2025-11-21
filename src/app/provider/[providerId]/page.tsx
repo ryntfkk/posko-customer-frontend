@@ -1,9 +1,10 @@
+// src/app/provider/[providerId]/page.tsx
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Provider } from '@/features/providers/types';
 
-// --- Tipe Data untuk Tampilan UI ---
+// --- Tipe Data UI ---
 type RateCard = {
   id: string;
   title: string;
@@ -23,7 +24,7 @@ type ProviderProfile = {
   ratecards: RateCard[];
 };
 
-// --- Data Statis (Dummy) ---
+// --- Data Statis (Fallback hanya jika backend mati/dev mode) ---
 const staticProviderProfiles: ProviderProfile[] = [
   {
     id: 'pwr-01',
@@ -33,69 +34,78 @@ const staticProviderProfiles: ProviderProfile[] = [
     distance: '1.2 km',
     rating: 4.9,
     reviews: 120,
-    bio: 'Spesialis perawatan dan perbaikan AC dengan pengalaman lebih dari 8 tahun. Berkomitmen pada kecepatan respon dan hasil rapih.',
+    bio: 'Spesialis perawatan dan perbaikan AC dengan pengalaman lebih dari 8 tahun.',
     ratecards: [
-      { id: 'rc-01', title: 'Servis Ringan', description: 'Pengecekan umum, pembersihan filter.', price: 'Rp 75.000' },
-      { id: 'rc-02', title: 'Cuci AC Lengkap', description: 'Pembersihan evaporator dan blower.', price: 'Rp 120.000' },
+      { id: 'rc-01', title: 'Servis Ringan', description: 'Pengecekan umum.', price: 'Rp 75.000' },
     ],
   },
-  // ... (data dummy lainnya bisa tetap ada atau dihapus jika tidak perlu)
 ];
 
-// --- Helper: Fetch Data dari API (Backend) ---
+// --- [FIX] Fetch Data Real dari API ---
 async function fetchProviderFromApi(id: string): Promise<ProviderProfile | null> {
   try {
+    // Pastikan URL API benar. 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-    const res = await fetch(`${apiUrl}/providers/${id}`, { cache: 'no-store' });
     
-    if (!res.ok) return null;
+    console.log(`[SSR] Fetching provider: ${apiUrl}/providers/${id}`); 
+
+    const res = await fetch(`${apiUrl}/providers/${id}`, { 
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (!res.ok) {
+        console.error(`[SSR] Failed to fetch provider ${id}: ${res.status}`);
+        return null;
+    }
 
     const json = await res.json();
-    const data: Provider = json.data;
+    const data: Provider = json.data; 
 
-    // Mapping data dari Backend ke format UI
+    if (!data) return null;
+
+    // Mapping data dari Backend ke UI
     return {
       id: data._id,
       name: data.userId?.fullName || 'Mitra Posko',
-      avatar: data.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.userId?.fullName}`,
-      specialty: data.services?.[0]?.serviceId?.name || 'Layanan Umum',
-      distance: 'Calculating...', // Jarak butuh lokasi user (client-side), di server kita set default
+      avatar: data.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.userId?.fullName || 'User'}`,
+      specialty: data.services?.[0]?.serviceId?.name || 'Layanan Profesional',
+      distance: 'Menghitung...', 
       rating: data.rating || 5.0,
-      reviews: Math.floor(Math.random() * 50) + 10, // Dummy review count
-      bio: data.userId?.bio || 'Mitra profesional siap membantu kebutuhan Anda.',
+      reviews: Math.floor(Math.random() * 50) + 10, 
+      bio: data.userId?.bio || 'Mitra terpercaya siap membantu kebutuhan rumah tangga Anda.',
       ratecards: data.services.map((svc) => ({
         id: svc._id,
         title: svc.serviceId?.name || 'Layanan',
-        description: svc.serviceId?.category || 'Layanan profesional terpercaya.',
+        description: svc.serviceId?.category || 'Layanan standar',
         price: `Rp ${new Intl.NumberFormat('id-ID').format(svc.price)}`,
       })),
     };
   } catch (error) {
-    console.error("Gagal fetch provider:", error);
+    console.error("[SSR] Error fetching provider detail:", error);
     return null;
   }
 }
 
-// --- Helper: Cari Provider (Statis atau API) ---
+// --- Helper Pencarian ---
 async function findProvider(providerId: string) {
-  // 1. Cek data statis dulu
+  // 1. Coba cari di data statis (untuk testing ID pendek)
   const staticProfile = staticProviderProfiles.find((p) => p.id === providerId);
   if (staticProfile) return staticProfile;
 
-  // 2. Jika tidak ada, cek ke API
+  // 2. Jika tidak ada, ambil dari API (untuk ID MongoDB panjang)
   return await fetchProviderFromApi(providerId);
 }
 
-// --- KOMPONEN UTAMA (Server Component) ---
-// Perhatikan: params sekarang bertipe Promise<{...}>
+// --- Page Component (Server Component) ---
 export default async function ProviderProfilePage({ 
   params 
 }: { 
   params: Promise<{ providerId: string }> 
 }) {
-  // [FIX UTAMA] Await params sebelum digunakan
+  // [PENTING] Await params sebelum digunakan di Next.js 15
   const { providerId } = await params;
-
+  
   const provider = await findProvider(providerId);
 
   if (!provider) {
@@ -104,6 +114,7 @@ export default async function ProviderProfilePage({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12 font-sans">
+      {/* Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 lg:px-8 py-4 flex items-center gap-4">
           <Link href="/" className="text-gray-600 hover:text-red-600 flex items-center gap-2 font-semibold transition-colors">
@@ -174,30 +185,36 @@ export default async function ProviderProfilePage({
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {provider.ratecards.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white border border-gray-100 rounded-2xl p-5 hover:border-red-200 hover:shadow-lg transition-all group cursor-pointer"
-              >
-                <div className="flex justify-between items-start gap-4">
-                    <div>
-                        <h4 className="font-bold text-gray-900 group-hover:text-red-600 transition-colors">{item.title}</h4>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+            {provider.ratecards.length === 0 ? (
+                <div className="col-span-full p-6 text-center text-gray-500 bg-gray-50 rounded-xl">
+                    Belum ada layanan yang diaktifkan oleh mitra ini.
+                </div>
+            ) : (
+                provider.ratecards.map((item) => (
+                <div
+                    key={item.id}
+                    className="bg-white border border-gray-100 rounded-2xl p-5 hover:border-red-200 hover:shadow-lg transition-all group cursor-pointer"
+                >
+                    <div className="flex justify-between items-start gap-4">
+                        <div>
+                            <h4 className="font-bold text-gray-900 group-hover:text-red-600 transition-colors">{item.title}</h4>
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{item.description}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="text-sm font-black text-gray-900">{item.price}</p>
+                        </div>
                     </div>
-                    <div className="text-right shrink-0">
-                        <p className="text-sm font-black text-gray-900">{item.price}</p>
+                    <div className="mt-4 pt-4 border-t border-gray-50 flex justify-end">
+                        <Link
+                            href={`/checkout?type=direct&providerId=${provider.id}`}
+                            className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                        >
+                            Pilih Layanan <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+                        </Link>
                     </div>
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-50 flex justify-end">
-                    <Link
-                        href={`/checkout?type=direct&providerId=${provider.id}`}
-                        className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
-                    >
-                        Pilih Layanan <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-                    </Link>
-                </div>
-              </div>
-            ))}
+                ))
+            )}
           </div>
         </section>
       </main>

@@ -1,9 +1,9 @@
+// src/app/services/[category]/page.tsx
 'use client';
 
 import Image from 'next/image';
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-// Import tipe dan API yang baru saja dibuat
 import { fetchProviders } from '@/features/providers/api';
 import { Provider, ProviderServiceItem } from '@/features/providers/types';
 import { fetchProfile } from '@/features/auth/api';
@@ -11,12 +11,10 @@ import { User } from '@/features/auth/types';
 
 // --- FUNGSI HELPER ---
 
-// Normalisasi string untuk perbandingan kategori
 const normalize = (value: string) => value.toLowerCase().replace(/-/g, ' ').trim();
 
-// Rumus Haversine untuk hitung jarak (KM/Meter)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius bumi dalam KM
+  const R = 6371; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
@@ -36,18 +34,14 @@ export default function ServiceCategoryPage() {
   const router = useRouter();
   const params = useParams();
   
-  // State Data
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // State User Profile
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
 
   const categoryParam = Array.isArray(params.category) ? params.category[0] : params.category;
   const categoryName = decodeURIComponent(categoryParam || 'Layanan').replace(/-/g, ' ');
 
-  // 1. Ambil Lokasi User dari DATABASE
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
@@ -66,13 +60,12 @@ export default function ServiceCategoryPage() {
     loadUserProfile();
   }, []);
 
-  // 2. Ambil Data Provider dari Backend
   useEffect(() => {
     const loadProviders = async () => {
       try {
         setIsLoading(true);
         const response = await fetchProviders();
-        // Pastikan response.data adalah array
+        // Pastikan data array
         setProviders(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error("Gagal memuat data provider:", error);
@@ -84,19 +77,43 @@ export default function ServiceCategoryPage() {
     loadProviders();
   }, []);
 
-  // 3. Filter Provider berdasarkan Kategori
-  const filteredProviders = useMemo(() => {
-    if (!categoryParam) return providers;
+  // [FIX 1] LOGIKA DEDUPLIKASI PROVIDER
+  const uniqueFilteredProviders = useMemo(() => {
+    if (!categoryParam) return [];
     const activeCategory = normalize(categoryParam);
 
-    return providers.filter((provider) => {
-      // Fix Error Implicit Any: tambahkan tipe (svc: ProviderServiceItem)
-      const hasMatchingService = provider.services.some((svc: ProviderServiceItem) => 
-        svc.serviceId && normalize(svc.serviceId.category).includes(activeCategory)
-      );
-      return hasMatchingService;
+    // Map untuk menyimpan provider unik berdasarkan _id
+    const uniqueMap = new Map<string, Provider>();
+
+    providers.forEach((provider) => {
+        // Cek apakah provider punya service di kategori ini
+        const hasMatchingService = provider.services.some((svc: ProviderServiceItem) => 
+            svc.serviceId && normalize(svc.serviceId.category).includes(activeCategory)
+        );
+
+        // Jika cocok dan belum ada di Map, masukkan
+        if (hasMatchingService && !uniqueMap.has(provider._id)) {
+            uniqueMap.set(provider._id, provider);
+        }
     });
+
+    return Array.from(uniqueMap.values());
   }, [providers, categoryParam]);
+
+  // [FIX 2] HELPER LIST SERVICE
+  // Menggabungkan nama service menjadi string: "Cuci AC Split, Cuci AC 2 PK"
+  const getProviderServicesList = (provider: Provider) => {
+    if (!provider.services || provider.services.length === 0) return 'Layanan Umum';
+    
+    // Ambil nama service yang unik
+    const serviceNames = Array.from(new Set(
+        provider.services
+            .filter((s) => s.isActive && s.serviceId) // Filter service aktif
+            .map((s) => s.serviceId.name) // Ambil namanya
+    ));
+
+    return serviceNames.join(', ');
+  };
 
   const handleBasicOrder = () => {
     const categoryQuery = categoryParam || 'ac';
@@ -104,40 +121,26 @@ export default function ServiceCategoryPage() {
   };
 
   const handleOpenProvider = (providerId: string) => {
+    // Redirect ke halaman detail provider
     router.push(`/provider/${providerId}`);
   };
 
   const getStartingPrice = (provider: Provider) => {
     if (!provider.services || provider.services.length === 0) return 'Hubungi CS';
-    
-    // Fix Error Implicit Any: tambahkan tipe (s: ProviderServiceItem)
     const prices = provider.services
       .filter((s: ProviderServiceItem) => s.isActive)
       .map((s: ProviderServiceItem) => s.price);
       
     if (prices.length === 0) return 'Harga Bervariasi';
-    
     const minPrice = Math.min(...prices);
     return `Mulai Rp ${new Intl.NumberFormat('id-ID').format(minPrice)}`;
   };
 
-  const getSpecialty = (provider: Provider) => {
-    if (!provider.services || provider.services.length === 0) return 'Umum';
-    return provider.services[0].serviceId?.name || 'Teknisi Umum';
-  };
-
-  // Helper: Hitung Jarak
   const getDistanceLabel = (provider: Provider) => {
     if (isUserLoading) return '...';
     if (!userProfile) return 'Login info'; 
-
-    if (!userProfile.location?.coordinates || userProfile.location.coordinates.length !== 2) {
-        return 'Set Alamat';
-    }
-
-    if (!provider.userId?.location?.coordinates) {
-        return 'Jauh'; 
-    }
+    if (!userProfile.location?.coordinates || userProfile.location.coordinates.length !== 2) return 'Set Alamat';
+    if (!provider.userId?.location?.coordinates) return 'Jauh'; 
 
     const [userLng, userLat] = userProfile.location.coordinates;
     const [provLng, provLat] = provider.userId.location.coordinates;
@@ -160,6 +163,8 @@ export default function ServiceCategoryPage() {
             <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Layanan</span>
             <h1 className="text-xl font-bold text-gray-900 capitalize">{categoryName}</h1>
           </div>
+          
+          {/* [FIX 3] TOMBOL BASIC ORDER DI HEADER */}
           <button 
             onClick={handleBasicOrder} 
             className="ml-auto px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-full hover:bg-red-700 transition-transform hover:-translate-y-0.5 shadow-md shadow-red-100"
@@ -170,6 +175,7 @@ export default function ServiceCategoryPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 lg:px-8 py-8 space-y-8">
+        {/* Hero Section */}
         <section className="bg-gradient-to-r from-red-600 to-red-500 text-white rounded-2xl p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-lg shadow-red-200/60">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-widest text-white/80">Pilih Mitra</p>
@@ -178,6 +184,7 @@ export default function ServiceCategoryPage() {
               Jarak dihitung berdasarkan alamat terdaftar Anda dan lokasi mitra.
             </p>
           </div>
+          {/* [FIX 3] TOMBOL BASIC ORDER DI HERO */}
           <button 
             onClick={handleBasicOrder} 
             className="self-start lg:self-auto px-6 py-3 bg-white text-red-600 font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-transform"
@@ -190,7 +197,8 @@ export default function ServiceCategoryPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mitra Tersedia</p>
-              <h3 className="text-lg font-bold text-gray-900">{filteredProviders.length} Mitra Ditemukan</h3>
+              {/* Menampilkan jumlah Provider unik */}
+              <h3 className="text-lg font-bold text-gray-900">{uniqueFilteredProviders.length} Mitra Ditemukan</h3>
             </div>
           </div>
 
@@ -208,7 +216,7 @@ export default function ServiceCategoryPage() {
              </div>
           )}
 
-          {!isLoading && filteredProviders.length === 0 && (
+          {!isLoading && uniqueFilteredProviders.length === 0 && (
             <div className="text-center p-12 bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center">
               <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -220,9 +228,9 @@ export default function ServiceCategoryPage() {
             </div>
           )}
 
-          {!isLoading && filteredProviders.length > 0 && (
+          {!isLoading && uniqueFilteredProviders.length > 0 && (
             <div className="grid grid-cols-1 gap-4">
-              {filteredProviders.map((provider) => (
+              {uniqueFilteredProviders.map((provider) => (
                 <button
                   key={provider._id}
                   onClick={() => handleOpenProvider(provider._id)}
@@ -250,7 +258,10 @@ export default function ServiceCategoryPage() {
                         </span>
                       </div>
 
-                      <p className="text-sm text-gray-500 truncate mb-2">{getSpecialty(provider)}</p>
+                      {/* [FIX 2] MENAMPILKAN LIST SERVICE */}
+                      <p className="text-xs text-gray-500 line-clamp-2 mb-2 leading-relaxed">
+                        <span className="font-semibold text-gray-700">Layanan:</span> {getProviderServicesList(provider)}
+                      </p>
                       
                       <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
                         <span className="flex items-center gap-1 font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md">
