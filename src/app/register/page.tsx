@@ -27,7 +27,8 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
+  const [hasSelectedLocation, setHasSelectedLocation] = useState(false);
+
   // [Fitur 2] State untuk Show/Hide Password
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -96,6 +97,7 @@ export default function RegisterPage() {
 
   const handleLocationSelect = (lat: number, lng: number) => {
     setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
+    setHasSelectedLocation(true);
   };
 
   // [Fitur 3] Handler Get Current Location (iOS Support)
@@ -110,6 +112,8 @@ export default function RegisterPage() {
       (position) => {
         const { latitude, longitude } = position.coords;
         setFormData(prev => ({ ...prev, latitude, longitude }));
+        setHasSelectedLocation(true);
+
       },
       (error) => {
         console.error(error);
@@ -155,7 +159,9 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.latitude || !formData.longitude) return setErrorMsg('Pilih lokasi pada peta.');
+    const hasValidCoordinates =
+    hasSelectedLocation && formData.latitude != null && formData.longitude != null;
+    if (!hasValidCoordinates) return setErrorMsg('Pilih lokasi pada peta.');
     if (!formData.addressVillage) return setErrorMsg('Lengkapi alamat wilayah.');
 
     setIsLoading(true);

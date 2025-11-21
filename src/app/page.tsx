@@ -388,96 +388,103 @@ export default function HomePage() {
         
         <footer className="bg-gray-50 border-t border-gray-200 py-12 text-center"><p className="text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
 
-        {/* --- FITUR FLOATING CHAT (Desktop) --- */}
-{/* --- FITUR FLOATING CHAT (MODERN PROFESSIONAL STYLE) --- */}
+   {/* --- FITUR CHAT DOCKED (LINKEDIN PROFESSIONAL STYLE) --- */}
 {isLoggedIn && (
-  <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 font-sans">
+  <div className="fixed bottom-0 right-4 z-50 flex flex-col items-end font-sans">
     
-    {/* Jendela Chat Pop-up */}
-    {isChatOpen && (
-        <div className="w-[360px] h-[500px] bg-white rounded-2xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-gray-100 flex flex-col animate-in slide-in-from-bottom-10 fade-in duration-300 origin-bottom-right overflow-hidden ring-1 ring-black/5">
+    {/* KONDISI: JENDELA TERBUKA */}
+    {isChatOpen ? (
+        <div className="w-80 h-[500px] bg-white rounded-t-xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border border-gray-200 flex flex-col animate-in slide-in-from-bottom-10 duration-200 ring-1 ring-black/5">
             
-            {/* Header: Minimalis Putih (Lebih Profesional) */}
-            <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10">
-                <div>
-                    <h3 className="font-bold text-gray-900 text-base">Pesan</h3>
-                    <p className="text-[11px] text-gray-500 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                        Admin & Mitra Online
-                    </p>
+            {/* Header Chat Window (Klik untuk minimize) */}
+            <div 
+                onClick={() => setIsChatOpen(false)}
+                className="px-3 py-2.5 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-50 bg-white rounded-t-xl transition-colors"
+            >
+                <div className="flex items-center gap-2">
+                    <div className="relative w-8 h-8">
+                        {/* Avatar User yang sedang login (sebagai indikator status) */}
+                        <img 
+                            src={profileAvatar} 
+                            alt="My Profile" 
+                            className="w-full h-full rounded-full border border-gray-200 object-cover" 
+                        />
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+                    </div>
+                    <span className="font-bold text-sm text-gray-800">Pesan</span>
                 </div>
-                <div className="flex gap-1">
-                    <button className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
+                <div className="flex items-center gap-3 text-gray-500 pr-1">
+                    {/* Icon Options */}
+                    <button className="hover:bg-gray-200 p-1 rounded transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
                     </button>
-                    <button onClick={() => setIsChatOpen(false)} className="p-2 hover:bg-red-50 rounded-full text-gray-400 hover:text-red-600 transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <button className="hover:bg-gray-200 p-1 rounded transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
+                    {/* Icon Chevron Down (Minimize) */}
+                    <svg className="w-5 h-5 hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+            </div>
+
+            {/* Search Bar Compact */}
+            <div className="p-2 bg-gray-50 border-b border-gray-100">
+                <div className="relative">
+                    <input type="text" placeholder="Cari pesan..." className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-[4px] focus:outline-none focus:border-gray-400 focus:ring-0 transition-colors" />
+                    <svg className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
             </div>
 
             {/* List Chat */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 scroll-smooth">
+            <div className="flex-1 overflow-y-auto bg-white">
                 {chats.map(chat => (
-                    <div key={chat.id} className={`group flex gap-4 p-3.5 rounded-xl cursor-pointer transition-all duration-200 border border-transparent ${chat.unread > 0 ? 'bg-red-50/50 border-red-100/50' : 'hover:bg-gray-50 hover:border-gray-100'}`}>
-                        <div className="relative w-11 h-11 shrink-0">
-                            <img src={chat.img} className="w-full h-full rounded-full object-cover ring-2 ring-white shadow-sm" alt={chat.name} />
-                            {chat.unread > 0 && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>}
+                    <div key={chat.id} className={`flex gap-3 p-3 cursor-pointer border-l-[3px] border-transparent hover:bg-gray-50 transition-all ${chat.unread > 0 ? 'border-l-green-600 bg-green-50/30' : ''}`}>
+                        <div className="relative w-10 h-10 shrink-0">
+                            <img src={chat.img} className="w-full h-full rounded-full object-cover border border-gray-100" alt={chat.name} />
+                            {chat.unread > 0 && <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>}
                         </div>
-                        <div className="flex-1 min-w-0 flex flex-col justify-center">
-                            <div className="flex justify-between items-baseline mb-0.5">
+                        <div className="flex-1 min-w-0 py-0.5">
+                            <div className="flex justify-between items-baseline">
                                 <h4 className={`text-sm truncate ${chat.unread > 0 ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{chat.name}</h4>
-                                <span className="text-[10px] text-gray-400 font-medium">{chat.time}</span>
+                                <span className="text-[10px] text-gray-400">{chat.time}</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <p className={`text-xs truncate max-w-[180px] ${chat.unread > 0 ? 'font-semibold text-gray-800' : 'text-gray-500 group-hover:text-gray-600'}`}>{chat.msg}</p>
-                                {chat.unread > 0 && (
-                                    <span className="flex items-center justify-center w-4 h-4 bg-red-600 text-white text-[9px] font-bold rounded-full shadow-sm shadow-red-200">
-                                        {chat.unread}
-                                    </span>
-                                )}
-                            </div>
+                            <p className={`text-xs truncate mt-0.5 ${chat.unread > 0 ? 'font-medium text-gray-800' : 'text-gray-500'}`}>{chat.msg}</p>
                         </div>
                     </div>
                 ))}
-                
-                {/* State Kosong (Opsional) */}
+                {/* Empty State Placeholder */}
                 {chats.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400">
-                        <ChatIcon className="w-12 h-12 mb-3 opacity-20" />
-                        <p className="text-sm">Belum ada percakapan.</p>
-                    </div>
+                    <div className="h-40 flex items-center justify-center text-xs text-gray-400">Belum ada pesan</div>
                 )}
             </div>
-
-            {/* Footer / Input Placeholder */}
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-                <button className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-sm font-bold rounded-xl shadow-lg shadow-gray-200 transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
-                    Mulai Percakapan Baru
-                </button>
-            </div>
         </div>
-    )}
 
-    {/* Tombol Floating Utama (Bulat & Besar) */}
-    <button 
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        className={`relative group w-14 h-14 flex items-center justify-center rounded-full shadow-[0_8px_30px_rgba(220,38,38,0.3)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(220,38,38,0.4)] ${isChatOpen ? 'bg-white text-red-600 rotate-90' : 'bg-red-600 text-white'}`}
-    >
-        {isChatOpen ? (
-             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
-        ) : (
-            <>
-                <ChatIcon className="w-6 h-6" />
-                {/* Notifikasi Badge */}
-                <span className="absolute top-0 right-0 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-200 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-white border-2 border-red-600"></span>
-                </span>
-            </>
-        )}
-    </button>
+    ) : (
+        
+        /* KONDISI: TAB TERTUTUP (COLLAPSED BAR) */
+        <button 
+            onClick={() => setIsChatOpen(true)}
+            className="w-72 bg-white border border-gray-200 rounded-t-lg shadow-[0_-2px_10px_rgba(0,0,0,0.05)] hover:shadow-[0_-4px_15px_rgba(0,0,0,0.1)] px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
+        >
+            <div className="flex items-center gap-2.5">
+                <div className="relative w-7 h-7">
+                    <img src={profileAvatar} alt="Profile" className="w-full h-full rounded-full border border-gray-200 object-cover" />
+                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></span>
+                </div>
+                <span className="font-bold text-sm text-gray-700 group-hover:text-gray-900">Pesan</span>
+                
+                {/* Badge Unread di Tab */}
+                {chats.some(c => c.unread > 0) && (
+                    <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded min-w-[18px] text-center">
+                        {chats.reduce((acc, curr) => acc + curr.unread, 0)}
+                    </span>
+                )}
+            </div>
+            <div className="flex items-center gap-4 text-gray-400 pr-1">
+                 <svg className="w-4 h-4 hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                 <svg className="w-5 h-5 group-hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
+            </div>
+        </button>
+    )}
   </div>
 )}
 
