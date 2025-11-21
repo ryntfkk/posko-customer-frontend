@@ -79,6 +79,26 @@ interface CategoryData {
     iconUrl: string;
 }
 
+const getCategoryLink = (category: CategoryData) => {
+    const normalizedSlug = category.slug.toLowerCase();
+    const normalizedName = category.name.toLowerCase();
+    const isACCategory =
+        /\bac\b/.test(normalizedName) ||
+        normalizedSlug === 'ac' ||
+        normalizedSlug.startsWith('ac-');
+
+    if (isACCategory) {
+        const params = new URLSearchParams({
+            category: category.name,
+            categoryId: category.slug,
+        });
+
+        return `/providers/${category.slug}?${params.toString()}`;
+    }
+
+    return `/services/${category.slug}`;
+};
+
 const groupServicesToCategories = (services: Service[]): CategoryData[] => {
     const categoriesMap = new Map<string, CategoryData>();
 
@@ -274,23 +294,23 @@ export default function HomePage() {
                     ) : (
                         <div className="grid grid-cols-4 gap-y-5 gap-x-2">
                             {categories.map((cat) => (
-<Link 
-    key={cat.name} 
-    href={`/services/${cat.slug}`} // <-- Target link baru
-    className="flex flex-col items-center gap-2 active:scale-95 transition-transform cursor-pointer"
->
-                                <div className="relative w-[3.25rem] h-[3.25rem] bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden p-3 group hover:border-red-200 hover:shadow-md transition-all">
-                                    <Image 
-                                        src={cat.iconUrl || '/icons/logo-posko.png'} 
-                                        alt={cat.name} 
-                                        width={32} 
-                                        height={32} 
-                                        className="object-contain"
-                                        onError={(e) => { (e.target as HTMLImageElement).src = '/icons/logo-posko.png' }}
-                                    />
-                                </div>
-                                <span className="text-[10px] font-medium text-gray-600 text-center line-clamp-2 leading-tight h-7">{cat.name}</span>
-                            </Link>
+                                <Link
+                                    key={cat.name}
+                                    href={getCategoryLink(cat)}
+                                    className="flex flex-col items-center gap-2 active:scale-95 transition-transform cursor-pointer"
+                                >
+                                    <div className="relative w-[3.25rem] h-[3.25rem] bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden p-3 group hover:border-red-200 hover:shadow-md transition-all">
+                                        <Image
+                                            src={cat.iconUrl || '/icons/logo-posko.png'}
+                                            alt={cat.name}
+                                            width={32}
+                                            height={32}
+                                            className="object-contain"
+                                            onError={(e) => { (e.target as HTMLImageElement).src = '/icons/logo-posko.png' }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] font-medium text-gray-600 text-center line-clamp-2 leading-tight h-7">{cat.name}</span>
+                                </Link>
                             ))}
                         </div>
                     )}
