@@ -3,26 +3,17 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { fetchProfile, switchRole } from '@/features/auth/api'; 
+
+import { fetchProfile, switchRole, registerPartner } from '@/features/auth/api';
 import { User } from '@/features/auth/types';
-// IMPORT KOMPONEN BARU
+import { fetchServices } from '@/features/services/api';
+import { Service } from '@/features/services/types';
 import ProviderHome from '@/components/ProviderHome';
+import { useCart } from '@/features/cart/useCart'; // [PENTING] Import useCart
 
-// --- DATA KATEGORI (ASLI) ---
-const categories = [
-  { title: 'AC', icon: '/icons/air-conditioner.png' },
-  { title: 'Listrik', icon: '/icons/electrician.png' },
-  { title: 'Inspeksi', icon: '/icons/motor-inspector.png' },
-  { title: 'Kebersihan', icon: '/icons/janitor.png' },
-  { title: 'Perawatan', icon: '/icons/nail-art.png' },
-  { title: 'Acara', icon: '/icons/decor.png' },
-  { title: 'Hiburan', icon: '/icons/mc.png' },
-  { title: 'Lainnya', icon: '/icons/logo-posko.png' },
-];
-
-// --- DATA TEKNISI (ASLI) ---
+// --- DATA TEKNISI (Masih Dummy) ---
 const technicians = [
   {
     id: 1,
@@ -66,24 +57,67 @@ const technicians = [
   },
 ];
 
-// --- DUMMY CHAT DATA (ASLI) ---
+// --- DUMMY CHAT DATA ---
 const chats = [
     { id: 1, name: "Budi Hartono", msg: "Halo, bisa datang jam 3?", time: "10:30", unread: 1, img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi" },
     { id: 2, name: "Dewi Pertiwi", msg: "Terima kasih kak!", time: "Kemarin", unread: 0, img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Dewi" },
 ];
 
+// [KOREKSI 1] Menambahkan Helper Function formatCurrency
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+  }).format(amount);
+};
+
+// [HELPER] Fungsi untuk mengelompokkan Layanan berdasarkan Kategori
+interface CategoryData {
+    name: string;
+    slug: string;
+    iconUrl: string;
+}
+
+const groupServicesToCategories = (services: Service[]): CategoryData[] => {
+    const categoriesMap = new Map<string, CategoryData>();
+
+    services.forEach(service => {
+        const categoryName = service.category;
+        
+        if (!categoriesMap.has(categoryName)) {
+            categoriesMap.set(categoryName, {
+                name: categoryName,
+                slug: encodeURIComponent(categoryName.replace(/\s+/g, '-')),
+                iconUrl: service.iconUrl, 
+            });
+        }
+    });
+
+    return Array.from(categoriesMap.values());
+};
+
+
 export default function HomePage() {
+  const router = useRouter();
+
+  // [KOREKSI 2 & 3] Destructuring totalItems dan totalAmount dari useCart
+  const { totalItems, totalAmount } = useCart(); 
+
+  // Auth State
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [switching, setSwitching] = useState(false);
 
-  // State untuk UI Interaktif Desktop
+  // Services State
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+
+  // UI State
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
-  const router = useRouter();
-
   const profileName = userProfile?.fullName || 'User Posko';
   const profileEmail = userProfile?.email || '-';
   const profileBadge = userProfile?.activeRole
@@ -92,31 +126,41 @@ export default function HomePage() {
   const profileAvatar = userProfile?.profilePictureUrl
     || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`;
 
+  // Ambil data service dan kelompokkan
+  useEffect(() => {
+    fetchServices()
+      .then(res => {
+        setServices(res.data || []);
+      })
+      .catch(err => {
+        console.error("Gagal memuat layanan:", err);
+      })
+      .finally(() => setIsLoadingServices(false));
+  }, []);
+
+  // Hitung kategori unik dari services
+  const categories = useMemo(() => groupServicesToCategories(services), [services]);
+
+
+  // Load Profile
   useEffect(() => {
     const token = localStorage.getItem('posko_token');
     setIsLoggedIn(!!token);
 
     if (!token) {
       setIsLoadingProfile(false);
-      return;
-    }
-
-    const loadProfile = async () => {
-      try {
-        const result = await fetchProfile();
-        setUserProfile(result.data.profile);
-        } catch (error: any) {
-          console.error("Gagal memuat profil:", error);
-          if (error.response && error.response.status === 401) {
+    } else {
+      fetchProfile()
+        .then(res => setUserProfile(res.data.profile))
+        .catch(err => {
+          console.error(err);
+          if (err.response?.status === 401) {
             localStorage.removeItem('posko_token');
             setIsLoggedIn(false);
           }
-        } finally {
-          setIsLoadingProfile(false);
-        }
-    };
-
-    loadProfile();
+        })
+        .finally(() => setIsLoadingProfile(false));
+    }
   }, []);
 
   const handleLogout = () => {
@@ -127,32 +171,31 @@ export default function HomePage() {
     router.refresh();
   };
 
-  // --- HANDLE SWITCH ROLE ---
   const handleSwitchModeDesktop = async () => {
     if (!userProfile) return;
     setSwitching(true);
 
     const isProvider = userProfile.roles.includes('provider');
     
-    if (!isProvider) {
-        alert("Fitur pendaftaran mitra akan segera hadir!");
-        setSwitching(false);
-        return;
-    }
-
     try {
-        const targetRole = userProfile.activeRole === 'provider' ? 'customer' : 'provider';
-        await switchRole(targetRole); 
+        if (!isProvider) {
+            await registerPartner();
+            alert("Selamat! Anda berhasil mendaftar sebagai Mitra.");
+        } else {
+            const targetRole = userProfile.activeRole === 'provider' ? 'customer' : 'provider';
+            await switchRole(targetRole);
+        }
         window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        alert("Gagal pindah role");
+        alert(error.response?.data?.message || "Gagal mengubah mode");
         setSwitching(false);
     }
   };
 
   const isProviderMode = userProfile?.activeRole === 'provider';
   const hasProviderRole = userProfile?.roles.includes('provider');
+
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100">
@@ -162,7 +205,6 @@ export default function HomePage() {
          ========================================= */}
       <div className="lg:hidden pb-24">
         
-        {/* Mobile Header */}
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="relative w-8 h-8">
@@ -175,20 +217,21 @@ export default function HomePage() {
           </div>
           <div>
             {isLoggedIn ? (
-               <button onClick={handleLogout} className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">Keluar</button>
+               <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
+                   <img src={profileAvatar} alt="Avatar" className="w-full h-full object-cover"/>
+               </div>
             ) : (
               <Link href="/login" className="text-[11px] font-bold text-white bg-gray-900 px-4 py-2 rounded-full shadow-md">Masuk</Link>
             )}
           </div>
         </header>
 
-        {/* KONTEN MOBILE: CEK MODE PROVIDER */}
+        {/* KONTEN MOBILE */}
         {isProviderMode && userProfile ? (
-            // Menggunakan Component Terpisah (Responsive)
             <ProviderHome user={userProfile} />
         ) : (
             <>
-                {/* Mobile Hero (Customer) */}
+                {/* Mobile Hero */}
                 <section className="px-4 pt-6 pb-2">
                 <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">
                     Cari jasa apa <br/>
@@ -208,27 +251,49 @@ export default function HomePage() {
                 </div>
                 </section>
 
-                {/* Mobile Banner */}
+                {/* Mobile Banner (KOREKSI: PromoCardMobile sekarang terdefinisi di bawah) */}
                 <section className="mt-4 pl-4 overflow-x-auto no-scrollbar flex gap-3 pr-4">
-                <PromoCardMobile color="red" title="Diskon 50%" subtitle="Pengguna Baru" btn="Klaim" />
-                <PromoCardMobile color="dark" title="Garansi Puas" subtitle="Uang Kembali" btn="Cek Syarat" />
+                <PromoCardMobile color="red" title="Diskon 50%" subtitle="Pengguna Baru" btn="Klaim" /> 
+                <PromoCardMobile color="dark" title="Garansi Puas" subtitle="Uang Kembali" btn="Cek Syarat" /> 
                 </section>
 
-                {/* Mobile Categories */}
+                {/* Mobile Categories (Dynamic Service) */}
                 <section className="px-4 mt-6">
-                <div className="flex justify-between items-end mb-4">
-                    <h3 className="text-base font-bold text-gray-900">Layanan</h3>
-                </div>
-                <div className="grid grid-cols-4 gap-y-5 gap-x-2">
-                    {categories.map((cat) => (
-                    <div key={cat.title} className="flex flex-col items-center gap-2 active:scale-95 transition-transform">
-                        <div className="relative w-[3.25rem] h-[3.25rem] bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden p-3">
-                        <Image src={cat.icon} alt={cat.title} width={32} height={32} className="object-contain" />
-                        </div>
-                        <span className="text-[10px] font-medium text-gray-600 text-center line-clamp-1">{cat.title}</span>
+                    <div className="flex justify-between items-end mb-4">
+                        <h3 className="text-base font-bold text-gray-900">Layanan</h3>
                     </div>
-                    ))}
-                </div>
+                    
+                    {isLoadingServices ? (
+                        <div className="grid grid-cols-4 gap-4 animate-pulse">
+                            {[1,2,3,4].map(i => <div key={i} className="h-20 bg-gray-200 rounded-2xl"></div>)}
+                        </div>
+                    ) : categories.length === 0 ? (
+                        <div className="p-6 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+                            <p className="text-xs text-gray-400">Belum ada kategori layanan tersedia.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-4 gap-y-5 gap-x-2">
+                            {categories.map((cat) => (
+<Link 
+    key={cat.name} 
+    href={`/services/${cat.slug}`} // <-- Target link baru
+    className="flex flex-col items-center gap-2 active:scale-95 transition-transform cursor-pointer"
+>
+                                <div className="relative w-[3.25rem] h-[3.25rem] bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden p-3 group hover:border-red-200 hover:shadow-md transition-all">
+                                    <Image 
+                                        src={cat.iconUrl || '/icons/logo-posko.png'} 
+                                        alt={cat.name} 
+                                        width={32} 
+                                        height={32} 
+                                        className="object-contain"
+                                        onError={(e) => { (e.target as HTMLImageElement).src = '/icons/logo-posko.png' }}
+                                    />
+                                </div>
+                                <span className="text-[10px] font-medium text-gray-600 text-center line-clamp-2 leading-tight h-7">{cat.name}</span>
+                            </Link>
+                            ))}
+                        </div>
+                    )}
                 </section>
 
                 {/* Mobile Technicians */}
@@ -278,20 +343,13 @@ export default function HomePage() {
               
             <nav className="flex gap-8 text-sm font-bold text-gray-600">
               <Link href="#" className="hover:text-red-600 transition-colors">Beranda</Link>
-              {/* Sembunyikan menu Jasa & Mitra jika mode Provider */}
-              {!isProviderMode && (
-                  <>
-                    <Link href="#" className="hover:text-red-600 transition-colors">Jasa</Link>
-                    <Link href="#" className="hover:text-red-600 transition-colors">Mitra</Link>
-                  </>
-              )}
-              {/* Tampilkan Pesanan hanya jika login */}
+              {!isProviderMode && <Link href="#" className="hover:text-red-600 transition-colors">Jasa</Link>}
+              {!isProviderMode && <Link href="#" className="hover:text-red-600 transition-colors">Mitra</Link>}
               {isLoggedIn && <Link href="/orders" className="hover:text-red-600 transition-colors">Pesanan</Link>}
             </nav>
             </div>
 
             <div className="flex items-center gap-6">
-              {/* Sembunyikan Search Bar jika mode Provider (karena Provider menerima order, bukan cari) */}
               {!isProviderMode && (
                   <div className="relative w-72">
                     <input type="text" placeholder="Cari layanan atau teknisi..." className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all" />
@@ -316,7 +374,7 @@ export default function HomePage() {
                         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isProfileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
 
-                    {/* DROPDOWN MENU */}
+                    {/* Desktop Dropdown */}
                     {isProfileOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
@@ -328,23 +386,17 @@ export default function HomePage() {
                                 </div>
                                 
                                 <div className="py-2">
-                                    {/* Menu Pesanan (Baru) */}
                                     <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors">
                                         <OrderIcon className="w-5 h-5" />
                                         Daftar Pesanan
                                     </Link>
-
-                                    {/* Menu Switch Role (Baru) */}
                                     <button 
                                         onClick={handleSwitchModeDesktop}
                                         disabled={switching}
                                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors text-left"
                                     >
                                         {switching ? (
-                                            <span className="text-gray-400 flex items-center gap-2">
-                                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                Memproses...
-                                            </span>
+                                            <span className="text-gray-400 flex items-center gap-2">Memproses...</span>
                                         ) : (
                                             <>
                                                 {hasProviderRole ? (
@@ -362,7 +414,6 @@ export default function HomePage() {
 
                                     <div className="border-t border-gray-50 my-1"></div>
 
-                                    {/* Menu Asli */}
                                     <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-red-600 transition-colors">
                                         <UserIcon /> Edit Profile
                                     </Link>
@@ -397,13 +448,12 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* KONTEN DESKTOP: CEK MODE PROVIDER */}
+        {/* KONTEN DESKTOP */}
         {isProviderMode && userProfile ? (
-            // Menggunakan Component Terpisah
             <ProviderHome user={userProfile} />
         ) : (
             <>
-                {/* Desktop Content (ASLI) */}
+                {/* Desktop Hero */}
                 <section className="relative bg-white border-b border-gray-100 overflow-hidden">
                 <div className="absolute top-0 right-0 w-1/2 h-full bg-red-50/50 -skew-x-12 translate-x-20"></div>
                 <div className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-2 items-center relative z-10">
@@ -433,20 +483,45 @@ export default function HomePage() {
                 </div>
                 </section>
 
+                {/* Desktop Service Grid (Dynamic Service) */}
                 <section className="max-w-7xl mx-auto px-8 py-16">
-                <h2 className="text-2xl font-bold text-gray-900 mb-8">Jelajahi Kategori</h2>
-                <div className="grid grid-cols-8 gap-6">
-                    {categories.map((cat) => (
-                    <Link href="#" key={cat.title} className="group flex flex-col items-center gap-4 p-6 rounded-2xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-xl hover:shadow-red-50/50 transition-all duration-300">
-                        <div className="relative w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-red-50 transition-all p-3">
-                        <Image src={cat.icon} alt={cat.title} width={40} height={40} className="object-contain"/>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-8">Jelajahi Kategori</h2>
+                    
+                    {isLoadingServices ? (
+                        <div className="grid grid-cols-8 gap-6 animate-pulse">
+                            {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-32 bg-gray-200 rounded-2xl"></div>)}
                         </div>
-                        <span className="font-semibold text-gray-700 group-hover:text-red-600 transition-colors">{cat.title}</span>
-                    </Link>
-                    ))}
-                </div>
+                    ) : categories.length === 0 ? (
+                        <div className="p-10 text-center bg-gray-50 rounded-3xl border border-gray-200">
+                            <p className="text-gray-500 text-lg mb-2">Belum ada layanan tersedia.</p>
+                            <p className="text-sm text-gray-400">Silakan tambahkan data service melalui Backend/Admin (via Postman).</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-8 gap-6">
+                            {categories.map((cat) => (
+<Link 
+    key={cat.name} 
+    href={`/services/${cat.slug}`} // <-- Target link baru
+    className="group flex flex-col items-center gap-4 p-6 rounded-2xl bg-white border border-gray-100 hover:border-red-200 hover:shadow-xl hover:shadow-red-50/50 transition-all duration-300"
+>
+                                <div className="relative w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-red-50 transition-all p-3">
+                                    <Image 
+                                        src={cat.iconUrl || '/icons/logo-posko.png'} 
+                                        alt={cat.name} 
+                                        width={40} 
+                                        height={40} 
+                                        className="object-contain"
+                                        onError={(e) => { (e.target as HTMLImageElement).src = '/icons/logo-posko.png' }}
+                                    />
+                                </div>
+                                <span className="font-semibold text-gray-700 group-hover:text-red-600 transition-colors text-center text-sm line-clamp-2 leading-tight h-10 flex items-center justify-center">{cat.name}</span>
+                            </Link>
+                            ))}
+                        </div>
+                    )}
                 </section>
 
+                {/* Mobile Technicians (ASLI) */}
                 <section className="bg-white py-16 border-t border-gray-100">
                 <div className="max-w-7xl mx-auto px-8">
                     <div className="flex justify-between items-end mb-10">
@@ -476,114 +551,72 @@ export default function HomePage() {
         
         <footer className="bg-gray-50 border-t border-gray-200 py-12 text-center"><p className="text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
 
-   {/* --- FITUR CHAT DOCKED (ASLI & BERFUNGSI) --- */}
-{isLoggedIn && (
-  <div className="fixed bottom-0 right-4 z-50 flex flex-col items-end font-sans">
-    
-    {/* KONDISI: JENDELA TERBUKA */}
-    {isChatOpen ? (
-        <div className="w-80 h-[500px] bg-white rounded-t-xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border border-gray-200 flex flex-col animate-in slide-in-from-bottom-10 duration-200 ring-1 ring-black/5">
-            
-            {/* Header Chat Window (Klik untuk minimize) */}
-            <div 
-                onClick={() => setIsChatOpen(false)}
-                className="px-3 py-2.5 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-50 bg-white rounded-t-xl transition-colors"
-            >
-                <div className="flex items-center gap-2">
-                    <div className="relative w-8 h-8">
-                        {/* Avatar User yang sedang login (sebagai indikator status) */}
-                        <img 
-                            src={profileAvatar} 
-                            alt="My Profile" 
-                            className="w-full h-full rounded-full border border-gray-200 object-cover" 
-                        />
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
-                    </div>
-                    <span className="font-bold text-sm text-gray-800">Pesan</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-500 pr-1">
-                    {/* Icon Options */}
-                    <button className="hover:bg-gray-200 p-1 rounded transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-                    </button>
-                    <button className="hover:bg-gray-200 p-1 rounded transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
-                    {/* Icon Chevron Down (Minimize) */}
-                    <svg className="w-5 h-5 hover:text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-                </div>
-            </div>
-
-            {/* Search Bar Compact */}
-            <div className="p-2 bg-gray-50 border-b border-gray-100">
-                <div className="relative">
-                    <input type="text" placeholder="Cari pesan..." className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-[4px] focus:outline-none focus:border-gray-400 focus:ring-0 transition-colors" />
-                    <svg className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                </div>
-            </div>
-
-            {/* List Chat */}
-            <div className="flex-1 overflow-y-auto bg-white">
-                {chats.map(chat => (
-                    <div key={chat.id} className={`flex gap-3 p-3 cursor-pointer border-l-[3px] border-transparent hover:bg-gray-50 transition-all ${chat.unread > 0 ? 'border-l-green-600 bg-green-50/30' : ''}`}>
-                        <div className="relative w-10 h-10 shrink-0">
-                            <img src={chat.img} className="w-full h-full rounded-full object-cover border border-gray-100" alt={chat.name} />
-                            {chat.unread > 0 && <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>}
-                        </div>
-                        <div className="flex-1 min-w-0 py-0.5">
-                            <div className="flex justify-between items-baseline">
-                                <h4 className={`text-sm truncate ${chat.unread > 0 ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>{chat.name}</h4>
-                                <span className="text-[10px] text-gray-400">{chat.time}</span>
+        {/* CHAT DOCKED (ASLI) */}
+        {isLoggedIn && (
+        <div className="fixed bottom-0 right-4 z-50 flex flex-col items-end font-sans">
+            {isChatOpen ? (
+                <div className="w-80 h-[500px] bg-white rounded-t-xl shadow-[0_0_20px_rgba(0,0,0,0.1)] border border-gray-200 flex flex-col animate-in slide-in-from-bottom-10 duration-200 ring-1 ring-black/5">
+                    <div 
+                        onClick={() => setIsChatOpen(false)}
+                        className="px-3 py-2.5 border-b border-gray-200 flex justify-between items-center cursor-pointer hover:bg-gray-50 bg-white rounded-t-xl transition-colors"
+                    >
+                        <div className="flex items-center gap-2">
+                            <div className="relative w-8 h-8">
+                                <img src={profileAvatar} alt="My Profile" className="w-full h-full rounded-full border border-gray-200 object-cover" />
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
                             </div>
-                            <p className={`text-xs truncate mt-0.5 ${chat.unread > 0 ? 'font-medium text-gray-800' : 'text-gray-500'}`}>{chat.msg}</p>
+                            <span className="font-bold text-sm text-gray-800">Pesan</span>
                         </div>
+                        <svg className="w-5 h-5 hover:text-gray-800 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                     </div>
-                ))}
-                {/* Empty State Placeholder */}
-                {chats.length === 0 && (
-                    <div className="h-40 flex items-center justify-center text-xs text-gray-400">Belum ada pesan</div>
-                )}
-            </div>
-        </div>
-
-    ) : (
-        
-        /* KONDISI: TAB TERTUTUP (COLLAPSED BAR) */
-        <button 
-            onClick={() => setIsChatOpen(true)}
-            className="w-72 bg-white border border-gray-200 rounded-t-lg shadow-[0_-2px_10px_rgba(0,0,0,0.05)] hover:shadow-[0_-4px_15px_rgba(0,0,0,0.1)] px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
-        >
-            <div className="flex items-center gap-2.5">
-                <div className="relative w-7 h-7">
-                    <img src={profileAvatar} alt="Profile" className="w-full h-full rounded-full border border-gray-200 object-cover" />
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></span>
+                    <div className="flex-1 bg-white flex items-center justify-center text-xs text-gray-400">Chat System Demo</div>
                 </div>
-                <span className="font-bold text-sm text-gray-700 group-hover:text-gray-900">Pesan</span>
-                
-                {/* Badge Unread di Tab */}
-                {chats.some(c => c.unread > 0) && (
-                    <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded min-w-[18px] text-center">
-                        {chats.reduce((acc, curr) => acc + curr.unread, 0)}
-                    </span>
-                )}
-            </div>
-            <div className="flex items-center gap-4 text-gray-400 pr-1">
-                 <svg className="w-4 h-4 hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                 <svg className="w-5 h-5 group-hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
-            </div>
-        </button>
-    )}
-  </div>
-)}
+            ) : (
+                <button 
+                    onClick={() => setIsChatOpen(true)}
+                    className="w-72 bg-white border border-gray-200 rounded-t-lg shadow-[0_-2px_10px_rgba(0,0,0,0.05)] hover:shadow-[0_-4px_15px_rgba(0,0,0,0.1)] px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 transition-all duration-200 group"
+                >
+                    <div className="flex items-center gap-2.5">
+                        <div className="relative w-7 h-7">
+                            <img src={profileAvatar} alt="Profile" className="w-full h-full rounded-full border border-gray-200 object-cover" />
+                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full shadow-sm"></span>
+                        </div>
+                        <span className="font-bold text-sm text-gray-700 group-hover:text-gray-900">Pesan</span>
+                        {chats.some(c => c.unread > 0) && (
+                            <span className="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded min-w-[18px] text-center">
+                                {chats.reduce((acc, curr) => acc + curr.unread, 0)}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-4 text-gray-400 pr-1">
+                         <svg className="w-4 h-4 hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                         <svg className="w-5 h-5 group-hover:text-gray-700 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
+                    </div>
+                </button>
+            )}
+        </div>
+        )}
 
-      </div>
+      </div> {/* Penutup div className="hidden lg:block" */}
+
+      {/* [KOREKSI 4] FLOATING CART BUTTON */}
+      {totalItems > 0 && (
+          <Link
+              href="/checkout"
+              className="fixed bottom-24 left-4 lg:bottom-8 lg:left-8 z-50 flex items-center gap-2 px-4 py-3 bg-red-600 text-white rounded-full shadow-xl shadow-red-300 hover:bg-red-700 hover:scale-105 transition-all duration-300"
+          >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              <span className="font-bold text-sm">{totalItems} Unit | {formatCurrency(totalAmount)}</span>
+          </Link>
+      )}
 
     </main>
   );
 }
 
-// --- KOMPONEN KECIL (MOBILE) --- (ASLI)
+// --- Helper Components (DIPINDAHKAN KE BAWAH) ---
 
+// [KOREKSI 5] PromoCardMobile Definition
 function PromoCardMobile({ color, title, subtitle, btn }: { color: 'red'|'dark', title: string, subtitle: string, btn: string }) {
   const bgClass = color === 'red' ? 'bg-gradient-to-br from-red-600 to-orange-600 shadow-red-200' : 'bg-gray-900 shadow-gray-200';
   return (
@@ -598,6 +631,7 @@ function PromoCardMobile({ color, title, subtitle, btn }: { color: 'red'|'dark',
   )
 }
 
+// [KOREKSI 5] TechCardMobile Definition
 function TechCardMobile({ tech }: { tech: any }) {
   return (
     <div className="bg-white p-3 rounded-2xl border border-gray-50 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] flex items-center gap-3 active:scale-[0.99] transition-transform">
@@ -622,6 +656,7 @@ function TechCardMobile({ tech }: { tech: any }) {
   )
 }
 
+// [KOREKSI 5] NavItem Definition
 function NavItem({ icon, active = false }: { icon: React.ReactNode; active?: boolean }) {
   return (
     <button className={`flex flex-col items-center justify-center gap-1 w-12 ${active ? 'text-red-600' : 'text-gray-400'} transition-colors`}>
@@ -633,9 +668,9 @@ function NavItem({ icon, active = false }: { icon: React.ReactNode; active?: boo
   );
 }
 
-// --- ICONS (SVG) --- (ASLI)
+// [KOREKSI 5] Icon Definitions
 const SearchIcon = ({ className }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
 const HomeIcon = ({ active }: { active?: boolean }) => <svg className="w-6 h-6" fill={active ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>;
-const OrderIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>;
+const OrderIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>;
 const ChatIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>;
 const UserIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>;
