@@ -43,6 +43,7 @@ export default function OrderSummaryPage() {
   // [PERBAIKAN LOGIKA] Filter Item Sesuai Mode Checkout
   const orderTypeParam = searchParams.get('type') as 'basic' | 'direct' | null;
   const providerIdParam = searchParams.get('providerId');
+  const categoryParam = searchParams.get('category');
 
   const activeCartItems = useMemo(() => {
     return cart.filter((item) => {
@@ -58,11 +59,15 @@ export default function OrderSummaryPage() {
         if (orderTypeParam === 'direct' && providerIdParam) {
             if (item.providerId !== providerIdParam) return false;
         }
+        
+        if (orderTypeParam === 'basic' && categoryParam) {
+            if ((item.category ?? null) !== categoryParam) return false;
+        }
       }
       
       return true;
     });
-  }, [cart, orderTypeParam, providerIdParam]);
+  }, [cart, orderTypeParam, providerIdParam, categoryParam]);
 
   // [PERBAIKAN LOGIKA] Hitung Total Berdasarkan Item yang Difilter Saja
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);

@@ -6,6 +6,7 @@ export interface CartItem {
     id: string;
     serviceId: string;
     serviceName: string;
+    category?: string;
     orderType: 'direct' | 'basic';
     quantity: number;
     pricePerUnit: number;
@@ -56,9 +57,12 @@ export const useCart = () => {
                 
                 const isDifferentProvider = item.orderType === 'direct' && item.providerId !== existingItem.providerId;
                 const isDifferentType = item.orderType !== existingItem.orderType;
+                const isDifferentCategory = item.orderType === 'basic'
+                    && existingItem.orderType === 'basic'
+                    && (existingItem.category ?? null) !== (item.category ?? null);
 
                 // Jika Beda Provider atau Beda Tipe Order -> RESET KERANJANG (Ganti dengan item baru ini saja)
-                if (isDifferentProvider || isDifferentType) {
+                if (isDifferentProvider || isDifferentType || isDifferentCategory) {
                     return [{
                         ...item,
                         id: itemId,

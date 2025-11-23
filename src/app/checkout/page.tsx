@@ -129,12 +129,16 @@ function CheckoutContent() {
         if (item.quantity <= 0) return false;
         
         if (checkoutType === 'basic') {
-            return item.orderType === 'basic';
+            if (item.orderType !== 'basic') return false;
+            if (categoryParam) {
+                return (item.category ?? null) === categoryParam;
+            }
+            return true;
         } else {
             return item.orderType === 'direct' && item.providerId === selectedProviderId;
         }
     });
-  }, [cart, checkoutType, selectedProviderId]);
+  }, [cart, checkoutType, selectedProviderId, categoryParam]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -156,6 +160,7 @@ function CheckoutContent() {
                 upsertItem({
                     serviceId: targetOption.id,
                     serviceName: targetOption.name,
+                    category: targetOption.category,
                     orderType: checkoutType,
                     quantity: 1,
                     pricePerUnit: targetOption.price,
@@ -194,6 +199,10 @@ function CheckoutContent() {
         type: checkoutType,
       });
       
+      if (checkoutType === 'basic' && categoryParam) {
+        queryParams.append('category', categoryParam);
+      }
+
       if (checkoutType === 'direct' && selectedProviderId) {
         queryParams.append('providerId', selectedProviderId);
       }
