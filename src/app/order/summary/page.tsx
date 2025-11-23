@@ -1,24 +1,23 @@
+// src/app/order/summary/page.tsx
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // [UPDATE] Tambah useSearchParams
 import Link from 'next/link';
 
 // Import Hooks & Features
 import { useCart } from '@/features/cart/useCart';
 import { createOrder } from '@/features/orders/api';
-import { createPayment } from '@/features/payments/api'; // API baru untuk generate token
+import { createPayment } from '@/features/payments/api'; 
 import { CreateOrderPayload } from '@/features/orders/types';
-import useMidtrans from '@/hooks/useMidtrans'; // Custom Hook untuk load script Midtrans
+import useMidtrans from '@/hooks/useMidtrans'; 
 
-// Definisi tipe untuk Window agar TypeScript mengenali window.snap
 declare global {
   interface Window {
     snap: any;
   }
 }
 
-// Helper Format Mata Uang
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -29,11 +28,11 @@ const formatCurrency = (amount: number) => {
 
 export default function OrderSummaryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // [UPDATE] Ambil parameter URL
   
   // Hook Data Keranjang
-  const { cart, totalAmount, totalItems, clearCart, isHydrated } = useCart();
+  const { cart, clearCart, isHydrated } = useCart(); // Hapus totalAmount & totalItems global dari sini
   
-  // Hook Load Script Midtrans
   const isSnapLoaded = useMidtrans();
 
   // Local State
@@ -41,12 +40,37 @@ export default function OrderSummaryPage() {
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Filter item yang aktif (quantity > 0)
-  const activeCartItems = useMemo(() => cart.filter((item) => item.quantity > 0), [cart]);
+  // [PERBAIKAN LOGIKA] Filter Item Sesuai Mode Checkout
+  const orderTypeParam = searchParams.get('type') as 'basic' | 'direct' | null;
+  const providerIdParam = searchParams.get('providerId');
+
+  const activeCartItems = useMemo(() => {
+    return cart.filter((item) => {
+      // 1. Pastikan qty > 0
+      if (item.quantity <= 0) return false;
+      
+      // 2. Jika ada parameter type di URL, lakukan filter ketat
+      if (orderTypeParam) {
+        // Harus sesuai tipe (basic/direct)
+        if (item.orderType !== orderTypeParam) return false;
+        
+        // Jika direct, harus sesuai providerId
+        if (orderTypeParam === 'direct' && providerIdParam) {
+            if (item.providerId !== providerIdParam) return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [cart, orderTypeParam, providerIdParam]);
+
+  // [PERBAIKAN LOGIKA] Hitung Total Berdasarkan Item yang Difilter Saja
+  const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   // Logika Diskon Dummy
   const estimatedDiscount = 0;
-  const payableAmount = Math.max(totalAmount - estimatedDiscount, 0);
+  const payableAmount = Math.max(currentTotalAmount - estimatedDiscount, 0);
 
   const handleApplyPromo = () => {
     if (!promoCode.trim()) {
@@ -74,13 +98,13 @@ export default function OrderSummaryPage() {
         orderType: mainItem.orderType,
         // Jika 'direct', providerId wajib ada. Jika 'basic', null.
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
-        totalAmount: totalAmount,
+        totalAmount: currentTotalAmount, // Gunakan total yang sudah difilter
         items: activeCartItems.map(item => ({
             serviceId: item.serviceId,
             name: item.serviceName,
             quantity: item.quantity,
             price: item.pricePerUnit,
-            note: '' // Bisa diisi catatan jika ada inputnya
+            note: '' 
         }))
       };
 
@@ -99,32 +123,27 @@ export default function OrderSummaryPage() {
       // D. Munculkan Popup Midtrans (Snap)
       if (window.snap) {
         window.snap.pay(snapToken, {
-          // Callback: Sukses Bayar
           onSuccess: function(result: any) {
             console.log('Payment Success:', result);
-            clearCart(); // Kosongkan keranjang karena transaksi selesai
+            clearCart(); 
             alert('Pembayaran Berhasil! Terima kasih.');
-            router.push('/orders'); // Arahkan ke halaman daftar pesanan
+            router.push('/orders'); 
           },
-          // Callback: Menunggu Pembayaran (Pending)
           onPending: function(result: any) {
             console.log('Payment Pending:', result);
-            clearCart(); // Kosongkan keranjang, pesanan sudah tercatat (menunggu bayar)
+            clearCart(); 
             alert('Pesanan dibuat. Silakan selesaikan pembayaran Anda.');
             router.push('/orders'); 
           },
-          // Callback: Gagal / Error
           onError: function(result: any) {
             console.error('Payment Error:', result);
             alert('Pembayaran Gagal. Silakan coba lagi.');
-            // Jangan clear cart agar user bisa coba lagi (opsional)
           },
-          // Callback: Popup Ditutup User
           onClose: function() {
-            console.log('Customer closed the popup without finishing the payment');
+            console.log('Customer closed the popup');
             alert('Anda menutup halaman pembayaran. Pesanan tersimpan di menu "Pesanan".');
-            clearCart(); // Order sudah masuk DB, jadi cart di-clear
-            router.push('/orders'); // Arahkan ke list order untuk bayar nanti
+            clearCart(); 
+            router.push('/orders'); 
           }
         });
       } else {
@@ -142,7 +161,6 @@ export default function OrderSummaryPage() {
 
   // --- RENDER COMPONENT ---
 
-  // Tampilan Loading Hydration
   if (!isHydrated) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 text-sm">
@@ -151,7 +169,6 @@ export default function OrderSummaryPage() {
     );
   }
 
-  // Tampilan Keranjang Kosong
   if (activeCartItems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -276,13 +293,13 @@ export default function OrderSummaryPage() {
                 <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Tagihan</p>
                 <h2 className="text-lg font-bold text-gray-900">Rincian Biaya</h2>
               </div>
-              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">{totalItems} item</span>
+              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">{currentTotalItems} item</span>
             </div>
 
             <div className="space-y-3 text-sm text-gray-700">
               <div className="flex items-center justify-between">
                 <span>Subtotal Layanan</span>
-                <span className="font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
+                <span className="font-bold text-gray-900">{formatCurrency(currentTotalAmount)}</span>
               </div>
               <div className="flex items-center justify-between text-green-600">
                 <span>Diskon</span>

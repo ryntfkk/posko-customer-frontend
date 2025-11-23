@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image'; // [Fitur 1] Import Image
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic'; 
@@ -27,9 +27,8 @@ export default function RegisterPage() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [hasSelectedLocation, setHasSelectedLocation] = useState(false);
-
-  // [Fitur 2] State untuk Show/Hide Password
+  
+  // [FITUR 2] State untuk Show/Hide Password
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -49,12 +48,14 @@ export default function RegisterPage() {
   const [selectedVillageId, setSelectedVillageId] = useState('');
 
   // Form State
+  // [PERBAIKAN] Inisialisasi latitude/longitude dengan null, bukan 0
   const [formData, setFormData] = useState({
     email: '', password: '', confirmPassword: '',
     fullName: '', phoneNumber: '', birthDate: '2000-01-01', gender: '',
     addressProvince: '', addressCity: '', addressDistrict: '',
     addressVillage: '', addressPostalCode: '', addressDetail: '',
-    latitude: 0, longitude: 0,
+    latitude: null as number | null, 
+    longitude: null as number | null,
   });
 
   // Load Provinsi saat mount
@@ -97,11 +98,9 @@ export default function RegisterPage() {
 
   const handleLocationSelect = (lat: number, lng: number) => {
     setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-    setHasSelectedLocation(true);
   };
 
-  // [Fitur 3] Handler Get Current Location (iOS Support)
-  // iOS/Safari memerlukan interaksi user (klik tombol) untuk memicu prompt izin lokasi
+  // [Fitur 3] Handler Get Current Location
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
       alert("Browser Anda tidak mendukung Geolocation.");
@@ -112,8 +111,6 @@ export default function RegisterPage() {
       (position) => {
         const { latitude, longitude } = position.coords;
         setFormData(prev => ({ ...prev, latitude, longitude }));
-        setHasSelectedLocation(true);
-
       },
       (error) => {
         console.error(error);
@@ -159,9 +156,12 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const hasValidCoordinates =
-    hasSelectedLocation && formData.latitude != null && formData.longitude != null;
-    if (!hasValidCoordinates) return setErrorMsg('Pilih lokasi pada peta.');
+    
+    // [PERBAIKAN] Validasi koordinat null secara eksplisit
+    if (formData.latitude === null || formData.longitude === null) {
+        return setErrorMsg('Pilih lokasi pada peta.');
+    }
+    
     if (!formData.addressVillage) return setErrorMsg('Lengkapi alamat wilayah.');
 
     setIsLoading(true);
@@ -182,7 +182,8 @@ export default function RegisterPage() {
                 postalCode: formData.addressPostalCode,
                 detail: formData.addressDetail
             },
-            location: { type: 'Point', coordinates: [formData.longitude, formData.latitude] }
+            // Type assertion aman karena sudah divalidasi di atas
+            location: { type: 'Point', coordinates: [formData.longitude!, formData.latitude!] }
         };
         await registerUser(payload);
         router.push('/login');
@@ -360,26 +361,23 @@ export default function RegisterPage() {
 
                                     {/* Grid untuk field pendek (Tgl Lahir & Gender) */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-<div className="flex flex-col gap-2">
-    <label className="label-text">Tanggal Lahir</label>
-    <div className="relative w-full">
-        <input 
-            type="date" 
-            name="birthDate" 
-            value={formData.birthDate} 
-            onChange={handleChange} 
-            /* pr-10: Memberi ruang di kanan agar teks tidak menabrak ikon */
-            className="input-field pr-10" 
-        />
-        
-        {/* ICON: Tambahkan 'pointer-events-none' agar bisa ditembus klik */}
-        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-        </div>
-    </div>
-</div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="label-text">Tanggal Lahir</label>
+                                            <div className="relative w-full">
+                                                <input 
+                                                    type="date" 
+                                                    name="birthDate" 
+                                                    value={formData.birthDate} 
+                                                    onChange={handleChange} 
+                                                    className="input-field pr-10" 
+                                                />
+                                                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <div className="flex flex-col gap-2">
                                             <label className="label-text">Jenis Kelamin</label>
                                             <div className="relative">
@@ -478,15 +476,16 @@ export default function RegisterPage() {
                                         <div className="space-y-3 order-1 lg:order-2">
                                             <div className="flex justify-between items-end">
                                                 <label className="label-text mb-0">Titik Lokasi Rumah</label>
-                                                {formData.latitude !== 0 && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">Koordinat Tersimpan</span>}
+                                                {/* [PERBAIKAN] Cek null, bukan 0 */}
+                                                {formData.latitude !== null && <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-md border border-green-100">Koordinat Tersimpan</span>}
                                             </div>
 
                                             <div className="w-full h-56 md:h-64 lg:h-full min-h-[240px] rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm relative z-0 group hover:border-red-100 transition-colors">
-                                                {/* Oper coordinates ke LocationPicker agar peta update saat tombol ditekan */}
+                                                {/* [PERBAIKAN] Kirim undefined jika null agar Leaflet menggunakan view default */}
                                                 <LocationPicker 
                                                     onLocationSelect={handleLocationSelect} 
-                                                    initialLat={formData.latitude}
-                                                    initialLng={formData.longitude}
+                                                    initialLat={formData.latitude ?? undefined}
+                                                    initialLng={formData.longitude ?? undefined}
                                                 />
                                             </div>
                                             <p className="text-[10px] text-gray-400 leading-normal">*Ketuk lokasi anda di peta dan pin akan terpasang untuk memudahkan pencarian teknisi terdekat.</p>

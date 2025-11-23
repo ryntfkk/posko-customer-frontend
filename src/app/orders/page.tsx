@@ -1,167 +1,233 @@
+// src/app/orders/[orderId]/page.tsx
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { fetchMyOrders } from '@/features/orders/api'; 
+import { fetchOrderById } from '@/features/orders/api';
+import { createPayment } from '@/features/payments/api'; // [BARU] Import API pembayaran
 import { Order } from '@/features/orders/types';
+import useMidtrans from '@/hooks/useMidtrans'; // [BARU] Import Hook Midtrans
 
-export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+// [BARU] Definisi tipe global untuk Snap
+declare global {
+  interface Window {
+    snap: any;
+  }
+}
+
+export default function OrderDetailPage() {
+  const { orderId } = useParams(); // Ambil ID dari URL
+  const router = useRouter();
+  
+  const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPaying, setIsPaying] = useState(false); // [BARU] State loading pembayaran
 
-  // Fungsi untuk mengambil data order
-  const loadOrders = useCallback(async () => {
-    try {
-      const res = await fetchMyOrders();
-      // Pastikan mengambil array dari res.data (karena struktur response { message, data: [...] })
-      setOrders(Array.isArray(res.data) ? res.data : []);
-    } catch (error) {
-      console.error('Gagal memuat pesanan:', error);
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
+  // [BARU] Load script Midtrans
+  const isSnapLoaded = useMidtrans();
 
-  // Load saat pertama kali render
   useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    if (!orderId) return;
 
-  // Handle tombol refresh manual
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadOrders();
-  };
+    const loadOrder = async () => {
+      try {
+        const res = await fetchOrderById(orderId as string);
+        setOrder(res.data); 
+      } catch (error) {
+        console.error('Gagal memuat detail pesanan:', error);
+        alert('Pesanan tidak ditemukan');
+        router.push('/orders');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Helper untuk warna status agar lebih informatif
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pending': return 'bg-yellow-50 text-yellow-700 border-yellow-100';
-      case 'settlement': // Midtrans status
-      case 'paid':
-      case 'accepted': return 'bg-blue-50 text-blue-700 border-blue-100';
-      case 'working': return 'bg-purple-50 text-purple-700 border-purple-100';
-      case 'completed': return 'bg-green-50 text-green-700 border-green-100';
-      case 'cancelled':
-      case 'deny': 
-      case 'expire': return 'bg-red-50 text-red-700 border-red-100';
-      default: return 'bg-gray-50 text-gray-600 border-gray-200';
+    loadOrder();
+  }, [orderId, router]);
+
+  // [BARU] Handler Pembayaran Ulang
+  const handlePayment = async () => {
+    if (!isSnapLoaded) {
+      alert("Sistem pembayaran sedang memuat. Silakan tunggu sebentar.");
+      return;
+    }
+
+    setIsPaying(true);
+    try {
+      // 1. Request Token Pembayaran ke Backend
+      // Backend akan mengembalikan token yang sudah ada (jika belum expired) atau membuat baru
+      const res = await createPayment(orderId as string);
+      const { snapToken } = res.data;
+
+      // 2. Munculkan Popup Snap
+      if (window.snap) {
+        window.snap.pay(snapToken, {
+          onSuccess: (result: any) => {
+            console.log('Payment Success:', result);
+            alert('Pembayaran Berhasil!');
+            window.location.reload(); // Refresh halaman untuk update status
+          },
+          onPending: (result: any) => {
+            console.log('Payment Pending:', result);
+            alert('Menunggu pembayaran...');
+            window.location.reload();
+          },
+          onError: (result: any) => {
+            console.error('Payment Error:', result);
+            alert('Pembayaran Gagal. Silakan coba lagi.');
+          },
+          onClose: () => {
+            console.log('Customer closed the popup');
+            // Tidak perlu alert berlebihan, user mungkin hanya ingin cek rincian
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error("Gagal memulai pembayaran:", error);
+      alert(error.response?.data?.message || "Terjadi kesalahan saat memproses pembayaran.");
+    } finally {
+      setIsPaying(false);
     }
   };
 
-  // Tampilan saat Loading
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
-        <div className="w-8 h-8 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
-        <p className="text-sm text-gray-500 font-medium">Memuat riwayat pesanan...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
       </div>
     );
   }
 
+  if (!order) return null;
+
+  const getStatusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      paid: 'bg-blue-100 text-blue-800',
+      searching: 'bg-purple-100 text-purple-800',
+      accepted: 'bg-indigo-100 text-indigo-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
-      {/* Header Fixed */}
-      <header className="bg-white shadow-sm sticky top-0 z-20 px-4 lg:px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-            <Link href="/" className="text-gray-600 hover:text-red-600 transition-colors p-2 -ml-2 rounded-full hover:bg-gray-50">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-            </Link>
-            <h1 className="text-lg lg:text-xl font-bold text-gray-900">Riwayat Pesanan</h1>
-        </div>
-        
-        {/* Tombol Refresh */}
-        <button 
-            onClick={handleRefresh} 
-            disabled={isRefreshing}
-            className={`p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-all ${isRefreshing ? 'animate-spin text-red-600' : ''}`}
-            title="Muat Ulang Data"
-        >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-        </button>
+      {/* Header */}
+      <header className="bg-white shadow-sm sticky top-0 z-10 px-4 py-4 flex items-center gap-4">
+        <Link href="/orders" className="text-gray-600 hover:text-red-600 p-1 rounded-full hover:bg-gray-100">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
+        </Link>
+        <h1 className="text-lg font-bold text-gray-900">Detail Pesanan</h1>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-        {orders.length === 0 ? (
-          // Tampilan Jika Kosong
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        {/* Status Card */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">ID Pesanan</p>
+              <p className="font-mono text-xs text-gray-400 select-all">{order._id}</p>
             </div>
-            <h3 className="text-gray-900 font-bold text-lg">Belum ada pesanan</h3>
-            <p className="text-gray-500 text-sm mb-6 max-w-xs">Layanan yang Anda pesan akan muncul di sini.</p>
-            <Link href="/" className="px-6 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
-                Pesan Jasa Sekarang
-            </Link>
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getStatusBadge(order.status)}`}>
+              {order.status}
+            </span>
           </div>
-        ) : (
-          // List Pesanan
-          orders.map((order) => (
-            <Link key={order._id} href={`/orders/${order._id}`} className="block group">
-                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 relative overflow-hidden">
-                
-                {/* Order Header */}
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded tracking-wide ${order.orderType === 'direct' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
-                            {order.orderType}
-                        </span>
-                        <span className="text-[10px] text-gray-400">•</span>
-                        <p className="text-xs text-gray-500 font-medium">
-                            {new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                    </div>
-                    {order.providerId && (
-                        <p className="text-xs text-gray-800 font-bold flex items-center gap-1">
-                            Mitra: <span className="font-normal text-gray-600">Terpilih</span>
-                            <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
-                        </p>
-                    )}
-                    </div>
-                    
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${getStatusColor(order.status)}`}>
-                    {order.status}
-                    </span>
-                </div>
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm text-gray-500">Tanggal Pemesanan</p>
+            <p className="font-medium text-gray-900">
+              {new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}
+            </p>
+          </div>
+        </div>
 
-                {/* Items List */}
-                <div className="space-y-2.5 border-t border-dashed border-gray-100 pt-3 mb-3">
-                    {order.items.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between text-sm items-center">
-                        <div className="flex items-center gap-3">
-                            <span className="w-6 h-6 flex items-center justify-center bg-gray-50 rounded text-[10px] font-bold text-gray-500 border border-gray-200">
-                                {item.quantity}x
-                            </span>
-                            <span className="text-gray-700 font-medium line-clamp-1">{item.name}</span>
-                        </div>
-                        <span className="text-gray-500 text-xs font-medium">
-                            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price)}
-                        </span>
-                    </div>
-                    ))}
-                </div>
-
-                {/* Footer & Total */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wide">Total Bayar</span>
-                        <span className="text-lg font-black text-gray-900 group-hover:text-red-600 transition-colors">
-                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(order.totalAmount)}
-                        </span>
-                    </div>
-                    
-                    {/* Indikator Chevron (Panah Kanan) */}
-                    <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-red-50 group-hover:text-red-600 transition-colors">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-                    </div>
-                </div>
-                </div>
-            </Link>
-          ))
+        {/* Provider Info (Jika sudah accepted) */}
+        {order.providerId && (
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">Informasi Mitra</h3>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
+                {/* Placeholder Avatar */}
+                <svg className="w-full h-full text-gray-400" fill="currentColor" viewBox="0 0 24 24"><path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              </div>
+              <div>
+                {/* Note: Sesuaikan field ini dengan hasil populate di backend */}
+                <p className="font-bold text-gray-900">Mitra Posko</p>
+                <p className="text-sm text-green-600">Terverifikasi</p>
+              </div>
+              <button className="ml-auto px-4 py-2 bg-green-50 text-green-700 rounded-lg text-xs font-bold hover:bg-green-100">
+                Chat Mitra
+              </button>
+            </div>
+          </div>
         )}
+
+        {/* Items */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide">Rincian Layanan</h3>
+          <div className="space-y-4">
+            {order.items.map((item: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center pb-4 border-b border-gray-50 last:border-0 last:pb-0">
+                <div>
+                  <p className="font-medium text-gray-900">{item.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">{item.quantity} x {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price)}</p>
+                  {item.note && <p className="text-xs text-gray-400 mt-1 italic">Catatan: {item.note}</p>}
+                </div>
+                <p className="font-bold text-gray-900">
+                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.price * item.quantity)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Payment Summary */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600 font-medium">Total Pembayaran</span>
+            <span className="text-xl font-black text-red-600">
+              {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(order.totalAmount)}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-200 shadow-lg md:static md:shadow-none md:border-0 md:bg-transparent md:p-0">
+          <div className="max-w-3xl mx-auto">
+            {/* [PERBAIKAN] Tombol sekarang memiliki onClick handler */}
+            {order.status === 'pending' && (
+              <button 
+                onClick={handlePayment}
+                disabled={isPaying}
+                className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-red-200 transition-all flex justify-center items-center gap-2 ${
+                  isPaying 
+                    ? 'bg-gray-400 cursor-not-allowed shadow-none' 
+                    : 'bg-red-600 hover:bg-red-700 hover:-translate-y-1'
+                }`}
+              >
+                {isPaying ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Memproses...
+                  </>
+                ) : (
+                  'Lanjut Pembayaran'
+                )}
+              </button>
+            )}
+            
+            {order.status === 'completed' && (
+              <button className="w-full py-3.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all">
+                Beri Ulasan
+              </button>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );

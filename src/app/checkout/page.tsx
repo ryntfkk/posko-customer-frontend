@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState, useRef } from 'react'; // Tambah useRef
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
@@ -33,7 +33,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const { cart, upsertItem, clearCart, isHydrated } = useCart(); // Ambil clearCart
+  const { cart, upsertItem, clearCart, isHydrated } = useCart();
 
   // State Data
   const [services, setServices] = useState<Service[]>([]); 
@@ -115,14 +115,11 @@ export default function CheckoutPage() {
     return 'Memuat Nama Mitra...';
   }, [selectedProviderId, provider]);
 
-  // [PERBAIKAN LOGIKA 1] Filter keranjang agar HANYA menampilkan item yang sesuai dengan mode saat ini
+  // Filter keranjang agar HANYA menampilkan item yang sesuai dengan mode saat ini
   const activeCartItems = useMemo(() => {
     return cart.filter((item) => {
-        // Hanya tampilkan item dengan qty > 0
         if (item.quantity <= 0) return false;
         
-        // Filter Strict: Jika mode Basic, hanya tampilkan item Basic. 
-        // Jika mode Direct, hanya tampilkan item Direct dari Provider yang SEDANG dipilih.
         if (checkoutType === 'basic') {
             return item.orderType === 'basic';
         } else {
@@ -131,20 +128,17 @@ export default function CheckoutPage() {
     });
   }, [cart, checkoutType, selectedProviderId]);
 
-  // Hitung ulang total berdasarkan item yang difilter (bukan total global cart)
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // [PERBAIKAN LOGIKA 2] Auto-Add Service jika ada `serviceId` di URL
+  // Auto-Add Service jika ada `serviceId` di URL
   useEffect(() => {
     const serviceIdParam = searchParams.get('serviceId');
     
-    // Jalankan hanya jika data sudah siap, belum pernah auto-add, dan ada param
     if (isHydrated && !hasAutoAdded.current && serviceIdParam && availableOptions.length > 0) {
         const targetOption = availableOptions.find(o => o.id === serviceIdParam);
         
         if (targetOption) {
-            // Cek apakah sudah ada di cart agar tidak duplikat/reset berulang
             const key = getCartItemId(targetOption.id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
             const existing = cart.find(c => c.id === key);
 
@@ -153,15 +147,14 @@ export default function CheckoutPage() {
                     serviceId: targetOption.id,
                     serviceName: targetOption.name,
                     orderType: checkoutType,
-                    quantity: 1, // Set default 1
+                    quantity: 1,
                     pricePerUnit: targetOption.price,
                     providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
                     providerName: checkoutType === 'direct' ? providerLabel : undefined,
                 });
             }
-            hasAutoAdded.current = true; // Tandai sudah diproses
+            hasAutoAdded.current = true;
             
-            // Opsional: Hapus param dari URL agar bersih (tanpa refresh page)
             const newParams = new URLSearchParams(searchParams.toString());
             newParams.delete('serviceId');
             window.history.replaceState(null, '', `?${newParams.toString()}`);
@@ -176,23 +169,27 @@ export default function CheckoutPage() {
     return existing?.quantity ?? 0;
   };
 
+  // --- [PERBAIKAN] Handler Konfirmasi Order ---
   const handleConfirmOrder = async () => {
     if (!isHydrated) return;
     
-    // Gunakan currentTotalItems (yang sudah difilter), bukan totalItems global
     if (activeCartItems.length === 0 || currentTotalItems <= 0) {
       alert('Pilih minimal satu layanan sebelum melanjutkan.');
       return;
     }
 
-    // [PENTING] Saat lanjut ke summary, idealnya kita bersihkan item "sampah" (item dari mode lain)
-    // Tapi untuk sekarang, Summary Page juga harus difilter. 
-    // Agar aman, kita kirim state mode lewat URL query ke Summary Page juga bisa, 
-    // tapi lebih baik kita biarkan cart apa adanya dan handling di Summary.
-    
     setIsSubmitting(true);
     try {
-      router.push('/order/summary');
+      // Buat query params untuk memberi tahu halaman Summary item mana yang harus diproses
+      const queryParams = new URLSearchParams({
+        type: checkoutType, // 'basic' atau 'direct'
+      });
+      
+      if (checkoutType === 'direct' && selectedProviderId) {
+        queryParams.append('providerId', selectedProviderId);
+      }
+
+      router.push(`/order/summary?${queryParams.toString()}`);
     } catch (err) {
       console.error(err);
       alert('Terjadi kendala. Silakan coba lagi.');
@@ -207,13 +204,8 @@ export default function CheckoutPage() {
           return;
       }
       
-      // Reset flag auto-add saat ganti mode
       hasAutoAdded.current = false;
       
-      // Opsional: Anda bisa memanggil clearCart() di sini jika ingin 
-      // menghapus keranjang saat ganti mode secara ekstrem.
-      // clearCart(); 
-
       setCheckoutType(targetMode);
       if (targetMode === 'basic') {
           setSelectedProviderId(null);
@@ -363,7 +355,6 @@ export default function CheckoutPage() {
                 {/* Kolom Kiri: Daftar Layanan */}
                 <div className="md:col-span-2 space-y-4">
                   
-                  {/* [FITUR BARU] KARTU PROFIL PROVIDER DI CHECKOUT */}
                   {checkoutType === 'direct' && provider && (
                     <div className="flex items-start gap-4 p-4 mb-2 bg-blue-50/50 border border-blue-100 rounded-2xl animate-fadeIn">
                       <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0 bg-gray-200">
