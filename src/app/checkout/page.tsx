@@ -238,6 +238,7 @@ function CheckoutContent() {
       upsertItem({
         serviceId: option.id,
         serviceName: option.name,
+        category: option.category,
         orderType: checkoutType,
         quantity: newQuantity,
         pricePerUnit: option.price,
