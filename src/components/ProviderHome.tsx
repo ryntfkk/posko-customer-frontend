@@ -5,9 +5,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { User } from '@/features/auth/types';
 import { fetchIncomingOrders, acceptOrder, fetchMyOrders } from '@/features/orders/api';
-import { fetchProviderById } from '@/features/providers/api';
 import { Order } from '@/features/orders/types';
-import { Provider } from '@/features/providers/types';
+// [BARU] Import Navigasi Provider yang sudah dibuat
+import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
 // --- ICONS ---
 const WalletIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>;
@@ -26,7 +26,6 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
   // Data State
   const [incomingOrders, setIncomingOrders] = useState<Order[]>([]);
   const [myJobs, setMyJobs] = useState<Order[]>([]);
-  const [providerProfile, setProviderProfile] = useState<Provider | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -35,20 +34,11 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
   useEffect(() => {
     const initData = async () => {
         try {
-            // Ambil data provider ID dari user ID
-            // Catatan: Di backend controller 'listProviders' kita tidak punya endpoint 'me', 
-            // jadi kita asumsikan user.balance sudah ada di User model
-            // Tapi untuk rating, kita butuh model Provider. 
-            // Kita cari provider berdasarkan user ID (perlu endpoint khusus atau filter)
-            // Disini kita pakai workaround fetchMyOrders dulu untuk hitung job selesai.
-            
             const jobsRes = await fetchMyOrders('provider');
             setMyJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
 
-            // Load incoming orders
             const incomingRes = await fetchIncomingOrders();
             setIncomingOrders(Array.isArray(incomingRes.data) ? incomingRes.data : []);
-
         } catch (error) {
             console.error(error);
         } finally {
@@ -164,6 +154,7 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                         </div>
                         <div className="pl-4">
                             <p className="text-xs text-red-200 mb-1">Saldo</p>
+                            {/* [FIX] Pastikan user.balance ada atau default 0 */}
                             <p className="text-lg lg:text-xl font-bold">Rp {new Intl.NumberFormat('id-ID').format(user.balance || 0)}</p>
                         </div>
                     </div>
@@ -296,6 +287,9 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
 
         </section>
       </div>
+
+      {/* [FIX] NAVIGASI BOTTOM (Menggunakan Component, bukan Hardcoded) */}
+      <ProviderBottomNav />
     </div>
   );
 }
