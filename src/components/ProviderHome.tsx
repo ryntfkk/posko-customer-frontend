@@ -1,10 +1,13 @@
 // src/components/ProviderHome.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { User } from '@/features/auth/types';
+// [INTEGRASI API] Import fungsi API dan Tipe data
+import { fetchIncomingOrders, acceptOrder } from '@/features/orders/api';
+import { Order } from '@/features/orders/types';
 
 // --- ICONS (SVG) ---
 const BellIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>;
@@ -21,20 +24,58 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
   // --- STATE ---
   const [isOnline, setIsOnline] = useState(true);
   const [activeTab, setActiveTab] = useState<'incoming' | 'active' | 'history'>('incoming');
+  
+  // [INTEGRASI API] State untuk data nyata
+  const [realIncomingOrders, setRealIncomingOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // --- MOCK DATA (Nanti diganti fetch dari API) ---
-  const earnings = 1250000;
-  const totalJobs = 24;
-  const rating = 4.8;
+  // --- MOCK DATA (Tetap disimpan untuk tampilan 'Active' & 'History' yang belum ada API-nya) ---
+  const earnings = 1250000; // Nanti bisa diambil dari user.balance
+  const totalJobs = 24;     // Nanti dari API
+  const rating = 4.8;       // Nanti dari API
 
-  const incomingOrders = [
-    { id: 1, name: 'Budi Santoso', service: 'Cuci AC Split', distance: '2.3 km', price: 75000, address: 'Jl. Merdeka No. 10' },
-    { id: 2, name: 'Siti Aminah', service: 'Isi Freon R32', distance: '4.1 km', price: 150000, address: 'Perum Griya Indah Blok A' },
-  ];
-
+  // Data Mock untuk tab yang belum terintegrasi API
   const activeOrders = [
-    { id: 3, name: 'Rudi Hartono', service: 'Service Besar Motor', status: 'Menuju Lokasi', price: 200000, address: 'Bengkel Mandiri, Jl. Ahmad Yani' },
+    { id: 'mock-1', name: 'Rudi Hartono', service: 'Service Besar Motor', status: 'Menuju Lokasi', price: 200000, address: 'Bengkel Mandiri, Jl. Ahmad Yani' },
   ];
+
+  // [INTEGRASI API] Fetch Order Masuk saat komponen dimuat
+  useEffect(() => {
+    const loadOrders = async () => {
+      try {
+        setIsLoading(true);
+        const res = await fetchIncomingOrders();
+        setRealIncomingOrders(Array.isArray(res.data) ? res.data : []);
+      } catch (error) {
+        console.error('Gagal memuat order masuk:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Hanya load jika tab incoming aktif atau saat pertama load
+    if (activeTab === 'incoming') {
+        loadOrders();
+    }
+  }, [activeTab]);
+
+  // [INTEGRASI API] Handle Terima Order
+  const handleAccept = async (orderId: string) => {
+    if (!confirm('Apakah Anda yakin ingin mengambil pesanan ini?')) return;
+    
+    setProcessingId(orderId);
+    try {
+      await acceptOrder(orderId);
+      alert('Pesanan berhasil diterima! Silakan cek menu "Berlangsung".');
+      // Hapus order dari list lokal agar UI langsung update
+      setRealIncomingOrders((prev) => prev.filter(o => o._id !== orderId));
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Gagal menerima pesanan');
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pb-24 lg:pb-10">
@@ -139,7 +180,7 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
             {/* Tab Navigation */}
             <div className="flex gap-6 border-b border-gray-200 mb-6 overflow-x-auto no-scrollbar">
                 {[
-                    { id: 'incoming', label: 'Pesanan Baru', count: incomingOrders.length },
+                    { id: 'incoming', label: 'Pesanan Baru', count: realIncomingOrders.length },
                     { id: 'active', label: 'Berlangsung', count: activeOrders.length },
                     { id: 'history', label: 'Riwayat', count: 0 }
                 ].map((tab) => (
@@ -167,7 +208,7 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
 
             {/* Content Area */}
             <div className="min-h-[300px]">
-                {/* STATE: Pesanan Baru */}
+                {/* STATE: Pesanan Baru (REAL DATA) */}
                 {activeTab === 'incoming' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {!isOnline ? (
@@ -177,28 +218,47 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                                 <p className="text-sm text-gray-500 mt-1">Aktifkan status Online untuk menerima pesanan.</p>
                                 <button onClick={() => setIsOnline(true)} className="mt-4 px-6 py-2 bg-red-600 text-white rounded-full text-sm font-bold hover:bg-red-700 transition-colors">Online Sekarang</button>
                             </div>
-                        ) : incomingOrders.length === 0 ? (
+                        ) : isLoading ? (
+                            <div className="col-span-full py-12 text-center">
+                                <p className="text-gray-400 animate-pulse">Sedang mencari orderan...</p>
+                            </div>
+                        ) : realIncomingOrders.length === 0 ? (
                             <div className="col-span-full py-12 text-center">
                                 <p className="text-gray-500">Belum ada pesanan masuk saat ini.</p>
+                                <button onClick={() => window.location.reload()} className="mt-2 text-red-600 font-bold text-xs hover:underline">Refresh</button>
                             </div>
                         ) : (
-                            incomingOrders.map((order) => (
-                                <div key={order.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group">
+                            realIncomingOrders.map((order) => (
+                                <div key={order._id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                                    {order.orderType === 'direct' && (
+                                        <div className="absolute top-0 right-0 bg-purple-600 text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold z-10">
+                                            DIRECT
+                                        </div>
+                                    )}
+
                                     <div className="flex justify-between items-start mb-4">
-                                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide">{order.service}</span>
-                                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
-                                            Rp {order.price.toLocaleString('id-ID')}
+                                        {/* Menampilkan Nama Service Pertama (atau Summary) */}
+                                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide line-clamp-1">
+                                            {order.items[0]?.name || 'Jasa Layanan'} 
+                                            {order.items.length > 1 && ` +${order.items.length - 1} lainnya`}
+                                        </span>
+                                        <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded whitespace-nowrap">
+                                            Rp {new Intl.NumberFormat('id-ID').format(order.totalAmount)}
                                         </span>
                                     </div>
                                     
                                     <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden">
-                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${order.name}`} alt="Cust" className="w-full h-full object-cover"/>
+                                        <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden shrink-0">
+                                            {/* Mengambil Nama User dari Populate Backend */}
+                                            {/* @ts-ignore: Backend populate check */}
+                                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${order.userId?.fullName || order._id}`} alt="Cust" className="w-full h-full object-cover"/>
                                         </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-900 leading-tight">{order.name}</h3>
-                                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                                <LocationIcon /> {order.distance} • {order.address}
+                                        <div className="overflow-hidden">
+                                            {/* @ts-ignore */}
+                                            <h3 className="font-bold text-gray-900 leading-tight truncate">{order.userId?.fullName || 'Pelanggan Posko'}</h3>
+                                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                                                {/* @ts-ignore */}
+                                                <LocationIcon /> {order.userId?.address?.city || 'Lokasi tersembunyi'}
                                             </p>
                                         </div>
                                     </div>
@@ -207,8 +267,12 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                                         <button className="py-2.5 rounded-xl text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
                                             Tolak
                                         </button>
-                                        <button className="py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
-                                            Terima
+                                        <button 
+                                            onClick={() => handleAccept(order._id)}
+                                            disabled={!!processingId}
+                                            className="py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-lg shadow-red-200 disabled:bg-gray-300 disabled:shadow-none"
+                                        >
+                                            {processingId === order._id ? '...' : 'Terima'}
                                         </button>
                                     </div>
                                 </div>
@@ -217,7 +281,7 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                     </div>
                 )}
 
-                {/* STATE: Berlangsung */}
+                {/* STATE: Berlangsung (Masih Mock Data) */}
                 {activeTab === 'active' && (
                     <div className="space-y-4">
                         {activeOrders.map((order) => (
