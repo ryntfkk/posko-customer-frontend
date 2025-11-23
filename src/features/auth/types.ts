@@ -14,9 +14,18 @@ export interface GeoLocation {
   type: 'Point';
   coordinates: number[];
 }
+// Interface untuk Jadwal (disalin struktur minimalnya agar User type mengenalinya)
+interface UserScheduleDay {
+  dayIndex: number;
+  dayName: string;
+  isOpen: boolean;
+  start: string;
+  end: string;
+}
 
 export interface User {
-  userId: string;
+  _id: string;    
+  userId: string;  
   fullName: string;
   email: string;
   roles: Role[];
@@ -26,6 +35,8 @@ export interface User {
   address?: Address;
   location?: GeoLocation; 
   profilePictureUrl?: string;
+  balance?: number; 
+  schedule?: UserScheduleDay[];
 }
 
 export interface Tokens {

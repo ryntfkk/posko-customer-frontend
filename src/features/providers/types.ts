@@ -1,4 +1,12 @@
 // src/features/providers/types.ts
+// [BARU] Definisi tipe Jadwal
+export interface ScheduleDay {
+  dayIndex: number; // 0 = Minggu, 1 = Senin, dst
+  dayName: string;
+  isOpen: boolean;
+  start: string; // Format "HH:mm"
+  end: string;   // Format "HH:mm"
+}
 
 export interface ProviderServiceDetail {
   _id: string;
@@ -38,6 +46,7 @@ export interface Provider {
   rating: number;
   isOnline: boolean;
   createdAt: string;
+  schedule?: ScheduleDay[];
 }
 
 export interface ProviderListResponse {
@@ -45,3 +54,4 @@ export interface ProviderListResponse {
   message: string;
   data: Provider[];
 }
+
