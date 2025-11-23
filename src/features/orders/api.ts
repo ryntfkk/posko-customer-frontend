@@ -7,10 +7,10 @@ export const createOrder = async (payload: CreateOrderPayload) => {
   return response.data;
 };
 
-// [PERBAIKAN] Ganti endpoint '/orders/my-orders' menjadi '/orders'
-// Karena backend controller menggunakan filter user secara otomatis di root endpoint
-export const fetchMyOrders = async () => {
-  const response = await api.get<{ data: Order[] }>('/orders'); 
+export const fetchMyOrders = async (view: 'customer' | 'provider' = 'customer') => {
+  const response = await api.get<{ data: Order[] }>('/orders', {
+    params: { view } 
+  }); 
   return response.data;
 };
 
@@ -21,9 +21,9 @@ export const fetchIncomingOrders = async () => {
   return response.data;
 };
 
-// Update Status Pesanan (Terima/Tolak/Selesai)
+// [TAMBAHAN] Update progres kerja provider
 export const updateOrderStatus = async (orderId: string, status: string) => {
-  const response = await api.patch<{ data: Order }>(`/orders/${orderId}/status`, { status });
+  const response = await api.patch<{ message: string; data: Order }>(`/orders/${orderId}/status`, { status });
   return response.data;
 };
 
@@ -36,3 +36,4 @@ export const acceptOrder = async (orderId: string) => {
   const response = await api.patch<{ message: string; data: Order }>(`/orders/${orderId}/accept`, {});
   return response.data;
 };
+
