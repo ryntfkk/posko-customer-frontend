@@ -1,3 +1,4 @@
+// src/app/chat/page.tsx
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -6,9 +7,11 @@ import Image from 'next/image';
 import { io, Socket } from 'socket.io-client';
 import api from '@/lib/axios';
 import { fetchProfile } from '@/features/auth/api';
-import { fetchMyOrders } from '@/features/orders/api'; // [1] Import Order API
+import { fetchMyOrders } from '@/features/orders/api';
 import { User } from '@/features/auth/types';
 import { Order } from '@/features/orders/types';
+// [BARU] Import Provider Navbar
+import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000';
 
@@ -27,7 +30,6 @@ export default function ChatPage() {
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // [2] State untuk Orders
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
 
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -35,43 +37,34 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const myId = user ? ((user as any)._id || user.userId) : null;
-  
-  // [3] Cek Role Aktif
   const isProvider = user?.activeRole === 'provider';
 
   const getSenderId = (sender: string | { _id: string }) => {
     return typeof sender === 'object' ? sender._id : sender;
   };
 
-  // [4] Fetch Data (Profile, Chat, dan Orders)
   useEffect(() => {
     const initChat = async () => {
       const token = localStorage.getItem('posko_token');
       if (!token) { router.push('/login'); return; }
 
       try {
-        // A. Fetch Profile
         const profileRes = await fetchProfile();
         const currentUser = profileRes.data.profile;
         setUser(currentUser);
 
-        // B. Fetch Chat Rooms
         const chatRes = await api.get('/chat');
         setRooms(chatRes.data.data);
 
-        // C. Fetch Active Orders (sesuai Role)
-        // Jika Provider -> fetchMyOrders('provider'), Jika Customer -> fetchMyOrders('customer')
+        // Fetch Active Orders
         const roleParam = currentUser.activeRole === 'provider' ? 'provider' : 'customer';
         const ordersRes = await fetchMyOrders(roleParam);
         const orders = Array.isArray(ordersRes.data) ? ordersRes.data : [];
-        
-        // Filter hanya order aktif
         const activeOnly = orders.filter(o => 
             ['pending', 'paid', 'accepted', 'on_the_way', 'working', 'waiting_approval'].includes(o.status)
         );
         setActiveOrders(activeOnly);
 
-        // D. Socket Setup
         const newSocket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
         newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
           setRooms(prev => {
@@ -129,24 +122,17 @@ export default function ChatPage() {
     } catch (error) { console.error(error); }
   };
 
-  // [5] Logic Mencari Order Terkait dengan Lawan Bicara
   const relatedOrder = useMemo(() => {
     if (!activeRoom || !user || activeOrders.length === 0) return null;
-    
     const opponent = getOpponent(activeRoom);
     if (!opponent) return null;
 
     return activeOrders.find(order => {
-        // Jika saya Provider -> cari order dimana userId == opponent._id
         if (isProvider) {
             // @ts-ignore
             const custId = order.userId?._id || order.userId; 
             return custId === opponent._id;
-        } 
-        // Jika saya Customer -> cari order dimana providerId == opponent._id (lewat User ID provider)
-        else {
-            // Note: providerId di order object biasanya object Provider, yang punya userId object.
-            // Kita perlu akses user ID si provider.
+        } else {
             // @ts-ignore
             const provUser = order.providerId?.userId?._id || order.providerId?.userId;
             return provUser === opponent._id;
@@ -154,7 +140,6 @@ export default function ChatPage() {
     });
   }, [activeRoom, activeOrders, isProvider, user]);
 
-  // [6] Handle Klik Snippet -> Redirect sesuai Role
   const handleSnippetClick = () => {
     if (!relatedOrder) return;
     if (isProvider) {
@@ -167,7 +152,7 @@ export default function ChatPage() {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-white text-sm text-gray-500">Memuat...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans flex flex-col md:flex-row max-w-7xl mx-auto overflow-hidden md:my-8 md:rounded-2xl border-gray-200 md:border md:h-[800px]">
+    <div className="min-h-screen bg-gray-50 font-sans flex flex-col md:flex-row max-w-7xl mx-auto overflow-hidden md:my-8 md:rounded-2xl border-gray-200 md:border md:h-[800px] pb-20 md:pb-0">
       
       {/* LIST ROOMS */}
       <div className={`w-full md:w-1/3 bg-white flex flex-col ${activeRoom ? 'hidden md:flex' : 'flex'}`}>
@@ -182,31 +167,37 @@ export default function ChatPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {rooms.map(room => {
-                const opponent = getOpponent(room);
-                const lastMsg = room.messages[room.messages.length - 1];
-                const isActive = activeRoom?._id === room._id;
-                return (
-                    <button key={room._id} onClick={() => openRoom(room)} className={`w-full flex items-center gap-4 p-4 hover:bg-gray-50 transition-all text-left border-b border-gray-50 ${isActive ? 'bg-red-50' : ''}`}>
-                        <div className="relative w-12 h-12 shrink-0">
-                            <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden border border-gray-100">
-                                <Image src={opponent?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${opponent?.fullName}`} alt="User" width={48} height={48} className="object-cover" />
+            {rooms.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-gray-400 text-sm">
+                    <p>Belum ada pesan masuk.</p>
+                </div>
+            ) : (
+                rooms.map(room => {
+                    const opponent = getOpponent(room);
+                    const lastMsg = room.messages[room.messages.length - 1];
+                    const isActive = activeRoom?._id === room._id;
+                    return (
+                        <button key={room._id} onClick={() => openRoom(room)} className={`w-full flex items-center gap-4 p-4 hover:bg-gray-50 transition-all text-left border-b border-gray-50 ${isActive ? 'bg-red-50' : ''}`}>
+                            <div className="relative w-12 h-12 shrink-0">
+                                <div className="w-full h-full rounded-full bg-gray-200 overflow-hidden border border-gray-100">
+                                    <Image src={opponent?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${opponent?.fullName}`} alt="User" width={48} height={48} className="object-cover" />
+                                </div>
                             </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-baseline mb-1">
-                                <h4 className={`text-sm font-bold truncate ${isActive ? 'text-red-700' : 'text-gray-900'}`}>{opponent?.fullName}</h4>
-                                <span className="text-[10px] text-gray-400">{lastMsg ? new Date(lastMsg.sentAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-baseline mb-1">
+                                    <h4 className={`text-sm font-bold truncate ${isActive ? 'text-red-700' : 'text-gray-900'}`}>{opponent?.fullName}</h4>
+                                    <span className="text-[10px] text-gray-400">{lastMsg ? new Date(lastMsg.sentAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
+                                </div>
+                                <p className={`text-xs truncate ${isActive ? 'text-red-600/70' : 'text-gray-500'}`}>
+                                    {lastMsg ? (
+                                        getSenderId(lastMsg.sender) === myId ? `Anda: ${lastMsg.content}` : lastMsg.content
+                                    ) : <span className="italic opacity-60">Mulai obrolan baru...</span>}
+                                </p>
                             </div>
-                            <p className={`text-xs truncate ${isActive ? 'text-red-600/70' : 'text-gray-500'}`}>
-                                {lastMsg ? (
-                                    getSenderId(lastMsg.sender) === myId ? `Anda: ${lastMsg.content}` : lastMsg.content
-                                ) : <span className="italic opacity-60">Mulai obrolan baru...</span>}
-                            </p>
-                        </div>
-                    </button>
-                );
-            })}
+                        </button>
+                    );
+                })
+            )}
         </div>
       </div>
 
@@ -214,7 +205,6 @@ export default function ChatPage() {
       <div className={`w-full md:w-2/3 bg-gray-50 flex-col ${activeRoom ? 'flex' : 'hidden md:flex'} relative`}>
         {activeRoom ? (
             <>
-                {/* HEADER CHAT */}
                 <div className="bg-white px-4 py-3 border-b border-gray-200 flex flex-col sticky top-0 z-20 shadow-sm">
                     <div className="flex items-center gap-3">
                         <button onClick={() => setActiveRoom(null)} className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><BackIcon /></button>
@@ -227,7 +217,7 @@ export default function ChatPage() {
                         </div>
                     </div>
 
-                    {/* [7] ORDER SNIPPET (Jika Ada) */}
+                    {/* ORDER SNIPPET */}
                     {relatedOrder && (
                         <div 
                             onClick={handleSnippetClick}
@@ -250,7 +240,7 @@ export default function ChatPage() {
                     )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f0f2f5] md:bg-white">
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f0f2f5] md:bg-white pb-20 md:pb-4">
                     {activeRoom.messages.map((msg, idx) => {
                         const senderId = getSenderId(msg.sender);
                         const isMe = senderId === myId;
@@ -287,6 +277,13 @@ export default function ChatPage() {
             <div className="hidden md:flex flex-col items-center justify-center h-full text-gray-300 bg-gray-50"><p>Pilih percakapan untuk memulai</p></div>
         )}
       </div>
+
+      {/* [FIX] TAMPILKAN NAVBAR PROVIDER JIKA ROLE PROVIDER & TIDAK LAGI BUKA ROOM CHAT */}
+      {isProvider && !activeRoom && (
+        <div className="lg:hidden">
+            <ProviderBottomNav />
+        </div>
+      )}
     </div>
   );
 }

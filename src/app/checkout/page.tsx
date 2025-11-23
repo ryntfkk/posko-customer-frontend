@@ -2,7 +2,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
@@ -29,7 +29,8 @@ interface CheckoutOption {
   price: number;
 }
 
-export default function CheckoutPage() {
+// Komponen Content dipisah agar bisa dibungkus Suspense (Best Practice Next.js untuk useSearchParams)
+function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -49,8 +50,13 @@ export default function CheckoutPage() {
   // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
 
+  // Ambil parameter 'category' dengan aman (menggunakan optional chaining)
+  const categoryParam = searchParams?.get('category') || null;
+
   // 1. Sinkronisasi Query Params & State
   useEffect(() => {
+    if (!searchParams) return;
+
     const typeParam = searchParams.get('type') as CheckoutType | null;
     const providerParam = searchParams.get('providerId');
 
@@ -65,7 +71,8 @@ export default function CheckoutPage() {
       setError(null);
       try {
         if (checkoutType === 'basic') {
-          const res = await fetchServices();
+          // Mengirim categoryParam ke API
+          const res = await fetchServices(categoryParam);
           setServices(res.data);
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
@@ -79,10 +86,11 @@ export default function CheckoutPage() {
       }
     };
 
+    // Jalankan fetch jika mode basic atau (direct + ada providerId)
     if (checkoutType === 'basic' || (checkoutType === 'direct' && selectedProviderId)) {
         loadData();
     }
-  }, [checkoutType, selectedProviderId]);
+  }, [checkoutType, selectedProviderId, categoryParam]);
 
   // 3. Normalisasi Data untuk UI
   const availableOptions: CheckoutOption[] = useMemo(() => {
@@ -133,6 +141,8 @@ export default function CheckoutPage() {
 
   // Auto-Add Service jika ada `serviceId` di URL
   useEffect(() => {
+    if (!searchParams) return;
+    
     const serviceIdParam = searchParams.get('serviceId');
     
     if (isHydrated && !hasAutoAdded.current && serviceIdParam && availableOptions.length > 0) {
@@ -155,6 +165,7 @@ export default function CheckoutPage() {
             }
             hasAutoAdded.current = true;
             
+            // Bersihkan URL parameter serviceId agar tidak add berulang kali
             const newParams = new URLSearchParams(searchParams.toString());
             newParams.delete('serviceId');
             window.history.replaceState(null, '', `?${newParams.toString()}`);
@@ -162,14 +173,12 @@ export default function CheckoutPage() {
     }
   }, [isHydrated, searchParams, availableOptions, checkoutType, selectedProviderId, providerLabel, upsertItem, cart]);
 
-
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
     const existing = cart.find((item) => item.id === key);
     return existing?.quantity ?? 0;
   };
 
-  // --- [PERBAIKAN] Handler Konfirmasi Order ---
   const handleConfirmOrder = async () => {
     if (!isHydrated) return;
     
@@ -182,7 +191,7 @@ export default function CheckoutPage() {
     try {
       // Buat query params untuk memberi tahu halaman Summary item mana yang harus diproses
       const queryParams = new URLSearchParams({
-        type: checkoutType, // 'basic' atau 'direct'
+        type: checkoutType,
       });
       
       if (checkoutType === 'direct' && selectedProviderId) {
@@ -481,5 +490,14 @@ export default function CheckoutPage() {
         )}
       </main>
     </div>
+  );
+}
+
+// Wrapper untuk Suspense agar sesuai standar Next.js 13+ untuk Client Component yang menggunakan useSearchParams
+export default function CheckoutPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>}>
+      <CheckoutContent />
+    </Suspense>
   );
 }
