@@ -1,24 +1,20 @@
-// src/app/chat/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { io, Socket } from 'socket.io-client';
 import api from '@/lib/axios';
 import { fetchProfile } from '@/features/auth/api';
+import { fetchMyOrders } from '@/features/orders/api'; // [1] Import Order API
 import { User } from '@/features/auth/types';
+import { Order } from '@/features/orders/types';
 
-// --- CONSTANTS ---
-// [OPTIMASI] Pindahkan URL ke luar komponen agar statis
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000';
 
-// --- ICONS ---
 const BackIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
 const SendIcon = () => <svg className="w-5 h-5 translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>;
-const SearchIcon = () => <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
 
-// --- TYPES ---
 interface ChatUser { _id: string; fullName: string; profilePictureUrl: string; }
 interface Message { _id: string; content: string; sender: string | { _id: string, fullName: string }; sentAt: string; }
 interface ChatRoom { _id: string; participants: ChatUser[]; messages: Message[]; updatedAt: string; }
@@ -31,31 +27,52 @@ export default function ChatPage() {
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  // [2] State untuk Orders
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+
   const [socket, setSocket] = useState<Socket | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Helper untuk mendapatkan ID User yang benar
   const myId = user ? ((user as any)._id || user.userId) : null;
+  
+  // [3] Cek Role Aktif
+  const isProvider = user?.activeRole === 'provider';
 
   const getSenderId = (sender: string | { _id: string }) => {
     return typeof sender === 'object' ? sender._id : sender;
   };
 
+  // [4] Fetch Data (Profile, Chat, dan Orders)
   useEffect(() => {
     const initChat = async () => {
       const token = localStorage.getItem('posko_token');
       if (!token) { router.push('/login'); return; }
 
       try {
+        // A. Fetch Profile
         const profileRes = await fetchProfile();
-        setUser(profileRes.data.profile);
+        const currentUser = profileRes.data.profile;
+        setUser(currentUser);
 
+        // B. Fetch Chat Rooms
         const chatRes = await api.get('/chat');
         setRooms(chatRes.data.data);
 
-        const newSocket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
+        // C. Fetch Active Orders (sesuai Role)
+        // Jika Provider -> fetchMyOrders('provider'), Jika Customer -> fetchMyOrders('customer')
+        const roleParam = currentUser.activeRole === 'provider' ? 'provider' : 'customer';
+        const ordersRes = await fetchMyOrders(roleParam);
+        const orders = Array.isArray(ordersRes.data) ? ordersRes.data : [];
+        
+        // Filter hanya order aktif
+        const activeOnly = orders.filter(o => 
+            ['pending', 'paid', 'accepted', 'on_the_way', 'working', 'waiting_approval'].includes(o.status)
+        );
+        setActiveOrders(activeOnly);
 
+        // D. Socket Setup
+        const newSocket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
         newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
           setRooms(prev => {
             const roomIndex = prev.findIndex(r => r._id === data.roomId);
@@ -78,15 +95,13 @@ export default function ChatPage() {
             return current;
           });
         });
-
         setSocket(newSocket);
+
       } catch (error) { console.error(error); } finally { setIsLoading(false); }
     };
 
     initChat();
     return () => { socket?.disconnect(); };
-    // [FIX] Hapus SOCKET_URL dari dependency array karena sekarang dia constant di luar komponen
-    // router aman dimasukkan, atau biarkan kosong jika linter complain
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
@@ -112,6 +127,41 @@ export default function ChatPage() {
         setActiveRoom(res.data.data);
         socket?.emit('join_chat', room._id);
     } catch (error) { console.error(error); }
+  };
+
+  // [5] Logic Mencari Order Terkait dengan Lawan Bicara
+  const relatedOrder = useMemo(() => {
+    if (!activeRoom || !user || activeOrders.length === 0) return null;
+    
+    const opponent = getOpponent(activeRoom);
+    if (!opponent) return null;
+
+    return activeOrders.find(order => {
+        // Jika saya Provider -> cari order dimana userId == opponent._id
+        if (isProvider) {
+            // @ts-ignore
+            const custId = order.userId?._id || order.userId; 
+            return custId === opponent._id;
+        } 
+        // Jika saya Customer -> cari order dimana providerId == opponent._id (lewat User ID provider)
+        else {
+            // Note: providerId di order object biasanya object Provider, yang punya userId object.
+            // Kita perlu akses user ID si provider.
+            // @ts-ignore
+            const provUser = order.providerId?.userId?._id || order.providerId?.userId;
+            return provUser === opponent._id;
+        }
+    });
+  }, [activeRoom, activeOrders, isProvider, user]);
+
+  // [6] Handle Klik Snippet -> Redirect sesuai Role
+  const handleSnippetClick = () => {
+    if (!relatedOrder) return;
+    if (isProvider) {
+        router.push(`/provider/jobs/${relatedOrder._id}`);
+    } else {
+        router.push(`/orders/${relatedOrder._id}`);
+    }
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-white text-sm text-gray-500">Memuat...</div>;
@@ -164,15 +214,40 @@ export default function ChatPage() {
       <div className={`w-full md:w-2/3 bg-gray-50 flex-col ${activeRoom ? 'flex' : 'hidden md:flex'} relative`}>
         {activeRoom ? (
             <>
-                <div className="bg-white px-4 py-3 border-b border-gray-200 flex items-center gap-3 sticky top-0 z-20 shadow-sm">
-                    <button onClick={() => setActiveRoom(null)} className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><BackIcon /></button>
-                    <div className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200">
-                        <Image src={getOpponent(activeRoom)?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${getOpponent(activeRoom)?.fullName}`} alt="User" width={36} height={36} className="object-cover" />
+                {/* HEADER CHAT */}
+                <div className="bg-white px-4 py-3 border-b border-gray-200 flex flex-col sticky top-0 z-20 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setActiveRoom(null)} className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><BackIcon /></button>
+                        <div className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden border border-gray-200">
+                            <Image src={getOpponent(activeRoom)?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${getOpponent(activeRoom)?.fullName}`} alt="User" width={36} height={36} className="object-cover" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-sm text-gray-900">{getOpponent(activeRoom)?.fullName}</span>
+                            <span className="text-[10px] text-green-600 font-medium">Online</span>
+                        </div>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="font-bold text-sm text-gray-900">{getOpponent(activeRoom)?.fullName}</span>
-                        <span className="text-[10px] text-green-600 font-medium">Online</span>
-                    </div>
+
+                    {/* [7] ORDER SNIPPET (Jika Ada) */}
+                    {relatedOrder && (
+                        <div 
+                            onClick={handleSnippetClick}
+                            className="mt-3 bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:bg-blue-100 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-blue-600 border border-blue-100 font-bold text-xs">
+                                    SVC
+                                </div>
+                                <div>
+                                    <p className="text-xs text-blue-800 font-bold">Pesanan Aktif: {relatedOrder.items[0]?.name}</p>
+                                    <p className="text-[10px] text-blue-600">Status: {relatedOrder.status.replace(/_/g, ' ').toUpperCase()}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs font-black text-blue-900">Rp {new Intl.NumberFormat('id-ID').format(relatedOrder.totalAmount)}</p>
+                                <span className="text-[10px] text-blue-500 underline">Lihat Detail</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#f0f2f5] md:bg-white">
