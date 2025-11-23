@@ -2,9 +2,19 @@
 import api from '@/lib/axios';
 import { ProviderListResponse, Provider } from './types';
 
-// Update fetchProviders agar menerima parameter opsional
-export const fetchProviders = async (lat?: number, lng?: number) => {
-  const params = lat && lng ? { lat, lng } : {};
+// [BARU] Interface untuk parameter query
+export interface FetchProvidersParams {
+  lat?: number;
+  lng?: number;
+  category?: string;
+  search?: string;
+  sortBy?: 'distance' | 'price_asc' | 'price_desc' | 'rating';
+}
+
+// [PERBAIKAN] Menerima object params, bukan argumen terpisah
+export const fetchProviders = async (params: FetchProvidersParams) => {
+  // Axios otomatis mengubah object params menjadi query string:
+  // /providers?lat=...&lng=...&category=ac&sortBy=distance
   const response = await api.get<ProviderListResponse>('/providers', { params });
   return response.data;
 };

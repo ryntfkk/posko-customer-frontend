@@ -2,18 +2,14 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react'; // Hapus useMemo
 import { useParams, useRouter } from 'next/navigation';
 import { fetchProviders } from '@/features/providers/api';
 import { Provider, ProviderServiceItem } from '@/features/providers/types';
 import { fetchProfile } from '@/features/auth/api';
 import { User } from '@/features/auth/types';
 
-// --- FUNGSI HELPER ---
-
-const normalize = (value: string) => value.toLowerCase().replace(/-/g, ' ').trim();
-
-// Mengembalikan jarak dalam KM (number) untuk sorting
+// --- FUNGSI HELPER DISPLAY (Hanya untuk tampilan UI, bukan sorting) ---
 function getRawDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -28,10 +24,19 @@ function getRawDistance(lat1: number, lon1: number, lat2: number, lon2: number) 
   return R * c;
 }
 
-// Mengembalikan string format jarak untuk UI
 function formatDistance(km: number) {
   if (km < 1) return `${(km * 1000).toFixed(0)} m`;
   return `${km.toFixed(1)} km`;
+}
+
+// Debounce hook sederhana agar tidak spam API saat mengetik
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
 }
 
 export default function ServiceCategoryPage() {
@@ -49,10 +54,13 @@ export default function ServiceCategoryPage() {
   const [sortBy, setSortBy] = useState<'distance' | 'price_asc' | 'price_desc' | 'rating'>('distance');
   const [showFilterMobile, setShowFilterMobile] = useState(false);
 
+  // Debounce search term (tunggu 500ms setelah user berhenti mengetik)
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
   const categoryParam = Array.isArray(params.category) ? params.category[0] : params.category;
   const categoryName = decodeURIComponent(categoryParam || 'Layanan').replace(/-/g, ' ');
 
-  // 1. Load User Profile (Untuk Lokasi)
+  // 1. Load User Profile (Hanya sekali di awal)
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
@@ -71,12 +79,28 @@ export default function ServiceCategoryPage() {
     loadUserProfile();
   }, []);
 
-  // 2. Load Providers
+  // 2. [PERBAIKAN] Load Providers dari Backend berdasarkan Filter
   useEffect(() => {
     const loadProviders = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const response = await fetchProviders();
+        // Siapkan parameter koordinat jika user sudah login & punya lokasi
+        let lat: number | undefined;
+        let lng: number | undefined;
+
+        if (userProfile?.location?.coordinates) {
+            [lng, lat] = userProfile.location.coordinates; // GeoJSON format [lng, lat]
+        }
+
+        // Panggil API dengan parameter lengkap
+        const response = await fetchProviders({
+            lat,
+            lng,
+            category: categoryParam, // Kirim slug kategori
+            search: debouncedSearch,
+            sortBy: sortBy
+        });
+
         setProviders(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error("Gagal memuat data provider:", error);
@@ -85,70 +109,16 @@ export default function ServiceCategoryPage() {
         setIsLoading(false);
       }
     };
-    loadProviders();
-  }, []);
 
-  // 3. LOGIKA FILTER, SEARCH & SORTING
-  const processedProviders = useMemo(() => {
-    if (!categoryParam) return [];
-    const activeCategory = normalize(categoryParam);
-    const searchLower = searchTerm.toLowerCase();
-
-    // A. Filter Kategori & Deduplikasi
-    const uniqueMap = new Map<string, Provider>();
-    providers.forEach((provider) => {
-        const hasMatchingService = provider.services.some((svc: ProviderServiceItem) => 
-            svc.serviceId && normalize(svc.serviceId.category).includes(activeCategory)
-        );
-        if (hasMatchingService && !uniqueMap.has(provider._id)) {
-            uniqueMap.set(provider._id, provider);
-        }
-    });
-    let result = Array.from(uniqueMap.values());
-
-    // B. Filter Search (Nama Mitra, Lokasi, atau Nama Layanan)
-    if (searchTerm) {
-        result = result.filter(p => 
-            p.userId.fullName.toLowerCase().includes(searchLower) ||
-            (p.userId.address?.city || '').toLowerCase().includes(searchLower) ||
-            (p.userId.address?.district || '').toLowerCase().includes(searchLower) ||
-            p.services.some(s => s.serviceId?.name.toLowerCase().includes(searchLower)) // Search by service name
-        );
+    // Jalankan ulang jika salah satu dependensi berubah
+    // Kita menunggu `isUserLoading` selesai agar koordinat tersedia (jika ada)
+    if (!isUserLoading) {
+        loadProviders();
     }
+  }, [categoryParam, debouncedSearch, sortBy, userProfile, isUserLoading]);
 
-    // C. Helper untuk mendapatkan Harga Terendah Provider
-    const getMinPrice = (p: Provider) => {
-        const prices = p.services.filter(s => s.isActive).map(s => s.price);
-        return prices.length ? Math.min(...prices) : Infinity;
-    };
-
-    // D. Helper untuk mendapatkan Jarak (Number)
-    const getDist = (p: Provider) => {
-        if (!userProfile?.location?.coordinates || !p.userId?.location?.coordinates) return Infinity;
-        const [uLng, uLat] = userProfile.location.coordinates;
-        const [pLng, pLat] = p.userId.location.coordinates;
-        return getRawDistance(uLat, uLng, pLat, pLng);
-    };
-
-    // E. Sorting Logic
-    result.sort((a, b) => {
-        switch (sortBy) {
-            case 'price_asc':
-                return getMinPrice(a) - getMinPrice(b);
-            case 'price_desc':
-                return getMinPrice(b) - getMinPrice(a);
-            case 'rating':
-                return (b.rating || 0) - (a.rating || 0);
-            case 'distance':
-            default:
-                return getDist(a) - getDist(b);
-        }
-    });
-
-    return result;
-  }, [providers, categoryParam, searchTerm, sortBy, userProfile]);
-
-  // Handlers
+  // --- LOGIKA DISPLAY HELPER ---
+  
   const handleBasicOrder = () => {
     const categoryQuery = categoryParam || 'ac';
     router.push(`/checkout?type=basic&category=${encodeURIComponent(categoryQuery)}`);
@@ -160,11 +130,11 @@ export default function ServiceCategoryPage() {
 
   const getStartingPriceLabel = (provider: Provider) => {
     if (!provider.services || provider.services.length === 0) return 'Hubungi CS';
-    const prices = provider.services
-      .filter((s: ProviderServiceItem) => s.isActive)
-      .map((s: ProviderServiceItem) => s.price);
-      
-    if (prices.length === 0) return 'Bervariasi';
+    // Filter service yang aktif saja
+    const activeServices = provider.services.filter((s: ProviderServiceItem) => s.isActive);
+    if (activeServices.length === 0) return 'Bervariasi';
+    
+    const prices = activeServices.map((s: ProviderServiceItem) => s.price);
     const minPrice = Math.min(...prices);
     return `Rp ${new Intl.NumberFormat('id-ID').format(minPrice)}`;
   };
@@ -213,7 +183,7 @@ export default function ServiceCategoryPage() {
 
       <main className="max-w-7xl mx-auto px-4 lg:px-8 py-4 lg:py-8 space-y-6">
         
-        {/* HERO SECTION (Compact on Mobile) */}
+        {/* HERO SECTION */}
         <section className="bg-gradient-to-br from-red-600 to-red-700 text-white rounded-2xl p-5 lg:p-8 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-lg shadow-red-200/50 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
           <div className="relative z-10 space-y-2">
@@ -235,7 +205,7 @@ export default function ServiceCategoryPage() {
         </section>
 
         {/* FILTER & SEARCH BAR */}
-        <div className="sticky top-[65px] lg:top-[80px] z-20 bg-gray-50/95 backdrop-blur py-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:bg-transparent">
+        <div className="sticky top-[65px] lg:top-[80px] z-20 bg-gray-50/95 backdrop-blur py-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:bg-transparent transition-all">
             <div className="flex gap-2 lg:gap-4 items-center">
                 {/* Search Input */}
                 <div className="flex-1 relative">
@@ -300,8 +270,8 @@ export default function ServiceCategoryPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm lg:text-lg font-bold text-gray-900">
-                {processedProviders.length} Mitra Tersedia
-                <span className="text-xs font-normal text-gray-500 ml-2 hidden lg:inline">diurutkan berdasarkan {sortBy === 'distance' ? 'jarak' : sortBy === 'rating' ? 'rating' : 'harga'}</span>
+                {providers.length} Mitra Ditemukan
+                {searchTerm && <span className="text-gray-500"> untuk &quot;{searchTerm}&quot;</span>}
             </h3>
           </div>
 
@@ -313,27 +283,27 @@ export default function ServiceCategoryPage() {
              </div>
           )}
 
-          {!isLoading && processedProviders.length === 0 && (
+          {!isLoading && providers.length === 0 && (
             <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 border-dashed">
               <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               </div>
-              <h4 className="text-base font-bold text-gray-900">Tidak ditemukan</h4>
-              <p className="text-xs text-gray-500 mt-1">Coba ubah filter atau kata kunci pencarian.</p>
+              <h4 className="text-base font-bold text-gray-900">Tidak ada mitra</h4>
+              <p className="text-xs text-gray-500 mt-1">Belum ada mitra yang sesuai filter Anda di area ini.</p>
               <button onClick={() => { setSearchTerm(''); setSortBy('distance'); }} className="mt-4 text-xs font-bold text-red-600 hover:underline">Reset Filter</button>
             </div>
           )}
 
           {/* PROVIDER GRID */}
-          {!isLoading && processedProviders.length > 0 && (
+          {!isLoading && providers.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 lg:gap-6">
-              {processedProviders.map((provider) => (
+              {providers.map((provider) => (
                 <button
                   key={provider._id}
                   onClick={() => handleOpenProvider(provider._id)}
                   className="flex flex-col bg-white rounded-xl lg:rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-red-100 hover:-translate-y-1 transition-all duration-300 group overflow-hidden text-left h-full"
                 >
-                  {/* Image Area - Aspect Ratio 4:3 agar tidak terlalu tinggi di mobile */}
+                  {/* Image Area */}
                   <div className="relative w-full aspect-[4/3] bg-gray-100 overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-40 z-10"></div>
                     <Image 
@@ -343,13 +313,11 @@ export default function ServiceCategoryPage() {
                       className="object-cover group-hover:scale-110 transition-transform duration-500" 
                     />
                     
-                    {/* Badge Jarak (Pojok Kiri Bawah) */}
                     <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] lg:text-[10px] font-bold text-white border border-white/20">
                        <svg className="w-2.5 h-2.5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                        {getDistanceLabel(provider)}
                     </div>
 
-                    {/* Badge Rating (Pojok Kanan Atas) */}
                     <div className="absolute top-2 right-2 z-20 bg-white/90 backdrop-blur-md px-1.5 py-0.5 rounded-md shadow-sm flex items-center gap-0.5 border border-white/50">
                         <span className="text-[9px] text-yellow-500">★</span>
                         <span className="text-[9px] font-bold text-gray-800">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
@@ -362,16 +330,15 @@ export default function ServiceCategoryPage() {
                       {provider.userId?.fullName}
                     </h4>
                     
-                    {/* Lokasi Singkat */}
                     <p className="text-[10px] lg:text-xs text-gray-500 line-clamp-1">
                        {getLocationName(provider)}
                     </p>
 
-                    {/* DAFTAR LAYANAN (TAGS) - NEW FEATURE */}
+                    {/* DAFTAR LAYANAN (TAGS) */}
                     <div className="flex flex-wrap gap-1 my-1">
                         {provider.services
                             .filter(s => s.isActive)
-                            .slice(0, 2) // Tampilkan max 2 layanan agar rapi di mobile
+                            .slice(0, 2) 
                             .map((svc, idx) => (
                                 <span key={idx} className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 line-clamp-1">
                                     {svc.serviceId?.name}
