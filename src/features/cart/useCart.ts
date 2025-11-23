@@ -3,12 +3,12 @@ import { useState, useEffect, useCallback } from 'react';
 
 // Tipe untuk satu item di Keranjang
 export interface CartItem {
-    id: string; // ID unik untuk item di keranjang (serviceId-orderType-[providerId])
+    id: string;
     serviceId: string;
     serviceName: string;
     orderType: 'direct' | 'basic';
     quantity: number;
-    pricePerUnit: number; // Harga yang disepakati (BasePrice saat ini)
+    pricePerUnit: number;
     totalPrice: number;
     providerId?: string;
     providerName?: string;
@@ -49,11 +49,26 @@ export const useCart = () => {
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
 
         setCart(prevCart => {
-            const existingIndex = prevCart.findIndex(existing => {
-                const existingKey = getCartItemId(existing.serviceId, existing.orderType, existing.providerId);
-                return existing.id === itemId || existingKey === itemId;
-            });
+            // 1. CEK KONFLIK PROVIDER (Logic Baru)
+            // Jika keranjang ada isinya, cek apakah item baru berasal dari provider/tipe yang berbeda?
+            if (prevCart.length > 0) {
+                const existingItem = prevCart[0]; // Ambil sampel item pertama
+                
+                const isDifferentProvider = item.orderType === 'direct' && item.providerId !== existingItem.providerId;
+                const isDifferentType = item.orderType !== existingItem.orderType;
 
+                // Jika Beda Provider atau Beda Tipe Order -> RESET KERANJANG (Ganti dengan item baru ini saja)
+                if (isDifferentProvider || isDifferentType) {
+                    return [{
+                        ...item,
+                        id: itemId,
+                        totalPrice: item.quantity * item.pricePerUnit,
+                    }];
+                }
+            }
+
+            // 2. LOGIC UPDATE BIASA (Jika provider sama atau cart kosong)
+            const existingIndex = prevCart.findIndex(existing => existing.id === itemId);
             const totalPrice = item.quantity * item.pricePerUnit;
 
             if (existingIndex >= 0) {
@@ -87,41 +102,36 @@ export const useCart = () => {
     const updateItemQuantity = useCallback((itemId: string, quantity: number) => {
         setCart(prevCart => {
             return prevCart.reduce((acc, item) => {
-                const matches = item.id === itemId || getCartItemId(item.serviceId, item.orderType, item.providerId) === itemId;
-
-                if (!matches) {
+                if (item.id === itemId) {
+                    if (quantity > 0) {
+                        acc.push({
+                            ...item,
+                            quantity,
+                            totalPrice: quantity * item.pricePerUnit,
+                        });
+                    }
+                } else {
                     acc.push(item);
-                    return acc;
                 }
-
-                if (quantity <= 0) return acc;
-
-                acc.push({
-                    ...item,
-                    quantity,
-                    totalPrice: quantity * item.pricePerUnit,
-                });
-
                 return acc;
             }, [] as CartItem[]);
         });
     }, []);
 
     const removeItem = useCallback((itemId: string) => {
-        setCart(prevCart => prevCart.filter(item => item.id !== itemId && getCartItemId(item.serviceId, item.orderType, item.providerId) !== itemId));
+        setCart(prevCart => prevCart.filter(item => item.id !== itemId));
     }, []);
 
     const clearCart = useCallback(() => {
         setCart([]);
     }, []);
 
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0); // Menghitung total kuantitas
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0);
 
     return {
         cart,
-        addItem: upsertItem,
-        upsertItem,
+        upsertItem, // Gunakan nama konsisten
         removeItem,
         clearCart,
         totalItems,
