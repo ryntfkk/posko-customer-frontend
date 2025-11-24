@@ -1,8 +1,8 @@
 // src/app/order/summary/page.tsx
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; 
+import { useMemo, useState, Suspense } from 'react'; // Import Suspense
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 import { useCart } from '@/features/cart/useCart';
@@ -25,9 +25,10 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-export default function OrderSummaryPage() {
+// [PERBAIKAN] Pisahkan konten utama ke komponen terpisah agar bisa di-suspend
+function OrderSummaryContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); 
   
   const { cart, clearCart, isHydrated } = useCart(); 
   
@@ -38,7 +39,6 @@ export default function OrderSummaryPage() {
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // [PERBAIKAN] State untuk Tanggal Kunjungan
   const [scheduledAt, setScheduledAt] = useState('');
 
   const orderTypeParam = searchParams.get('type') as 'basic' | 'direct' | null;
@@ -79,10 +79,8 @@ export default function OrderSummaryPage() {
   };
 
   const handlePlaceOrderAndPay = async () => {
-    // 1. Validasi
     if (activeCartItems.length === 0) return;
     
-    // [PERBAIKAN] Validasi Tanggal Kunjungan
     if (!scheduledAt) {
         alert("Mohon pilih tanggal dan jam kunjungan terlebih dahulu.");
         return;
@@ -98,12 +96,11 @@ export default function OrderSummaryPage() {
     try {
       const mainItem = activeCartItems[0];
       
-      // [PERBAIKAN] Masukkan scheduledAt ke payload
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
         totalAmount: currentTotalAmount,
-        scheduledAt: new Date(scheduledAt).toISOString(), // Convert ke ISO String
+        scheduledAt: new Date(scheduledAt).toISOString(),
         items: activeCartItems.map(item => ({
             serviceId: item.serviceId,
             name: item.serviceName,
@@ -248,7 +245,7 @@ export default function OrderSummaryPage() {
           {/* Kiri: Alamat, Tanggal & Promo */}
           <div className="md:col-span-2 space-y-6">
             
-            {/* [PERBAIKAN] INPUT JADWAL KUNJUNGAN */}
+            {/* INPUT JADWAL KUNJUNGAN */}
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
                 <div>
                   <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Jadwal</p>
@@ -365,5 +362,21 @@ export default function OrderSummaryPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+// [PERBAIKAN] Export Default dengan Suspense Boundary
+export default function OrderSummaryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 text-sm">
+         <div className="flex flex-col items-center gap-2">
+            <div className="w-6 h-6 border-2 border-gray-300 border-t-red-600 rounded-full animate-spin"></div>
+            <span>Memuat halaman pembayaran...</span>
+         </div>
+      </div>
+    }>
+      <OrderSummaryContent />
+    </Suspense>
   );
 }
