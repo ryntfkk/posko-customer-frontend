@@ -69,7 +69,7 @@ export default function ProviderDashboard() {
                   {order.orderType === 'direct' ? 'Langsung Untukmu' : 'Basic Order'}
                 </span>
                 <span className="text-xs text-gray-400">
-                  {new Date(order.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(order.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}
                 </span>
               </div>
 

@@ -173,7 +173,7 @@ export default function OrderDetailPage() {
           <div className="mt-4 pt-4 border-t border-gray-100">
             <p className="text-sm text-gray-500">Tanggal Pemesanan</p>
             <p className="font-medium text-gray-900">
-              {new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}
+              {new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short', hour12: false })}
             </p>
           </div>
         </div>

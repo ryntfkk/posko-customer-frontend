@@ -221,7 +221,7 @@ export default function ChatWidget({ user }: { user: any }) {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-baseline mb-0.5">
                                                     <h4 className="text-sm font-bold text-gray-900 truncate group-hover:text-red-600">{opponent?.fullName}</h4>
-                                                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{lastMsg ? new Date(lastMsg.sentAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
+                                                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{lastMsg ? new Date(lastMsg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false}) : ''}</span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 truncate font-medium">
                                                     {lastMsg ? (
@@ -254,7 +254,7 @@ export default function ChatWidget({ user }: { user: any }) {
                                         }`}>
                                             {msg.content}
                                             <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-red-100' : 'text-gray-400'}`}>
-                                                {new Date(msg.sentAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {new Date(msg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false})}
                                             </div>
                                         </div>
                                     </div>

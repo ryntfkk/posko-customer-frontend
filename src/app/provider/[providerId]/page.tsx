@@ -19,7 +19,7 @@ const MOCK_PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop",
 ];
 
-// --- DEFAULT SCHEDULE (Fallback jika provider belum atur jadwal) ---
+// --- DEFAULT SCHEDULE (Fallback) ---
 const DEFAULT_SCHEDULE: ScheduleDay[] = [
     { dayIndex: 0, dayName: 'Minggu', isOpen: false, start: '09:00', end: '17:00' },
     { dayIndex: 1, dayName: 'Senin', isOpen: true, start: '09:00', end: '17:00' },
@@ -71,7 +71,7 @@ export default function ProviderProfilePage() {
   const [favCount, setFavCount] = useState(128); 
   const [isSharing, setIsSharing] = useState(false);
 
-  // Ambil Hari Ini (0 = Minggu, 1 = Senin, dst)
+  // Ambil Hari Ini (0 = Minggu, 1 = Senin, dst) untuk tampilan awal
   const todayIndex = new Date().getDay();
 
   useEffect(() => {
@@ -137,9 +137,41 @@ export default function ProviderProfilePage() {
     ? provider.schedule 
     : DEFAULT_SCHEDULE;
 
-  // Cek status hari ini
+  // Cek status hari ini untuk tampilan
   const todaySchedule = scheduleList.find(s => s.dayIndex === todayIndex);
   const isTodayOpen = todaySchedule?.isOpen ?? false;
+
+  // [FITUR BARU] Validasi saat tombol pesan diklik
+  const handleOrderClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // 1. Cek Waktu Sekarang (Real-time saat klik)
+    const now = new Date();
+    const currentDayIndex = now.getDay();
+    const currentHour = now.getHours().toString().padStart(2, '0');
+    const currentMinute = now.getMinutes().toString().padStart(2, '0');
+    const currentTimeStr = `${currentHour}:${currentMinute}`;
+
+    // 2. Cari Jadwal Hari Ini
+    const todaySched = scheduleList.find(s => s.dayIndex === currentDayIndex);
+
+    // 3. Lakukan Pengecekan
+    if (todaySched) {
+        // Cek apakah hari ini tutup
+        if (!todaySched.isOpen) {
+            e.preventDefault(); // Batalkan navigasi Link
+            alert(`Maaf, Mitra ini tutup pada hari ${todaySched.dayName}.`);
+            return;
+        }
+
+        // Cek apakah di luar jam operasional
+        // Asumsi format "HH:mm" string comparison works correctly for 24h format
+        if (currentTimeStr < todaySched.start || currentTimeStr > todaySched.end) {
+            e.preventDefault(); // Batalkan navigasi Link
+            alert(`Maaf, Mitra sedang tutup. \nJam Operasional hari ini: ${todaySched.start} - ${todaySched.end}`);
+            return;
+        }
+    }
+    // Jika lolos validasi, Link akan memproses navigasi ke Checkout
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12 font-sans">
@@ -249,9 +281,10 @@ export default function ProviderProfilePage() {
                                     <p className="font-black text-gray-900 text-sm">
                                         {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price)}
                                     </p>
-                                    {/* Tombol Pesan Khusus Layanan */}
+                                    {/* Tombol Pesan Khusus Layanan - DENGAN VALIDASI */}
                                     <Link 
                                         href={`/checkout?type=direct&providerId=${provider._id}&serviceId=${item.serviceId._id}`}
+                                        onClick={handleOrderClick} // [VALIDASI]
                                         className="mt-1 inline-block text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded-md transition-colors"
                                     >
                                         Pilih
@@ -335,6 +368,7 @@ export default function ProviderProfilePage() {
          </div>
          <Link
             href={`/checkout?type=direct&providerId=${provider._id}`}
+            onClick={handleOrderClick} // [VALIDASI]
             className="px-6 py-3 rounded-xl bg-red-600 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-transform active:scale-95 flex items-center gap-2"
         >
             Pesan Jasa

@@ -99,7 +99,7 @@ export default function OrderListPage() {
                     <div className="flex flex-col">
                         <span className="text-[10px] text-gray-400 font-mono">#{order._id.slice(-6).toUpperCase()}</span>
                         <span className="text-xs text-gray-500 mt-0.5">
-                            {new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            {new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
                         </span>
                     </div>
                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>

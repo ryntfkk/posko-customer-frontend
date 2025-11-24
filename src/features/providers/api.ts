@@ -22,7 +22,13 @@ export const fetchProviderById = async (id: string) => {
   return response.data;
 };
 
-// [BARU] Update Jadwal Provider
+// [BARU] Get My Provider Profile (Untuk Dashboard)
+export const fetchMyProviderProfile = async () => {
+  const response = await api.get<{ data: Provider }>('/providers/me');
+  return response.data;
+};
+
+// Update Jadwal Provider
 export const updateProviderSchedule = async (schedule: ScheduleDay[]) => {
   const response = await api.put<{ message: string; data: ScheduleDay[] }>('/providers/schedule', schedule);
   return response.data;
