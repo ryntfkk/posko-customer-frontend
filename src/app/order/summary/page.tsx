@@ -2,10 +2,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation'; // [UPDATE] Tambah useSearchParams
+import { useRouter, useSearchParams } from 'next/navigation'; 
 import Link from 'next/link';
 
-// Import Hooks & Features
 import { useCart } from '@/features/cart/useCart';
 import { createOrder } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api'; 
@@ -28,34 +27,31 @@ const formatCurrency = (amount: number) => {
 
 export default function OrderSummaryPage() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // [UPDATE] Ambil parameter URL
+  const searchParams = useSearchParams();
   
-  // Hook Data Keranjang
-  const { cart, clearCart, isHydrated } = useCart(); // Hapus totalAmount & totalItems global dari sini
+  const { cart, clearCart, isHydrated } = useCart(); 
   
   const isSnapLoaded = useMidtrans();
 
-  // Local State
+  // State
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // [PERBAIKAN] State untuk Tanggal Kunjungan
+  const [scheduledAt, setScheduledAt] = useState('');
 
-  // [PERBAIKAN LOGIKA] Filter Item Sesuai Mode Checkout
   const orderTypeParam = searchParams.get('type') as 'basic' | 'direct' | null;
   const providerIdParam = searchParams.get('providerId');
   const categoryParam = searchParams.get('category');
 
   const activeCartItems = useMemo(() => {
     return cart.filter((item) => {
-      // 1. Pastikan qty > 0
       if (item.quantity <= 0) return false;
       
-      // 2. Jika ada parameter type di URL, lakukan filter ketat
       if (orderTypeParam) {
-        // Harus sesuai tipe (basic/direct)
         if (item.orderType !== orderTypeParam) return false;
         
-        // Jika direct, harus sesuai providerId
         if (orderTypeParam === 'direct' && providerIdParam) {
             if (item.providerId !== providerIdParam) return false;
         }
@@ -64,16 +60,13 @@ export default function OrderSummaryPage() {
             if ((item.category ?? null) !== categoryParam) return false;
         }
       }
-      
       return true;
     });
   }, [cart, orderTypeParam, providerIdParam, categoryParam]);
 
-  // [PERBAIKAN LOGIKA] Hitung Total Berdasarkan Item yang Difilter Saja
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Logika Diskon Dummy
   const estimatedDiscount = 0;
   const payableAmount = Math.max(currentTotalAmount - estimatedDiscount, 0);
 
@@ -85,10 +78,16 @@ export default function OrderSummaryPage() {
     setPromoMessage('Kode promo diterapkan secara otomatis jika valid.');
   };
 
-  // --- FUNGSI UTAMA: ORDER & BAYAR ---
   const handlePlaceOrderAndPay = async () => {
-    // 1. Validasi Awal
+    // 1. Validasi
     if (activeCartItems.length === 0) return;
+    
+    // [PERBAIKAN] Validasi Tanggal Kunjungan
+    if (!scheduledAt) {
+        alert("Mohon pilih tanggal dan jam kunjungan terlebih dahulu.");
+        return;
+    }
+
     if (!isSnapLoaded) {
       alert('Sistem pembayaran sedang dimuat, mohon tunggu sebentar...');
       return;
@@ -97,13 +96,14 @@ export default function OrderSummaryPage() {
     setIsProcessing(true);
 
     try {
-      // A. Persiapkan Payload Order
       const mainItem = activeCartItems[0];
+      
+      // [PERBAIKAN] Masukkan scheduledAt ke payload
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
-        // Jika 'direct', providerId wajib ada. Jika 'basic', null.
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
-        totalAmount: currentTotalAmount, // Gunakan total yang sudah difilter
+        totalAmount: currentTotalAmount,
+        scheduledAt: new Date(scheduledAt).toISOString(), // Convert ke ISO String
         items: activeCartItems.map(item => ({
             serviceId: item.serviceId,
             name: item.serviceName,
@@ -113,19 +113,16 @@ export default function OrderSummaryPage() {
         }))
       };
 
-      console.log("1. Membuat Order...");
-      // B. Panggil API createOrder
+      console.log("1. Membuat Order...", orderPayload);
       const orderRes = await createOrder(orderPayload);
       const orderId = orderRes.data._id;
       console.log("   ✅ Order Terbentuk ID:", orderId);
 
       console.log("2. Meminta Token Pembayaran...");
-      // C. Panggil API createPayment (Backend akan request ke Midtrans)
       const paymentRes = await createPayment(orderId);
       const { snapToken } = paymentRes.data;
       console.log("   ✅ Token Didapat:", snapToken);
 
-      // D. Munculkan Popup Midtrans (Snap)
       if (window.snap) {
         window.snap.pay(snapToken, {
           onSuccess: function(result: any) {
@@ -163,8 +160,6 @@ export default function OrderSummaryPage() {
       setIsProcessing(false);
     }
   };
-
-  // --- RENDER COMPONENT ---
 
   if (!isHydrated) {
     return (
@@ -250,8 +245,27 @@ export default function OrderSummaryPage() {
         {/* Informasi & Pembayaran */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Kiri: Alamat & Promo */}
+          {/* Kiri: Alamat, Tanggal & Promo */}
           <div className="md:col-span-2 space-y-6">
+            
+            {/* [PERBAIKAN] INPUT JADWAL KUNJUNGAN */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                <div>
+                  <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Jadwal</p>
+                  <h2 className="text-lg font-bold text-gray-900">Kapan kami harus datang?</h2>
+                </div>
+                <div className="relative">
+                    <input 
+                        type="datetime-local"
+                        value={scheduledAt}
+                        onChange={(e) => setScheduledAt(e.target.value)}
+                        min={new Date().toISOString().slice(0, 16)} // Tidak boleh masa lalu
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    />
+                    <p className="text-xs text-gray-400 mt-2">* Pilih tanggal dan jam kunjungan yang Anda inginkan.</p>
+                </div>
+            </div>
+
             {/* Alamat */}
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
               <div className="flex items-center justify-between">

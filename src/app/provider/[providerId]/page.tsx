@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 
 import { fetchProviderById } from '@/features/providers/api';
 import { fetchProfile } from '@/features/auth/api';
-import { Provider, ScheduleDay } from '@/features/providers/types';
+import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
 
 // --- MOCK DATA (Hanya untuk Portofolio) ---
@@ -17,17 +17,6 @@ const MOCK_PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1581094794329-cd8119608f84?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop",
-];
-
-// --- DEFAULT SCHEDULE (Fallback) ---
-const DEFAULT_SCHEDULE: ScheduleDay[] = [
-    { dayIndex: 0, dayName: 'Minggu', isOpen: false, start: '09:00', end: '17:00' },
-    { dayIndex: 1, dayName: 'Senin', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 2, dayName: 'Selasa', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 3, dayName: 'Rabu', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 4, dayName: 'Kamis', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 5, dayName: 'Jumat', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 6, dayName: 'Sabtu', isOpen: true, start: '09:00', end: '14:00' },
 ];
 
 // --- FUNGSI HELPER ---
@@ -43,7 +32,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return d < 1 ? `${(d * 1000).toFixed(0)} m` : `${d.toFixed(1)} km`;
 }
 
-// Icon Components
+// --- ICONS ---
 const ShareIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
 );
@@ -52,9 +41,13 @@ const HeartIcon = ({ solid }: { solid: boolean }) => (
   <svg className={`w-5 h-5 transition-transform active:scale-75 ${solid ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} fill={solid ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
 );
 
-const ClockIcon = () => (
-  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+const CalendarIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
 );
+
+const ChevronLeft = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
+const ChevronRight = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>;
+const CloseIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>;
 
 export default function ProviderProfilePage() {
   const params = useParams();
@@ -71,8 +64,18 @@ export default function ProviderProfilePage() {
   const [favCount, setFavCount] = useState(128); 
   const [isSharing, setIsSharing] = useState(false);
 
-  // Ambil Hari Ini (0 = Minggu, 1 = Senin, dst) untuk tampilan awal
-  const todayIndex = new Date().getDay();
+  // Calendar State
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Validasi Tanggal & Jam
+  // (Kita gunakan logika sederhana di sini: klik "Pilih" -> ke halaman checkout -> baru validasi detail di sana)
+  // Namun validasi visual tetap kita tampilkan di kalender
+  const handleOrderClick = (e: React.MouseEvent<HTMLAnchorElement>, dateStr?: string) => {
+      // Fungsi ini opsional jika ingin direct action dari kalender,
+      // tapi saat ini flow kita adalah tombol "Pilih" di list layanan.
+      // Validasi detail ada di halaman Checkout atau saat klik tombol "Pilih".
+  };
 
   useEffect(() => {
     if (!providerId) return;
@@ -129,49 +132,89 @@ export default function ProviderProfilePage() {
     setFavCount(prev => isFavorited ? prev - 1 : prev + 1);
   };
 
+  const changeMonth = (delta: number) => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() + delta);
+    setCurrentMonth(newDate);
+  };
+
+  // --- RENDER KALENDER KETERSEDIAAN (DI DALAM MODAL) ---
+  const renderCalendarContent = () => {
+    if (!provider) return null;
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0=Minggu
+    
+    const blanks = Array.from({ length: firstDayIndex }, (_, i) => <div key={`blank-${i}`} />);
+
+    const dayCells = Array.from({ length: daysInMonth }, (_, i) => {
+        const day = i + 1;
+        const date = new Date(year, month, day);
+        const offsetDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+        const dateStr = offsetDate.toISOString().split('T')[0];
+        
+        const blockedSet = new Set(provider.blockedDates.map(d => d.split('T')[0]));
+        const bookedSet = new Set(provider.bookedDates?.map(d => d.split('T')[0]) || []);
+
+        const isBlocked = blockedSet.has(dateStr);
+        const isBooked = bookedSet.has(dateStr);
+        const isPast = dateStr < new Date().toISOString().split('T')[0];
+
+        let bgClass = "bg-green-50 text-green-700 border-green-100"; // Default: Tersedia
+        let label = "Ada";
+
+        if (isPast) {
+            bgClass = "bg-gray-50 text-gray-300 border-gray-100"; // Masa lalu
+            label = "";
+        } else if (isBooked) {
+            bgClass = "bg-red-50 text-red-600 border-red-100"; // Penuh
+            label = "Penuh";
+        } else if (isBlocked) {
+            bgClass = "bg-gray-100 text-gray-400 border-gray-200"; // Libur Manual
+            label = "Libur";
+        }
+
+        return (
+            <div key={day} className={`aspect-square rounded-lg border flex flex-col items-center justify-center text-xs ${bgClass}`}>
+                <span className="font-bold">{day}</span>
+                {!isPast && <span className="text-[8px] uppercase tracking-tight">{label}</span>}
+            </div>
+        );
+    });
+
+    return (
+        <div className="p-4">
+            <div className="flex items-center justify-between mb-4 bg-gray-50 p-2 rounded-xl">
+                <button onClick={() => changeMonth(-1)} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600"><ChevronLeft/></button>
+                <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">
+                    {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                </span>
+                <button onClick={() => changeMonth(1)} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600"><ChevronRight/></button>
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {['M','S','S','R','K','J','S'].map((d,i) => (
+                    <span key={i} className="text-[10px] font-bold text-gray-400">{d}</span>
+                ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                {blanks}
+                {dayCells}
+            </div>
+
+            <div className="flex gap-3 mt-6 justify-center text-[10px] text-gray-600 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>Tersedia</div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>Penuh</div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>Libur</div>
+            </div>
+        </div>
+    );
+  };
+
   if (isLoading) return <ProviderLoading />;
   if (!provider) return <ProviderNotFound />;
-
-  // Gunakan jadwal dari DB atau default
-  const scheduleList = (provider.schedule && provider.schedule.length > 0) 
-    ? provider.schedule 
-    : DEFAULT_SCHEDULE;
-
-  // Cek status hari ini untuk tampilan
-  const todaySchedule = scheduleList.find(s => s.dayIndex === todayIndex);
-  const isTodayOpen = todaySchedule?.isOpen ?? false;
-
-  // [FITUR BARU] Validasi saat tombol pesan diklik
-  const handleOrderClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // 1. Cek Waktu Sekarang (Real-time saat klik)
-    const now = new Date();
-    const currentDayIndex = now.getDay();
-    const currentHour = now.getHours().toString().padStart(2, '0');
-    const currentMinute = now.getMinutes().toString().padStart(2, '0');
-    const currentTimeStr = `${currentHour}:${currentMinute}`;
-
-    // 2. Cari Jadwal Hari Ini
-    const todaySched = scheduleList.find(s => s.dayIndex === currentDayIndex);
-
-    // 3. Lakukan Pengecekan
-    if (todaySched) {
-        // Cek apakah hari ini tutup
-        if (!todaySched.isOpen) {
-            e.preventDefault(); // Batalkan navigasi Link
-            alert(`Maaf, Mitra ini tutup pada hari ${todaySched.dayName}.`);
-            return;
-        }
-
-        // Cek apakah di luar jam operasional
-        // Asumsi format "HH:mm" string comparison works correctly for 24h format
-        if (currentTimeStr < todaySched.start || currentTimeStr > todaySched.end) {
-            e.preventDefault(); // Batalkan navigasi Link
-            alert(`Maaf, Mitra sedang tutup. \nJam Operasional hari ini: ${todaySched.start} - ${todaySched.end}`);
-            return;
-        }
-    }
-    // Jika lolos validasi, Link akan memproses navigasi ke Checkout
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12 font-sans">
@@ -222,7 +265,7 @@ export default function ProviderProfilePage() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-                    <div className="flex items-center gap-4 divide-x divide-gray-200 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm">
+                    <div className="flex items-center gap-4 divide-x divide-gray-200 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm w-full sm:w-auto justify-center sm:justify-start">
                         <div className="flex items-center gap-1.5 pr-2">
                             <span className="text-yellow-500 text-lg">★</span>
                             <div className="flex flex-col items-start">
@@ -236,14 +279,21 @@ export default function ProviderProfilePage() {
                         </div>
                     </div>
 
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        <button onClick={toggleFavorite} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl border transition-all duration-200 ${isFavorited ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                            <HeartIcon solid={isFavorited} />
-                            <span className="text-xs font-bold">{favCount}</span>
+                    <div className="flex gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+                        {/* TOMBOL LIHAT JADWAL */}
+                        <button 
+                            onClick={() => setIsCalendarOpen(true)}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-all duration-200 whitespace-nowrap"
+                        >
+                            <CalendarIcon />
+                            <span className="text-xs font-bold">Lihat Jadwal</span>
                         </button>
-                        <button onClick={handleShare} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 ${isSharing ? 'scale-95 bg-gray-100' : ''}`}>
+
+                        <button onClick={toggleFavorite} className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${isFavorited ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                            <HeartIcon solid={isFavorited} />
+                        </button>
+                        <button onClick={handleShare} className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 ${isSharing ? 'scale-95 bg-gray-100' : ''}`}>
                             <ShareIcon />
-                            <span className="text-xs font-bold">Bagikan</span>
                         </button>
                     </div>
                 </div>
@@ -251,7 +301,7 @@ export default function ProviderProfilePage() {
           </div>
         </section>
 
-        {/* LAYOUT GRID UTAMA (2 Kolom di Desktop) */}
+        {/* LAYOUT GRID UTAMA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             
             {/* KOLOM KIRI (Services & Docs) */}
@@ -281,10 +331,9 @@ export default function ProviderProfilePage() {
                                     <p className="font-black text-gray-900 text-sm">
                                         {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(item.price)}
                                     </p>
-                                    {/* Tombol Pesan Khusus Layanan - DENGAN VALIDASI */}
+                                    {/* Tombol Pesan Khusus Layanan */}
                                     <Link 
                                         href={`/checkout?type=direct&providerId=${provider._id}&serviceId=${item.serviceId._id}`}
-                                        onClick={handleOrderClick} // [VALIDASI]
                                         className="mt-1 inline-block text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded-md transition-colors"
                                     >
                                         Pilih
@@ -315,46 +364,44 @@ export default function ProviderProfilePage() {
                 </section>
             </div>
 
-            {/* KOLOM KANAN (Jadwal & Info Tambahan) */}
+            {/* KOLOM KANAN (Info Tambahan) */}
             <div className="space-y-6">
-                
-                {/* 4. SCHEDULE SECTION (DINAMIS) */}
-                <section className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                            <ClockIcon />
-                            Jadwal Operasional
-                        </h3>
-                        {isTodayOpen ? (
-                            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">Buka Hari Ini</span>
-                        ) : (
-                            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">Tutup Hari Ini</span>
-                        )}
-                    </div>
-                    <div className="space-y-2">
-                        {scheduleList.map((s) => {
-                            const isToday = s.dayIndex === todayIndex;
-                            return (
-                                <div key={s.dayName} className={`flex justify-between text-sm py-1.5 px-2 rounded-lg ${isToday ? 'bg-gray-100 font-semibold' : ''}`}>
-                                    <span className={`w-20 ${isToday ? 'text-gray-900' : 'text-gray-500'}`}>{s.dayName}</span>
-                                    <span className={s.isOpen ? 'text-gray-700' : 'text-red-500'}>
-                                        {s.isOpen ? `${s.start} - ${s.end}` : 'Tutup'}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                {/* Info Tambahan */}
                 <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-blue-800 text-xs leading-relaxed">
                     <p className="font-bold mb-1">✨ Jaminan Posko</p>
-                    <p>Layanan dari mitra ini dilindungi garansi layanan 7 hari dan asuransi pengerjaan.</p>
+                    <p>Layanan dari mitra ini dilindungi garansi layanan 7 hari dan asuransi pengerjaan. Uang Anda aman hingga pekerjaan selesai.</p>
+                </div>
+                
+                {/* Tips untuk Customer */}
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 text-gray-600 text-xs leading-relaxed">
+                    <p className="font-bold mb-1 text-gray-800">💡 Tips Pemesanan</p>
+                    <p>Pastikan tanggal yang Anda pilih berwarna Hijau (Tersedia). Tanggal Merah berarti Mitra sedang penuh atau libur.</p>
                 </div>
             </div>
-
         </div>
       </main>
+
+      {/* MODAL KALENDER */}
+      {isCalendarOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn" onClick={() => setIsCalendarOpen(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-slideUp" onClick={(e) => e.stopPropagation()}>
+                <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-bold text-lg text-gray-900">Jadwal Ketersediaan</h3>
+                    <button onClick={() => setIsCalendarOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">
+                        <CloseIcon />
+                    </button>
+                </div>
+                
+                {renderCalendarContent()}
+                
+                <div className="p-4 bg-gray-50 text-center">
+                    <p className="text-xs text-gray-500">Pilih layanan dan tentukan tanggal saat checkout.</p>
+                    <button onClick={() => setIsCalendarOpen(false)} className="mt-3 w-full py-2.5 bg-gray-900 text-white font-bold text-sm rounded-xl hover:bg-gray-800 transition-colors">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* STICKY BOTTOM CTA (Mobile Only) */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 lg:hidden z-40 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
@@ -368,7 +415,6 @@ export default function ProviderProfilePage() {
          </div>
          <Link
             href={`/checkout?type=direct&providerId=${provider._id}`}
-            onClick={handleOrderClick} // [VALIDASI]
             className="px-6 py-3 rounded-xl bg-red-600 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-transform active:scale-95 flex items-center gap-2"
         >
             Pesan Jasa
