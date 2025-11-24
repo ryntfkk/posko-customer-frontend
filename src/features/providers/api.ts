@@ -1,8 +1,8 @@
 // src/features/providers/api.ts
 import api from '@/lib/axios';
-import { ProviderListResponse, Provider } from './types';
+import { ProviderListResponse, Provider, ScheduleDay } from './types';
 
-// [BARU] Interface untuk parameter query
+// Interface untuk parameter query
 export interface FetchProvidersParams {
   lat?: number;
   lng?: number;
@@ -11,15 +11,19 @@ export interface FetchProvidersParams {
   sortBy?: 'distance' | 'price_asc' | 'price_desc' | 'rating';
 }
 
-// [PERBAIKAN] Menerima object params, bukan argumen terpisah
 export const fetchProviders = async (params: FetchProvidersParams) => {
-  // Axios otomatis mengubah object params menjadi query string:
-  // /providers?lat=...&lng=...&category=ac&sortBy=distance
+  // Axios otomatis mengubah object params menjadi query string
   const response = await api.get<ProviderListResponse>('/providers', { params });
   return response.data;
 };
 
 export const fetchProviderById = async (id: string) => {
   const response = await api.get<{ data: Provider }>(`/providers/${id}`);
+  return response.data;
+};
+
+// [BARU] Update Jadwal Provider
+export const updateProviderSchedule = async (schedule: ScheduleDay[]) => {
+  const response = await api.put<{ message: string; data: ScheduleDay[] }>('/providers/schedule', schedule);
   return response.data;
 };

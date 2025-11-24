@@ -8,10 +8,10 @@ import { useEffect, useState } from 'react';
 
 import { fetchProviderById } from '@/features/providers/api';
 import { fetchProfile } from '@/features/auth/api';
-import { Provider } from '@/features/providers/types';
+import { Provider, ScheduleDay } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
 
-// --- MOCK DATA ---
+// --- MOCK DATA (Hanya untuk Portofolio) ---
 const MOCK_PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1581094794329-cd8119608f84?q=80&w=500&auto=format&fit=crop",
@@ -19,14 +19,15 @@ const MOCK_PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop",
 ];
 
-const MOCK_SCHEDULE = [
-  { day: 'Senin', time: '08:00 - 20:00', status: 'open' },
-  { day: 'Selasa', time: '08:00 - 20:00', status: 'open' },
-  { day: 'Rabu', time: '08:00 - 20:00', status: 'open' },
-  { day: 'Kamis', time: '08:00 - 20:00', status: 'open' },
-  { day: 'Jumat', time: '13:00 - 21:00', status: 'open' },
-  { day: 'Sabtu', time: '09:00 - 17:00', status: 'open' },
-  { day: 'Minggu', time: 'Tutup', status: 'closed' },
+// --- DEFAULT SCHEDULE (Fallback jika provider belum atur jadwal) ---
+const DEFAULT_SCHEDULE: ScheduleDay[] = [
+    { dayIndex: 0, dayName: 'Minggu', isOpen: false, start: '09:00', end: '17:00' },
+    { dayIndex: 1, dayName: 'Senin', isOpen: true, start: '09:00', end: '17:00' },
+    { dayIndex: 2, dayName: 'Selasa', isOpen: true, start: '09:00', end: '17:00' },
+    { dayIndex: 3, dayName: 'Rabu', isOpen: true, start: '09:00', end: '17:00' },
+    { dayIndex: 4, dayName: 'Kamis', isOpen: true, start: '09:00', end: '17:00' },
+    { dayIndex: 5, dayName: 'Jumat', isOpen: true, start: '09:00', end: '17:00' },
+    { dayIndex: 6, dayName: 'Sabtu', isOpen: true, start: '09:00', end: '14:00' },
 ];
 
 // --- FUNGSI HELPER ---
@@ -70,8 +71,8 @@ export default function ProviderProfilePage() {
   const [favCount, setFavCount] = useState(128); 
   const [isSharing, setIsSharing] = useState(false);
 
-  // Hari ini untuk highlight jadwal
-  const todayIndex = (new Date().getDay() + 6) % 7; // 0 = Senin, 6 = Minggu
+  // Ambil Hari Ini (0 = Minggu, 1 = Senin, dst)
+  const todayIndex = new Date().getDay();
 
   useEffect(() => {
     if (!providerId) return;
@@ -131,6 +132,15 @@ export default function ProviderProfilePage() {
   if (isLoading) return <ProviderLoading />;
   if (!provider) return <ProviderNotFound />;
 
+  // Gunakan jadwal dari DB atau default
+  const scheduleList = (provider.schedule && provider.schedule.length > 0) 
+    ? provider.schedule 
+    : DEFAULT_SCHEDULE;
+
+  // Cek status hari ini
+  const todaySchedule = scheduleList.find(s => s.dayIndex === todayIndex);
+  const isTodayOpen = todaySchedule?.isOpen ?? false;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12 font-sans">
       
@@ -162,7 +172,7 @@ export default function ProviderProfilePage() {
                             className="object-cover" 
                         />
                     </div>
-                    <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-white rounded-full" title="Online"></div>
+                    <div className={`absolute bottom-2 right-2 w-5 h-5 border-4 border-white rounded-full ${provider.isOnline ? 'bg-green-500' : 'bg-gray-400'}`} title={provider.isOnline ? "Online" : "Offline"}></div>
                 </div>
             </div>
 
@@ -275,26 +285,28 @@ export default function ProviderProfilePage() {
             {/* KOLOM KANAN (Jadwal & Info Tambahan) */}
             <div className="space-y-6">
                 
-                {/* 4. SCHEDULE SECTION */}
+                {/* 4. SCHEDULE SECTION (DINAMIS) */}
                 <section className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                             <ClockIcon />
                             Jadwal Operasional
                         </h3>
-                        {MOCK_SCHEDULE[todayIndex].status === 'open' ? (
-                            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">Buka Sekarang</span>
+                        {isTodayOpen ? (
+                            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">Buka Hari Ini</span>
                         ) : (
-                            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">Tutup</span>
+                            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">Tutup Hari Ini</span>
                         )}
                     </div>
                     <div className="space-y-2">
-                        {MOCK_SCHEDULE.map((s, idx) => {
-                            const isToday = idx === todayIndex;
+                        {scheduleList.map((s) => {
+                            const isToday = s.dayIndex === todayIndex;
                             return (
-                                <div key={s.day} className={`flex justify-between text-sm py-1.5 px-2 rounded-lg ${isToday ? 'bg-gray-100 font-semibold' : ''}`}>
-                                    <span className={`w-20 ${isToday ? 'text-gray-900' : 'text-gray-500'}`}>{s.day}</span>
-                                    <span className={s.status === 'closed' ? 'text-red-500' : 'text-gray-700'}>{s.time}</span>
+                                <div key={s.dayName} className={`flex justify-between text-sm py-1.5 px-2 rounded-lg ${isToday ? 'bg-gray-100 font-semibold' : ''}`}>
+                                    <span className={`w-20 ${isToday ? 'text-gray-900' : 'text-gray-500'}`}>{s.dayName}</span>
+                                    <span className={s.isOpen ? 'text-gray-700' : 'text-red-500'}>
+                                        {s.isOpen ? `${s.start} - ${s.end}` : 'Tutup'}
+                                    </span>
                                 </div>
                             );
                         })}
@@ -311,7 +323,7 @@ export default function ProviderProfilePage() {
         </div>
       </main>
 
-      {/* STICKY BOTTOM CTA (Mobile Only) - Perbaikan di sini: Link Umum */}
+      {/* STICKY BOTTOM CTA (Mobile Only) */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 lg:hidden z-40 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
          <div className="flex flex-col flex-1">
             <span className="text-[10px] text-gray-500 font-bold uppercase">Harga Mulai</span>
@@ -322,7 +334,7 @@ export default function ProviderProfilePage() {
             </span>
          </div>
          <Link
-            href={`/checkout?type=direct&providerId=${provider._id}`} // Generic link untuk mobile CTA
+            href={`/checkout?type=direct&providerId=${provider._id}`}
             className="px-6 py-3 rounded-xl bg-red-600 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-transform active:scale-95 flex items-center gap-2"
         >
             Pesan Jasa

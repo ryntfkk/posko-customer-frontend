@@ -7,9 +7,10 @@ import Image from 'next/image';
 import { User } from '@/features/auth/types';
 import { fetchIncomingOrders, acceptOrder, fetchMyOrders } from '@/features/orders/api';
 import { Order } from '@/features/orders/types';
-import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
-// Pastikan Anda sudah mengupdate types.ts dengan interface ScheduleDay seperti instruksi sebelumnya
+// [UPDATE] Import fungsi updateProviderSchedule
+import { updateProviderSchedule } from '@/features/providers/api';
 import { ScheduleDay } from '@/features/providers/types'; 
+import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
 // --- DEFAULT SCHEDULE ---
 // Jadwal default: Senin-Jumat (09:00 - 17:00), Sabtu (09:00-14:00), Minggu Libur
@@ -46,11 +47,14 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // [FITUR BARU] State Jadwal
+  // State Jadwal
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  // Jika user sudah punya jadwal di profil (dari backend), gunakan itu. Jika tidak, pakai default.
-  // Asumsi: user.schedule belum ada di type User auth, tapi nanti diambil dari API Provider Profile
-  const [schedule, setSchedule] = useState<ScheduleDay[]>(user.schedule || DEFAULT_SCHEDULE);
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false); // [BARU] Loading state untuk save
+  
+  // Mengambil jadwal dari user.schedule (jika sudah ada dari backend), jika tidak pakai default
+  const [schedule, setSchedule] = useState<ScheduleDay[]>(
+    (user.schedule && user.schedule.length > 0) ? user.schedule : DEFAULT_SCHEDULE
+  );
 
   useEffect(() => {
     const initData = async () => {
@@ -62,10 +66,6 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
             // 2. Ambil Order Masuk
             const incomingRes = await fetchIncomingOrders();
             setIncomingOrders(Array.isArray(incomingRes.data) ? incomingRes.data : []);
-
-            // [TODO] Idealnya di sini Anda fetch profil provider lengkap (termasuk schedule)
-            // const providerProfile = await fetchMyProviderProfile();
-            // if (providerProfile.data.schedule) setSchedule(providerProfile.data.schedule);
 
         } catch (error) {
             console.error(error);
@@ -124,14 +124,27 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
       setSchedule(newSchedule);
   };
 
-  // Handler: Simpan Jadwal (Ke Backend)
+  // Handler: Simpan Jadwal (Ke Backend Real)
   const handleSaveSchedule = async () => {
-      // [TODO] Integrasikan dengan endpoint PUT /api/providers/schedule
-      console.log("Saving schedule to backend:", schedule);
-      
-      // Simulasi sukses
-      alert("Jadwal berhasil disimpan (Simulasi). Pastikan backend sudah siap menerima data ini.");
-      setIsScheduleModalOpen(false);
+      setIsSavingSchedule(true);
+      try {
+          // Panggil API update
+          await updateProviderSchedule(schedule);
+          alert("Jadwal operasional berhasil diperbarui!");
+          setIsScheduleModalOpen(false);
+      } catch (error: any) {
+          console.error(error);
+          const msg = error.response?.data?.message || "Gagal menyimpan jadwal";
+          // Jika error validasi, tampilkan detail
+          const validationErrors = error.response?.data?.errors;
+          if (validationErrors) {
+              alert(`${msg}: ${validationErrors[0].message}`);
+          } else {
+              alert(msg);
+          }
+      } finally {
+          setIsSavingSchedule(false);
+      }
   };
 
   return (
@@ -165,7 +178,7 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                             <p className="text-red-100 text-sm lg:text-base opacity-90">Pantau performa dan atur jadwalmu.</p>
                         </div>
                         
-                        {/* [TOMBOL BARU] Trigger Modal Jadwal */}
+                        {/* Trigger Modal Jadwal */}
                         <button 
                             onClick={() => setIsScheduleModalOpen(true)} 
                             className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full text-xs font-bold transition-all backdrop-blur-sm border border-white/10"
@@ -385,14 +398,23 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                     <button 
                         onClick={() => setIsScheduleModalOpen(false)} 
                         className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                        disabled={isSavingSchedule}
                     >
                         Batal
                     </button>
                     <button 
-                        onClick={handleSaveSchedule} 
-                        className="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5"
+                        onClick={handleSaveSchedule}
+                        disabled={isSavingSchedule}
+                        className="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5 flex items-center gap-2 disabled:bg-gray-300 disabled:shadow-none"
                     >
-                        Simpan Jadwal
+                        {isSavingSchedule ? (
+                            <>
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                Menyimpan...
+                            </>
+                        ) : (
+                            'Simpan Jadwal'
+                        )}
                     </button>
                 </div>
             </div>
