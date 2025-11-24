@@ -7,30 +7,16 @@ import Image from 'next/image';
 import { User } from '@/features/auth/types';
 import { fetchIncomingOrders, acceptOrder, fetchMyOrders } from '@/features/orders/api';
 import { Order } from '@/features/orders/types';
-import { updateProviderSchedule, fetchMyProviderProfile } from '@/features/providers/api'; // [UPDATE] Import
-import { ScheduleDay } from '@/features/providers/types'; 
+import { fetchMyProviderProfile, updateAvailability } from '@/features/providers/api'; // [UPDATE API]
 import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
-
-// --- DEFAULT SCHEDULE ---
-const DEFAULT_SCHEDULE: ScheduleDay[] = [
-    { dayIndex: 0, dayName: 'Minggu', isOpen: false, start: '09:00', end: '17:00' },
-    { dayIndex: 1, dayName: 'Senin', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 2, dayName: 'Selasa', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 3, dayName: 'Rabu', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 4, dayName: 'Kamis', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 5, dayName: 'Jumat', isOpen: true, start: '09:00', end: '17:00' },
-    { dayIndex: 6, dayName: 'Sabtu', isOpen: true, start: '09:00', end: '14:00' },
-];
-
-// --- HELPER DATA JAM (24 JAM) ---
-const HOURS_24 = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')); 
-const MINUTES_STEP = ['00', '15', '30', '45']; 
 
 // --- ICONS ---
 const WalletIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>;
 const StarIcon = () => <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>;
 const LocationIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>;
-const ClockIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const CalendarIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
+const ChevronLeft = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
+const ChevronRight = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>;
 
 interface ProviderHomeProps {
   user: User;
@@ -39,32 +25,45 @@ interface ProviderHomeProps {
 export default function ProviderHome({ user }: ProviderHomeProps) {
   if (!user) return null;
 
+  // --- STATE DASHBOARD ---
   const [activeTab, setActiveTab] = useState<'incoming' | 'active' | 'history'>('incoming');
   const [incomingOrders, setIncomingOrders] = useState<Order[]>([]);
   const [myJobs, setMyJobs] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // State Jadwal (Awalnya Default, nanti di-update via API)
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
-  const [schedule, setSchedule] = useState<ScheduleDay[]>(DEFAULT_SCHEDULE);
+  // --- STATE KALENDER (AVAILABILITY) ---
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isSavingDates, setIsSavingDates] = useState(false);
+  
+  // blockedDates: Tanggal yang diblokir manual oleh Provider (String YYYY-MM-DD)
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  
+  // bookedDates: Tanggal yang penuh karena ada order aktif (Read-Only)
+  const [bookedDates, setBookedDates] = useState<string[]>([]);
+
+  // Navigasi Kalender
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
     const initData = async () => {
         try {
-            // 1. Ambil Riwayat Pekerjaan
+            // 1. Load Data Order
             const jobsRes = await fetchMyOrders('provider');
             setMyJobs(Array.isArray(jobsRes.data) ? jobsRes.data : []);
 
-            // 2. Ambil Order Masuk
             const incomingRes = await fetchIncomingOrders();
             setIncomingOrders(Array.isArray(incomingRes.data) ? incomingRes.data : []);
 
-            // 3. [BARU] Ambil Profil Mitra untuk Jadwal Terbaru
-            const myProfileRes = await fetchMyProviderProfile();
-            if (myProfileRes.data && myProfileRes.data.schedule && myProfileRes.data.schedule.length > 0) {
-                setSchedule(myProfileRes.data.schedule);
+            // 2. [BARU] Load Profil Mitra untuk Data Kalender
+            const profileRes = await fetchMyProviderProfile();
+            if (profileRes.data) {
+                // Konversi ISO Date dari backend ke format YYYY-MM-DD agar mudah dibandingkan di UI
+                const blocked = (profileRes.data.blockedDates || []).map(d => d.split('T')[0]);
+                const booked = (profileRes.data.bookedDates || []).map(d => d.split('T')[0]);
+                
+                setBlockedDates(blocked);
+                setBookedDates(booked);
             }
 
         } catch (error) {
@@ -76,23 +75,32 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
     initData();
   }, []);
 
-  // Statistik
+  // --- STATISTIK ---
   const activeJobs = useMemo(() => myJobs.filter(o => ['accepted', 'on_the_way', 'working', 'waiting_approval'].includes(o.status)), [myJobs]);
   const historyJobs = useMemo(() => myJobs.filter(o => ['completed', 'cancelled', 'failed'].includes(o.status)), [myJobs]);
   const completedCount = useMemo(() => myJobs.filter(o => o.status === 'completed').length, [myJobs]);
   const totalEarnings = useMemo(() => myJobs.filter(o => o.status === 'completed').reduce((sum, o) => sum + o.totalAmount, 0), [myJobs]);
   const rating = 5.0; 
 
+  // --- HANDLERS ORDER ---
   const handleAccept = async (orderId: string) => {
     if (!confirm('Ambil pesanan ini?')) return;
     setProcessingId(orderId);
     try {
       await acceptOrder(orderId);
       alert('Pesanan diterima! Cek tab Berlangsung.');
+      // Refresh data setelah accept
       const incRes = await fetchIncomingOrders();
       setIncomingOrders(incRes.data);
       const jobsRes = await fetchMyOrders('provider');
       setMyJobs(jobsRes.data);
+      
+      // Refresh kalender juga (karena tanggalnya jadi booked)
+      const profileRes = await fetchMyProviderProfile();
+      if(profileRes.data) {
+         setBookedDates((profileRes.data.bookedDates || []).map(d => d.split('T')[0]));
+      }
+
       setActiveTab('active');
     } catch (error: any) {
       alert(error.response?.data?.message || 'Gagal terima order');
@@ -101,49 +109,103 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
     }
   };
 
-  const updateDaySchedule = (index: number, field: keyof ScheduleDay, value: any) => {
-      const newSchedule = [...schedule];
-      newSchedule[index] = { ...newSchedule[index], [field]: value };
-      setSchedule(newSchedule);
+  // --- HANDLERS KALENDER ---
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const days = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay(); // 0 = Minggu
+    return { days, firstDay };
   };
 
-  const updateTime = (index: number, type: 'start' | 'end', unit: 'hour' | 'minute', value: string) => {
-      const currentDay = schedule[index];
-      const currentTime = type === 'start' ? currentDay.start : currentDay.end; 
-      const [currentH, currentM] = currentTime.split(':');
+  const handleDateClick = (day: number) => {
+    // Format tanggal yang diklik menjadi YYYY-MM-DD
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    // Gunakan toLocaleString dengan timezone Jakarta agar konsisten, lalu ambil YYYY-MM-DD
+    const offsetDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+    const dateStr = offsetDate.toISOString().split('T')[0];
 
-      let newTimeStr = "";
-      if (unit === 'hour') {
-          newTimeStr = `${value}:${currentM}`;
-      } else {
-          newTimeStr = `${currentH}:${value}`;
-      }
+    // 1. Cek apakah tanggal ini sudah ada order (Booked)
+    if (bookedDates.includes(dateStr)) {
+        alert("Tanggal ini sudah ada pesanan aktif. Selesaikan dulu untuk membuka kembali.");
+        return;
+    }
 
-      updateDaySchedule(index, type, newTimeStr);
+    // 2. Toggle Blocked Status
+    if (blockedDates.includes(dateStr)) {
+        // Unblock (Hapus dari array)
+        setBlockedDates(prev => prev.filter(d => d !== dateStr));
+    } else {
+        // Block (Tambah ke array)
+        setBlockedDates(prev => [...prev, dateStr]);
+    }
   };
 
-  const handleSaveSchedule = async () => {
-      setIsSavingSchedule(true);
+  const handleSaveAvailability = async () => {
+      setIsSavingDates(true);
       try {
-          await updateProviderSchedule(schedule);
-          alert("Jadwal operasional berhasil diperbarui!");
-          setIsScheduleModalOpen(false);
-      } catch (error: any) {
+          await updateAvailability(blockedDates);
+          alert("Ketersediaan kalender berhasil diperbarui!");
+          setIsCalendarOpen(false);
+      } catch (error) {
           console.error(error);
-          const msg = error.response?.data?.message || "Gagal menyimpan jadwal";
-          const validationErrors = error.response?.data?.errors;
-          if (validationErrors) {
-              alert(`${msg}: ${validationErrors[0].message}`);
-          } else {
-              alert(msg);
-          }
+          alert("Gagal menyimpan pengaturan kalender.");
       } finally {
-          setIsSavingSchedule(false);
+          setIsSavingDates(false);
       }
+  };
+
+  const changeMonth = (delta: number) => {
+      const newDate = new Date(currentMonth);
+      newDate.setMonth(newDate.getMonth() + delta);
+      setCurrentMonth(newDate);
+  };
+
+  // Render Kalender Grid
+  const renderCalendar = () => {
+      const { days, firstDay } = getDaysInMonth(currentMonth);
+      const blanks = Array.from({ length: firstDay }, (_, i) => <div key={`blank-${i}`} />);
+      
+      const dayCells = Array.from({ length: days }, (_, i) => {
+          const day = i + 1;
+          // Konstruksi string tanggal YYYY-MM-DD
+          const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+          const offsetDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+          const dateStr = offsetDate.toISOString().split('T')[0];
+
+          const isBlocked = blockedDates.includes(dateStr);
+          const isBooked = bookedDates.includes(dateStr);
+          const isPast = new Date(dateStr) < new Date(new Date().toISOString().split('T')[0]);
+
+          let cellClass = "bg-white border-gray-200 hover:bg-gray-50 text-gray-700";
+          
+          if (isBooked) {
+              cellClass = "bg-red-100 text-red-600 border-red-200 cursor-not-allowed"; // Penuh Order
+          } else if (isBlocked) {
+              cellClass = "bg-gray-800 text-white border-gray-800"; // Libur Manual
+          } else if (isPast) {
+              cellClass = "bg-gray-50 text-gray-300 cursor-default"; // Masa Lalu
+          }
+
+          return (
+              <div 
+                key={day} 
+                onClick={() => !isPast && handleDateClick(day)}
+                className={`aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all relative ${cellClass}`}
+              >
+                  <span className="text-xs font-bold">{day}</span>
+                  {isBooked && <span className="text-[8px] font-bold uppercase mt-1">Full</span>}
+                  {isBlocked && <span className="text-[8px] font-medium opacity-80 mt-1">Libur</span>}
+              </div>
+          );
+      });
+
+      return [...blanks, ...dayCells];
   };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans pb-24 lg:pb-10">
+      {/* HEADER */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -161,19 +223,21 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-6 space-y-6">
+        {/* DASHBOARD UTAMA */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-gradient-to-r from-red-700 to-red-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-xl shadow-red-100">
                 <div className="relative z-10 flex flex-col h-full justify-between">
                     <div className="flex justify-between items-start">
                         <div>
                             <h2 className="text-2xl lg:text-3xl font-bold mb-1">Halo, {user.fullName.split(' ')[0]}! 👋</h2>
-                            <p className="text-red-100 text-sm lg:text-base opacity-90">Pantau performa dan atur jadwalmu.</p>
+                            <p className="text-red-100 text-sm lg:text-base opacity-90">Kelola pesanan dan ketersediaan tanggalmu.</p>
                         </div>
+                        {/* TOMBOL BUKA KALENDER */}
                         <button 
-                            onClick={() => setIsScheduleModalOpen(true)} 
+                            onClick={() => setIsCalendarOpen(true)} 
                             className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full text-xs font-bold transition-all backdrop-blur-sm border border-white/10"
                         >
-                            <ClockIcon /> Atur Jadwal
+                            <CalendarIcon /> Kalender Saya
                         </button>
                     </div>
                     <div className="mt-8 grid grid-cols-3 gap-4 divide-x divide-red-600/30">
@@ -195,6 +259,7 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
             </div>
         </section>
 
+        {/* TAB PESANAN */}
         <section>
             <div className="flex gap-6 border-b border-gray-200 mb-6 overflow-x-auto no-scrollbar">
                 <button onClick={() => setActiveTab('incoming')} className={`pb-3 text-sm font-bold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'incoming' ? 'text-red-600 border-red-600' : 'text-gray-400 border-transparent'}`}>Masuk <span className="ml-1 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px]">{incomingOrders.length}</span></button>
@@ -211,6 +276,20 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                             <div key={order._id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden">
                                 {order.orderType === 'direct' && <div className="absolute top-0 right-0 bg-purple-600 text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold">DIRECT</div>}
                                 {order.status === 'paid' && <div className="absolute top-0 right-0 bg-green-600 text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold">PAID</div>}
+                                
+                                {/* TAMPILKAN TANGGAL KUNJUNGAN (WAJIB UNTUK FITUR BARU) */}
+                                <div className="mb-3">
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Jadwal Kunjungan</p>
+                                    <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                        <CalendarIcon />
+                                        <span className="text-sm font-bold text-gray-900">
+                                            {order.scheduledAt 
+                                                ? new Date(order.scheduledAt).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                                                : 'Segera (ASAP)'}
+                                        </span>
+                                    </div>
+                                </div>
+
                                 <div className="flex justify-between items-start mb-4">
                                     <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-bold uppercase line-clamp-1">{order.items[0]?.name} {order.items.length > 1 && `+${order.items.length-1}`}</span>
                                     <span className="text-xs font-bold text-green-600">Rp {new Intl.NumberFormat('id-ID').format(order.totalAmount)}</span>
@@ -237,7 +316,12 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
                                     <div>
                                         <div className="flex items-center gap-2 mb-1"><span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span><span className="text-xs font-bold text-blue-700 uppercase">{order.status.replace(/_/g, ' ')}</span></div>
                                         <h3 className="text-base font-bold text-gray-900">{order.items[0].name}</h3>
-                                        <p className="text-sm text-gray-500 mt-1">{(order.userId as any)?.fullName} • {(order.userId as any)?.address?.city}</p>
+                                        <div className="flex items-center gap-2 mt-1 text-xs font-medium text-gray-600">
+                                            <CalendarIcon />
+                                            {order.scheduledAt 
+                                                ? new Date(order.scheduledAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                                                : 'ASAP'}
+                                        </div>
                                     </div>
                                     <div className="text-right"><p className="text-sm font-black text-gray-900">Rp {new Intl.NumberFormat('id-ID').format(order.totalAmount)}</p><span className="text-xs text-gray-400 font-mono">#{order._id.slice(-4)}</span></div>
                                 </div>
@@ -264,78 +348,75 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
         </section>
       </div>
 
-      {/* [MODAL ATUR JADWAL] */}
-      {isScheduleModalOpen && (
+      {/* [MODAL KALENDER KETERSEDIAAN] */}
+      {isCalendarOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                    <h3 className="font-bold text-lg text-gray-900 flex items-center gap-2"><ClockIcon /> Atur Jam Operasional (24H)</h3>
-                    <button onClick={() => setIsScheduleModalOpen(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors">✕</button>
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+                
+                {/* HEADER MODAL */}
+                <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-white">
+                    <div>
+                        <h3 className="font-bold text-xl text-gray-900">Kalender Saya</h3>
+                        <p className="text-xs text-gray-500">Atur ketersediaan tanggal kerja Anda</p>
+                    </div>
+                    <button onClick={() => setIsCalendarOpen(false)} className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100 transition-colors">✕</button>
                 </div>
 
-                <div className="p-4 space-y-3 overflow-y-auto custom-scrollbar bg-gray-50/50">
-                    <div className="text-xs text-gray-600 bg-blue-50 p-3 rounded-xl border border-blue-100 flex gap-2 items-start">
-                        <span>ℹ️</span>
-                        <p>Atur ketersediaan layanan Direct Order (WIB). Jam menggunakan format 24-jam.</p>
+                {/* BODY: NAVIGASI BULAN */}
+                <div className="p-4 flex items-center justify-between bg-gray-50">
+                    <button onClick={() => changeMonth(-1)} className="p-2 bg-white rounded-full border border-gray-200 hover:bg-gray-100 text-gray-600"><ChevronLeft /></button>
+                    <span className="font-bold text-gray-800 text-sm uppercase tracking-wide">
+                        {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button onClick={() => changeMonth(1)} className="p-2 bg-white rounded-full border border-gray-200 hover:bg-gray-100 text-gray-600"><ChevronRight /></button>
+                </div>
+
+                {/* BODY: GRID KALENDER */}
+                <div className="p-4 overflow-y-auto">
+                    {/* Nama Hari */}
+                    <div className="grid grid-cols-7 mb-2 text-center">
+                        {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((d, i) => (
+                            <div key={i} className="text-xs font-bold text-gray-400 py-1">{d}</div>
+                        ))}
+                    </div>
+                    
+                    {/* Tanggal */}
+                    <div className="grid grid-cols-7 gap-2">
+                        {renderCalendar()}
                     </div>
 
-                    {schedule.map((day, idx) => {
-                        const [startH, startM] = day.start.split(':');
-                        const [endH, endM] = day.end.split(':');
-
-                        return (
-                            <div key={day.dayName} className={`flex flex-col gap-2 p-3 rounded-xl border transition-all ${day.isOpen ? 'bg-white border-gray-200 shadow-sm' : 'bg-gray-100 border-transparent opacity-75'}`}>
-                                {/* Baris Atas: Checkbox & Nama Hari */}
-                                <div className="flex items-center justify-between">
-                                    <div className="font-bold text-sm text-gray-700 flex items-center gap-3">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={day.isOpen} 
-                                            onChange={(e) => updateDaySchedule(idx, 'isOpen', e.target.checked)} 
-                                            className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-gray-300 cursor-pointer"
-                                        />
-                                        {day.dayName}
-                                    </div>
-                                    {!day.isOpen && <span className="text-xs text-gray-400 italic font-medium">Tutup</span>}
-                                </div>
-
-                                {/* Baris Bawah: Dropdown Jam (Hanya jika Buka) */}
-                                {day.isOpen && (
-                                    <div className="flex items-center gap-2 mt-1 pl-7">
-                                        {/* Jam Buka */}
-                                        <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 px-1">
-                                            <select value={startH} onChange={(e) => updateTime(idx, 'start', 'hour', e.target.value)} className="bg-transparent p-1 text-sm font-bold outline-none cursor-pointer appearance-none text-center w-10">
-                                                {HOURS_24.map(h => <option key={h} value={h}>{h}</option>)}
-                                            </select>
-                                            <span className="text-gray-400 font-bold">:</span>
-                                            <select value={startM} onChange={(e) => updateTime(idx, 'start', 'minute', e.target.value)} className="bg-transparent p-1 text-sm font-bold outline-none cursor-pointer appearance-none text-center w-10">
-                                                {MINUTES_STEP.map(m => <option key={m} value={m}>{m}</option>)}
-                                            </select>
-                                        </div>
-
-                                        <span className="text-gray-400 font-bold text-xs">s/d</span>
-
-                                        {/* Jam Tutup */}
-                                        <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200 px-1">
-                                            <select value={endH} onChange={(e) => updateTime(idx, 'end', 'hour', e.target.value)} className="bg-transparent p-1 text-sm font-bold outline-none cursor-pointer appearance-none text-center w-10">
-                                                {HOURS_24.map(h => <option key={h} value={h}>{h}</option>)}
-                                            </select>
-                                            <span className="text-gray-400 font-bold">:</span>
-                                            <select value={endM} onChange={(e) => updateTime(idx, 'end', 'minute', e.target.value)} className="bg-transparent p-1 text-sm font-bold outline-none cursor-pointer appearance-none text-center w-10">
-                                                {MINUTES_STEP.map(m => <option key={m} value={m}>{m}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    {/* LEGENDA */}
+                    <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded border border-gray-200 bg-white"></div>
+                            <span className="text-xs text-gray-500">Kosong</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded bg-gray-800"></div>
+                            <span className="text-xs text-gray-500">Libur (Anda)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded bg-red-100 border border-red-200"></div>
+                            <span className="text-xs text-gray-500">Ada Job</span>
+                        </div>
+                    </div>
                 </div>
 
+                {/* FOOTER */}
                 <div className="p-4 border-t border-gray-100 bg-white flex justify-end gap-3">
-                    <button onClick={() => setIsScheduleModalOpen(false)} className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors" disabled={isSavingSchedule}>Batal</button>
-                    <button onClick={handleSaveSchedule} disabled={isSavingSchedule} className="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5 flex items-center gap-2 disabled:bg-gray-300 disabled:shadow-none">
-                        {isSavingSchedule ? <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>Menyimpan...</> : 'Simpan Jadwal'}
+                    <button 
+                        onClick={() => setIsCalendarOpen(false)} 
+                        className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors" 
+                        disabled={isSavingDates}
+                    >
+                        Batal
+                    </button>
+                    <button 
+                        onClick={handleSaveAvailability} 
+                        disabled={isSavingDates} 
+                        className="px-5 py-2.5 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-lg shadow-red-100 transition-all hover:-translate-y-0.5 flex items-center gap-2 disabled:bg-gray-300 disabled:shadow-none"
+                    >
+                        {isSavingDates ? 'Menyimpan...' : 'Simpan Perubahan'}
                     </button>
                 </div>
             </div>

@@ -15,17 +15,23 @@ export interface CreateOrderPayload {
   providerId?: string | null;
   totalAmount: number;
   items: OrderItemPayload[];
+  
+  // [BARU] Tanggal Kunjungan (Wajib)
+  scheduledAt: string; // ISO Date String
 }
 
-// [PERBAIKAN] Definisi Order ditambahkan kembali untuk mencegah error di api.ts
 export interface Order {
   _id: string;
   userId: string;
   providerId?: string | null;
   items: any[];
   totalAmount: number;
-  status: string; // pending, searching, accepted, dll
+  status: string; 
   orderType: 'direct' | 'basic';
+  
+  // [BARU]
+  scheduledAt?: string; 
+  
   createdAt: string;
   updatedAt: string;
 }
