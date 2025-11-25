@@ -356,7 +356,6 @@ export default function ProviderProfilePage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {MOCK_PORTFOLIO_IMAGES.map((img, idx) => (
                             <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden group cursor-zoom-in border border-gray-100 shadow-sm">
-                                <Image src={img} alt={`Dokumentasi ${idx+1}`} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors"></div>
                             </div>
                         ))}
