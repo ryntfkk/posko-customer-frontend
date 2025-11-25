@@ -54,15 +54,18 @@ export default function HomePage() {
   const isProviderMode = userProfile?.activeRole === 'provider';
   const hasProviderRole = userProfile?.roles.includes('provider');
 
-  // Fetching Data
+  // Fetching Data: Services (Independent Effect)
   useEffect(() => {
-    // 1. Fetch Services
+    setIsLoadingServices(true);
     fetchServices()
       .then(res => setServices(res.data || []))
-      .catch(console.error)
+      .catch(err => console.error("Gagal memuat layanan:", err))
       .finally(() => setIsLoadingServices(false));
+  }, []);
 
-    // 2. Fetch Providers
+  // Fetching Data: Providers (Independent Effect)
+  useEffect(() => {
+    setIsLoadingProviders(true);
     fetchProviders({})
       .then(res => setProviders(Array.isArray(res.data) ? res.data : []))
       .catch(err => {
@@ -70,19 +73,26 @@ export default function HomePage() {
         setProviders([]);
       })
       .finally(() => setIsLoadingProviders(false));
-    
-    // 3. Fetch User Profile
+  }, []);
+
+  // Fetching Data: User Profile (Independent Effect)
+  useEffect(() => {
     const token = localStorage.getItem('posko_token');
     setIsLoggedIn(!!token);
+    
     if (token) {
+      setIsLoadingProfile(true);
       fetchProfile()
         .then(res => setUserProfile(res.data.profile))
-        .catch(() => { localStorage.removeItem('posko_token'); setIsLoggedIn(false); })
+        .catch(() => { 
+          localStorage.removeItem('posko_token'); 
+          setIsLoggedIn(false); 
+        })
         .finally(() => setIsLoadingProfile(false));
     } else {
       setIsLoadingProfile(false);
     }
-  }, []);
+  }, []); // Dependency array kosong agar hanya jalan sekali saat mount
 
   const groupServicesToCategories = (services: Service[]) => {
     const categoriesMap = new Map();
