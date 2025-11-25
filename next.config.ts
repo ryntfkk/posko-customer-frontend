@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    unoptimized: true,
     // [FIX] Izinkan SVG dari domain eksternal (Dicebear)
     dangerouslyAllowSVG: true,
     // Opsional: Tambahkan header keamanan untuk SVG
