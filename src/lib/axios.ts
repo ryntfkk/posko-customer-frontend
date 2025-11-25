@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://posko-backend-production.up.railway.app/api',
+  baseURL: 'https://posko-backend.vercel.app/api',
   headers: {
     'Content-Type': 'application/json',
   },

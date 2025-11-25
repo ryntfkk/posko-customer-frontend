@@ -13,7 +13,7 @@ import { Order } from '@/features/orders/types';
 // [BARU] Import Provider Navbar
 import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
-const SOCKET_URL = 'https://posko-backend-production.up.railway.app';
+const SOCKET_URL = 'https://posko-backend.vercel.app/api';
 
 const BackIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
 const SendIcon = () => <svg className="w-5 h-5 translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>;

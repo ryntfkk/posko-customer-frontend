@@ -41,7 +41,7 @@ export default function ChatWidget({ user }: { user: any }) {
   const [isUnread, setIsUnread] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const SOCKET_URL = 'https://posko-backend-production.up.railway.app';
+  const SOCKET_URL = 'https://posko-backend.vercel.app/api';
 
   // --- [FIX 1] Ambil ID yang benar (User ID dari DB biasanya _id) ---
   const myId = user?._id || user?.userId;
