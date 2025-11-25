@@ -1,4 +1,5 @@
 // src/features/orders/types.ts
+import { Address } from "../auth/types"; // Import Address type dari auth/types
 
 // Payload untuk item pesanan
 export interface OrderItemPayload {
@@ -18,6 +19,13 @@ export interface CreateOrderPayload {
   
   // [BARU] Tanggal Kunjungan (Wajib)
   scheduledAt: string; // ISO Date String
+
+  // [BARU] Alamat Kunjungan (untuk dikirim ke backend)
+  shippingAddress: Address; 
+  location: { 
+    type: 'Point', 
+    coordinates: number[]; // [Longitude, Latitude] 
+  };
 }
 
 export interface Order {
