@@ -1,7 +1,7 @@
 // src/app/order/summary/page.tsx
 'use client';
 
-import { useMemo, useState, Suspense } from 'react'; // Import Suspense
+import { useMemo, useState, Suspense, useEffect } from 'react'; // Import useEffect
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -10,6 +10,8 @@ import { createOrder } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api'; 
 import { CreateOrderPayload } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans'; 
+import { fetchProfile } from '@/features/auth/api'; // Import fetchProfile
+import { User, Address } from '@/features/auth/types'; // Import User dan Address
 
 declare global {
   interface Window {
@@ -34,16 +36,47 @@ function OrderSummaryContent() {
   
   const isSnapLoaded = useMidtrans();
 
-  // State
+  // State Data
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+
+  // State Form/Input
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  
   const [scheduledAt, setScheduledAt] = useState('');
+  // [BARU] Pilih Alamat (default hanya satu)
+  const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
+  const [selectedLocation, setSelectedLocation] = useState<{ type: 'Point', coordinates: number[] } | undefined>(undefined);
 
   const orderTypeParam = searchParams.get('type') as 'basic' | 'direct' | null;
   const providerIdParam = searchParams.get('providerId');
   const categoryParam = searchParams.get('category');
+  
+  // --- LOGIKA PEMUATAN DATA PROFIL & ALAMAT ---
+  useEffect(() => {
+    const loadProfile = async () => {
+        try {
+            const res = await fetchProfile();
+            const profile = res.data.profile;
+            setUserProfile(profile);
+
+            // [BARU] Atur alamat default saat profil dimuat
+            if (profile.address && profile.location) {
+                setSelectedAddress(profile.address);
+                setSelectedLocation(profile.location);
+            }
+        } catch (error) {
+            console.error("Gagal memuat profil:", error);
+            alert("Sesi berakhir atau gagal memuat profil. Mohon login ulang.");
+            router.push('/login');
+        } finally {
+            setIsProfileLoading(false);
+        }
+    };
+    loadProfile();
+  }, [router]);
+  // ---------------------------------------------
 
   const activeCartItems = useMemo(() => {
     return cart.filter((item) => {
@@ -85,6 +118,12 @@ function OrderSummaryContent() {
         alert("Mohon pilih tanggal dan jam kunjungan terlebih dahulu.");
         return;
     }
+    
+    // [BARU] Validasi Alamat
+    if (!selectedAddress || !selectedLocation || selectedLocation.coordinates[0] === 0) {
+        alert("Mohon lengkapi alamat dan titik lokasi Anda.");
+        return;
+    }
 
     if (!isSnapLoaded) {
       alert('Sistem pembayaran sedang dimuat, mohon tunggu sebentar...');
@@ -96,11 +135,14 @@ function OrderSummaryContent() {
     try {
       const mainItem = activeCartItems[0];
       
+      // [UPDATE] Sertakan Alamat dan Lokasi ke Payload
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
         totalAmount: currentTotalAmount,
         scheduledAt: new Date(scheduledAt).toISOString(),
+        shippingAddress: selectedAddress, // Kirim objek Address lengkap
+        location: selectedLocation,       // Kirim objek Location lengkap
         items: activeCartItems.map(item => ({
             serviceId: item.serviceId,
             name: item.serviceName,
@@ -158,10 +200,10 @@ function OrderSummaryContent() {
     }
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || isProfileLoading) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 text-sm">
-            Memuat data keranjang...
+            Memuat data keranjang & profil...
         </div>
     );
   }
@@ -270,13 +312,33 @@ function OrderSummaryContent() {
                   <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Lokasi</p>
                   <h2 className="text-lg font-bold text-gray-900">Alamat Pelayanan</h2>
                 </div>
-                <button className="text-sm font-bold text-red-600 hover:text-red-700">Ubah</button>
+                <button 
+                   onClick={() => router.push('/profile')} // Arahkan ke halaman profile untuk ubah alamat
+                   className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+                >
+                    Ubah
+                </button>
               </div>
-              <div className="text-sm text-gray-700 space-y-1 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <p className="font-bold text-gray-900">Rumah Saya</p>
-                <p className="text-gray-600">Jl. Contoh No. 123, Jakarta Selatan</p>
-                <p className="text-gray-500 text-xs mt-1">(Alamat default dari profil)</p>
-              </div>
+              
+              {/* [UPDATE] Tampilkan Alamat Default User */}
+              {selectedAddress && selectedLocation ? (
+                 <div className="text-sm text-gray-700 space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <p className="font-bold text-gray-900 leading-snug">
+                        {userProfile?.fullName} ({selectedAddress.city})
+                    </p>
+                    <p className="text-gray-700 leading-snug">
+                        {selectedAddress.detail}, Kel. {selectedAddress.village}, Kec. {selectedAddress.district}
+                    </p>
+                    <p className="text-gray-500 text-xs mt-2">
+                        Koordinat: {selectedLocation.coordinates[1].toFixed(5)}, {selectedLocation.coordinates[0].toFixed(5)}
+                    </p>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-700 space-y-1 bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+                    <p className="font-bold text-gray-900">Alamat Belum Lengkap</p>
+                    <p className="text-yellow-800 text-xs">Silakan lengkapi alamat dan titik lokasi Anda di menu Akun.</p>
+                </div>
+              )}
             </div>
 
             {/* Promo */}
@@ -335,9 +397,9 @@ function OrderSummaryContent() {
             {/* TOMBOL BAYAR UTAMA */}
             <button 
               onClick={handlePlaceOrderAndPay}
-              disabled={isProcessing}
+              disabled={isProcessing || !selectedAddress || !scheduledAt} // Disable jika alamat/jadwal kosong
               className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${
-                isProcessing 
+                isProcessing || !selectedAddress || !scheduledAt 
                   ? 'bg-gray-400 cursor-not-allowed shadow-none' 
                   : 'bg-red-600 hover:bg-red-700 shadow-red-200 hover:-translate-y-1'
               }`}
