@@ -48,7 +48,9 @@ export default function HomePage() {
       try {
         setIsLoadingServices(true);
         const res = await fetchServices();
-        setServices(res.data || []);
+        // PERBAIKAN: Pastikan res.data adalah array
+        const servicesArray = Array.isArray(res.data) ? res.data : [];
+        setServices(servicesArray);
       } catch (err) {
         console.error('Gagal memuat layanan:', err);
         setServices([]);

@@ -75,19 +75,21 @@ function CheckoutContent() {
       try {
         if (checkoutType === 'basic') {
           const res = await fetchServices(categoryParam);
+          // PERBAIKAN: Pastikan res.data adalah array
+          const servicesArray = Array.isArray(res.data) ? res.data : [];
           if (isMounted.current) {
-            setServices(res.data);
+            setServices(servicesArray);
           }
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
           if (isMounted.current) {
-            setProvider(res.data);
+            setProvider(res. data);
           }
         }
       } catch (err) {
         console.error(err);
         if (isMounted.current) {
-          setError('Gagal memuat data layanan.  Silakan coba lagi.');
+          setError('Gagal memuat data layanan. Silakan coba lagi.');
         }
       } finally {
         if (isMounted.current) {

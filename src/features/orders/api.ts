@@ -1,4 +1,4 @@
-// src/features/orders/api. ts (update dengan error handling)
+// src/features/orders/api.ts
 import api from '@/lib/axios';
 import { CreateOrderPayload } from './types';
 
@@ -15,7 +15,7 @@ export const createOrder = async (payload: CreateOrderPayload) => {
 export const getOrder = async (orderId: string) => {
   try {
     const response = await api.get(`/orders/${orderId}`);
-    return response. data;
+    return response.data;
   } catch (error) {
     console.error('Error fetching order:', error);
     throw error;
@@ -35,7 +35,7 @@ export const fetchOrderById = async (orderId: string) => {
 export const listOrders = async (view?: string) => {
   try {
     const params = view ? `?view=${view}` : '';
-    const response = await api. get(`/orders${params}`);
+    const response = await api.get(`/orders${params}`);
     return response.data;
   } catch (error) {
     console.error('Error listing orders:', error);
@@ -43,6 +43,7 @@ export const listOrders = async (view?: string) => {
   }
 };
 
+// PERBAIKAN: Hapus parameter yang tidak perlu
 export const fetchMyOrders = async () => {
   try {
     const response = await api.get('/orders');
@@ -53,6 +54,7 @@ export const fetchMyOrders = async () => {
   }
 };
 
+// PERBAIKAN: Hapus parameter yang tidak perlu
 export const fetchIncomingOrders = async () => {
   try {
     const response = await api.get('/orders/incoming');

@@ -5,8 +5,13 @@ import { Service, ServiceResponse } from './types';
 export const fetchServices = async (category?: string | null) => {
   try {
     const params = category ? { category } : {};
-    const response = await api. get<ServiceResponse>('/services', { params });
-    return response.data;
+    const response = await api. get<{ data: Service[] }>('/services', { params });
+    
+    // Ensure response.data.data is always an array
+    const servicesData = response.data.data;
+    const servicesArray = Array.isArray(servicesData) ? servicesData : [servicesData];
+    
+    return { data: servicesArray };
   } catch (error) {
     console.error('Error fetching services:', error);
     throw error;
