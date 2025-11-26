@@ -362,7 +362,16 @@ export default function HomePage() {
       </Link>
 
       {/* Chat Widget */}
-      {isLoggedIn && <ChatWidget user={userProfile} />}
+      {isLoggedIn && userProfile && (
+        <ChatWidget 
+          user={{
+            _id: userProfile._id,
+            userId: userProfile._id,
+            fullName: userProfile.fullName,
+            profilePictureUrl: userProfile.profilePictureUrl,
+          }} 
+        />
+      )}
     </div>
   );
 }

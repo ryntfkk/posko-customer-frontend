@@ -20,15 +20,15 @@ interface ChatRoom {
   updatedAt?: string;
 }
 
-interface User {
+interface ChatWidgetUser {
   _id: string;
-  userId: string;
+  userId?: string;
   fullName: string;
   profilePictureUrl?: string;
 }
 
 interface ChatWidgetProps {
-  user: User | null;
+  user: ChatWidgetUser | null;
 }
 
 export default function ChatWidget({ user }: ChatWidgetProps) {
@@ -43,10 +43,10 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const SOCKET_URL = 'https://posko-backend.vercel.app';
 
-  const myId = user?._id || localStorage.getItem('userId') || '';
+  const myId = user? ._id || localStorage.getItem('userId') || '';
 
   useEffect(() => {
-    if (!user || !myId) return;
+    if (! user || !myId) return;
 
     const token = localStorage.getItem('posko_token');
     if (!token) return;
@@ -71,7 +71,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
 
         newSocket.on('receive_message', (data: { roomId: string; message: Message }) => {
           setRooms((prev) => {
-            const roomIndex = prev.findIndex((r) => r._id === data.roomId);
+            const roomIndex = prev.findIndex((r) => r._id === data. roomId);
             if (roomIndex === -1) return prev;
 
             const updatedRoom = {
@@ -81,7 +81,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
             };
             
             const newRooms = [...prev];
-            newRooms.splice(roomIndex, 1);
+            newRooms. splice(roomIndex, 1);
             newRooms.unshift(updatedRoom);
             return newRooms;
           });
@@ -90,7 +90,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
             if (current && current._id === data.roomId) {
               return {
                 ...current,
-                messages: [...current.messages, data.message],
+                messages: [...current.messages, data. message],
               };
             }
             if (!current || current._id !== data.roomId) {
@@ -100,7 +100,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
           });
         });
 
-        newSocket.on('disconnect', () => {
+        newSocket. on('disconnect', () => {
           console.log('❌ Socket disconnected');
         });
 
@@ -130,7 +130,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       setIsUnread(false);
     }
-  }, [activeRoom?. messages, isOpen, activeRoom]);
+  }, [activeRoom?.messages, isOpen, activeRoom]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +162,8 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
   };
 
   const getOpponent = (room: ChatRoom): any => {
-    return room.participants.find((p: any) => p._id !== myId) || room.participants[0];
+    if (!myId) return room.participants[0];
+    return room.participants.find((p) => p._id !== myId) || room.participants[0];
   };
 
   const getSenderId = (sender: string | { _id: string }): string => {
@@ -170,7 +171,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
   };
 
   const getSenderName = (sender: string | { _id: string; fullName?: string }): string => {
-    if (typeof sender === 'object' && sender. fullName) {
+    if (typeof sender === 'object' && sender.fullName) {
       return sender.fullName;
     }
     return 'User';
@@ -182,6 +183,8 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
     }
     return `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`;
   };
+
+  if (!user) return null;
 
   return (
     <>
@@ -210,7 +213,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
               className="hover:bg-blue-700 p-1 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4. 293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1. 414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5. 707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </button>
           </div>
@@ -238,7 +241,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
                       >
                         <Image
                           src={opponent?.profilePictureUrl || `https://api.dicebear. com/7.x/avataaars/svg?seed=${opponent?. fullName}`}
-                          alt={opponent?. fullName}
+                          alt={opponent?.fullName || 'User'}
                           width={40}
                           height={40}
                           className="w-10 h-10 rounded-full object-cover"
@@ -261,9 +264,9 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
                 ) : (
                   activeRoom.messages.map((msg, idx) => {
                     const senderId = getSenderId(msg. sender);
-                    const senderName = getSenderName(msg.sender);
+                    const senderName = getSenderName(msg. sender);
                     const senderAvatar = getSenderAvatar(msg.sender);
-                    const isFromMe = senderId === myId;
+                    const isFromMe = myId ? senderId === myId : false;
 
                     return (
                       <div
@@ -314,7 +317,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10. 894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5. 951-2.976 5.951 2.976a1 1 0 001. 169-1.409l-7-14z" />
+                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.951-2.976 5.951 2.976a1 1 0 001.169-1.409l-7-14z" />
                 </svg>
               </button>
             </form>

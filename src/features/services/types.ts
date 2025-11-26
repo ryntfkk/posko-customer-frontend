@@ -17,3 +17,9 @@ export interface ServiceCreatePayload {
   basePrice: number;
   iconUrl?: string;
 }
+
+export interface ServiceResponse {
+  messageKey?: string;
+  message?: string;
+  data: Service | Service[];
+}
