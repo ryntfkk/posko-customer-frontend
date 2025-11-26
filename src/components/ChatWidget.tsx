@@ -43,8 +43,8 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const SOCKET_URL = 'https://posko-backend.vercel.app';
 
-  // PERBAIKAN: Proper optional chaining
-  const myId: string = user? ._id || localStorage.getItem('userId') || '';
+  // FIX LINE 47: Proper type annotation
+  const myId: string = user?._id || localStorage.getItem('userId') || '';
 
   useEffect(() => {
     if (! user || !myId) return;
@@ -56,7 +56,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
       try {
         setIsLoading(true);
         const res = await api.get('/chat');
-        setRooms(res.data.data || []);
+        setRooms(res.data. data || []);
 
         const newSocket = io(SOCKET_URL, {
           auth: { token },
@@ -82,7 +82,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
             };
             
             const newRooms = [... prev];
-            newRooms.splice(roomIndex, 1);
+            newRooms. splice(roomIndex, 1);
             newRooms.unshift(updatedRoom);
             return newRooms;
           });
@@ -91,7 +91,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
             if (current && current._id === data.roomId) {
               return {
                 ...current,
-                messages: [...current.messages, data. message],
+                messages: [...current.messages, data.message],
               };
             }
             if (!current || current._id !== data.roomId) {
@@ -121,7 +121,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
 
     return () => {
       if (socket) {
-        socket. disconnect();
+        socket.disconnect();
       }
     };
   }, [user, myId]);
@@ -131,11 +131,11 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       setIsUnread(false);
     }
-  }, [activeRoom?. messages, isOpen, activeRoom]);
+  }, [activeRoom?.messages, isOpen, activeRoom]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (! newMessage.trim() || !activeRoom || !socket) return;
+    if (!newMessage.trim() || !activeRoom || !socket) return;
 
     socket.emit('send_message', {
       roomId: activeRoom._id,
@@ -214,14 +214,14 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
               className="hover:bg-blue-700 p-1 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4. 293 4.293a1 1 0 01-1. 414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M4. 293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111. 414 1.414L11. 414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11. 414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </button>
           </div>
 
           {/* Rooms List / Messages */}
           <div className="flex-1 overflow-y-auto">
-            {!activeRoom ? (
+            {! activeRoom ? (
               <div className="space-y-2 p-4">
                 {isLoading ? (
                   <div className="flex justify-center py-8">
@@ -264,7 +264,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
                   <p className="text-center text-gray-500 py-8">Mulai percakapan</p>
                 ) : (
                   activeRoom.messages.map((msg, idx) => {
-                    const senderId = getSenderId(msg. sender);
+                    const senderId = getSenderId(msg.sender);
                     const senderName = getSenderName(msg.sender);
                     const senderAvatar = getSenderAvatar(msg.sender);
                     const isFromMe = myId ? senderId === myId : false;
@@ -318,7 +318,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.951-2.976 5.951 2.976a1 1 0 001. 169-1.409l-7-14z" />
+                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.951-2.976 5.951 2.976a1 1 0 001.169-1.409l-7-14z" />
                 </svg>
               </button>
             </form>
