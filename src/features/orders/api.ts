@@ -1,39 +1,29 @@
+// src/features/orders/api.ts
 import api from '@/lib/axios';
-import { CreateOrderPayload, Order } from './types';
+import { CreateOrderPayload, OrderResponse } from './types';
 
-// Buat Pesanan Baru
 export const createOrder = async (payload: CreateOrderPayload) => {
-  const response = await api.post<{ message: string; data: Order }>('/orders', payload);
+  const response = await api.post<OrderResponse>('/orders', payload);
   return response.data;
 };
 
-export const fetchMyOrders = async (view: 'customer' | 'provider' = 'customer') => {
-  const response = await api.get<{ data: Order[] }>('/orders', {
-    params: { view } 
-  }); 
+export const getOrder = async (orderId: string) => {
+  const response = await api.get<OrderResponse>(`/orders/${orderId}`);
+  return response. data;
+};
+
+export const listOrders = async (view?: string) => {
+  const params = view ? `?view=${view}` : '';
+  const response = await api.get(`/orders${params}`);
   return response.data;
 };
 
-// Ambil Pesanan Masuk (Untuk Provider) - Jika backend belum ada route ini, 
-// pastikan Anda menambahkannya di backend atau gunakan filter di endpoint utama.
-export const fetchIncomingOrders = async () => {
-  const response = await api.get<{ data: Order[] }>('/orders/incoming');
-  return response.data;
-};
-
-// [TAMBAHAN] Update progres kerja provider
 export const updateOrderStatus = async (orderId: string, status: string) => {
-  const response = await api.patch<{ message: string; data: Order }>(`/orders/${orderId}/status`, { status });
+  const response = await api.patch<OrderResponse>(`/orders/${orderId}/status`, { status });
   return response.data;
 };
 
-// Ambil Detail Pesanan
-export const fetchOrderById = async (orderId: string) => {
-  const response = await api.get<{ data: Order }>(`/orders/${orderId}`);
-  return response.data;
-};
 export const acceptOrder = async (orderId: string) => {
-  const response = await api.patch<{ message: string; data: Order }>(`/orders/${orderId}/accept`, {});
+  const response = await api.patch<OrderResponse>(`/orders/${orderId}/accept`, {});
   return response.data;
 };
-
