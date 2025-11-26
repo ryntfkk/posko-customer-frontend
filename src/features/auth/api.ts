@@ -4,7 +4,21 @@ import { AuthResponse, LoginPayload, ProfileResponse, RegisterPayload } from './
 
 export const loginUser = async (credentials: LoginPayload) => {
   const response = await api.post<AuthResponse>('/auth/login', credentials);
-  return response.data;
+  
+  // Simpan token dan user info ke localStorage
+  if (response.data.data.tokens) {
+    localStorage. setItem('posko_token', response.data.data.tokens. accessToken);
+    localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
+  }
+  
+  // Simpan userId untuk digunakan di chat dan tempat lain
+  if (response.data.data.userId) {
+    localStorage.setItem('userId', response.data.data.userId);
+  } else if (response.data.data.profile && response.data.data.profile._id) {
+    localStorage.setItem('userId', response.data. data.profile._id);
+  }
+  
+  return response. data;
 };
 
 export const registerUser = async (payload: RegisterPayload) => {
@@ -17,27 +31,23 @@ export const fetchProfile = async () => {
   return response.data;
 };
 
-// --- UPDATE: MENGGUNAKAN ENDPOINT REAL ---
-
 export const switchRole = async (targetRole: 'customer' | 'provider') => {
-  // Panggil endpoint backend
   const response = await api.post<AuthResponse>('/auth/switch-role', { role: targetRole });
   
-  // Update token di localStorage dengan token baru dari backend
   if (response.data.data.tokens) {
-    localStorage.setItem('posko_token', response.data.data.tokens.accessToken);
+    localStorage.setItem('posko_token', response. data.data.tokens.accessToken);
+    localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
   }
   
   return response.data;
 };
 
 export const registerPartner = async () => {
-  // Panggil endpoint backend untuk daftar jadi mitra
   const response = await api.post<AuthResponse>('/auth/register-partner', {});
   
-  // Update token karena roles user berubah
   if (response.data.data.tokens) {
-    localStorage.setItem('posko_token', response.data.data.tokens.accessToken);
+    localStorage. setItem('posko_token', response.data.data.tokens. accessToken);
+    localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
   }
 
   return response.data;

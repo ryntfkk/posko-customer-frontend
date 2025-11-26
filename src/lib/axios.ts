@@ -1,12 +1,29 @@
 // src/lib/axios.ts
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: 'https://posko-backend.vercel.app/api',
+const api = axios. create({
+  baseURL: 'https://posko-backend. vercel.app/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Flag untuk mencegah infinite loop refresh token
+let isRefreshing = false;
+let failedQueue: { resolve: (value: any) => void; reject: (reason?: any) => void }[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom. reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  
+  isRefreshing = false;
+  failedQueue = [];
+};
 
 // 1. REQUEST INTERCEPTOR (Pasang Token & Bahasa)
 api.interceptors.request.use(
@@ -19,7 +36,7 @@ api.interceptors.request.use(
       }
 
       // Integrasi Bahasa
-      const lang = localStorage.getItem('posko_lang') || 'id';
+      const lang = localStorage. getItem('posko_lang') || 'id';
       config.headers['Accept-Language'] = lang;
     }
     return config;
@@ -29,30 +46,109 @@ api.interceptors.request.use(
   }
 );
 
-// 2. [BARU] RESPONSE INTERCEPTOR (Handle Token Expired)
-api.interceptors.response.use(
+// 2.  RESPONSE INTERCEPTOR (Handle Token Expired + Auto Refresh)
+api.interceptors. response.use(
   (response) => {
-    // Jika sukses, kembalikan respons apa adanya
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
     // Cek apakah error response ada dan statusnya 401 (Unauthorized)
-    if (error.response && error.response.status === 401) {
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
       if (typeof window !== 'undefined') {
-        // 1. Hapus token yang sudah tidak valid/kadaluwarsa
-        localStorage.removeItem('posko_token');
-        
-        // 2. Redirect paksa ke halaman login
-        // Kita gunakan window.location agar state aplikasi benar-benar ter-reset
-        // Cek agar tidak looping redirect jika sudah di halaman login
-        if (!window.location.pathname.startsWith('/login')) {
-            alert("Sesi Anda telah berakhir. Silakan login kembali.");
+        // Jika sudah di-retry, jangan refresh lagi
+        if (originalRequest._retry) {
+          localStorage.removeItem('posko_token');
+          localStorage.removeItem('posko_refresh_token');
+          localStorage.removeItem('userId');
+          
+          if (! window.location.pathname.startsWith('/login')) {
+            alert('Sesi Anda telah berakhir. Silakan login kembali.');
+            window. location.href = '/login';
+          }
+          return Promise.reject(error);
+        }
+
+        // Jika sudah sedang refresh, queue request ini sampai refresh selesai
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              if (token) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+                return api(originalRequest);
+              }
+              return Promise.reject(error);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        // Mulai refresh token
+        isRefreshing = true;
+        originalRequest._retry = true;
+
+        try {
+          const refreshToken = localStorage.getItem('posko_refresh_token');
+          
+          if (!refreshToken) {
+            throw new Error('No refresh token available');
+          }
+
+          // Call endpoint refresh token dari backend
+          const response = await axios.post(
+            'https://posko-backend.vercel.app/api/auth/refresh',
+            { refreshToken },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          const { data } = response;
+          
+          if (data.data && data.data.tokens) {
+            const newAccessToken = data.data.tokens. accessToken;
+            const newRefreshToken = data.data.tokens. refreshToken;
+
+            // Simpan token baru ke localStorage
+            localStorage.setItem('posko_token', newAccessToken);
+            localStorage.setItem('posko_refresh_token', newRefreshToken);
+
+            // Update header authorization dengan token baru
+            api.defaults.headers.common. Authorization = `Bearer ${newAccessToken}`;
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+            // Process queue dengan token baru
+            processQueue(null, newAccessToken);
+
+            // Retry original request dengan token baru
+            return api(originalRequest);
+          } else {
+            throw new Error('Invalid token response');
+          }
+        } catch (refreshError) {
+          // Refresh token gagal, logout user
+          localStorage.removeItem('posko_token');
+          localStorage. removeItem('posko_refresh_token');
+          localStorage.removeItem('userId');
+
+          processQueue(refreshError, null);
+
+          if (!window.location.pathname.startsWith('/login')) {
+            alert('Sesi Anda telah berakhir. Silakan login kembali.');
             window.location.href = '/login';
+          }
+
+          return Promise.reject(refreshError);
         }
       }
     }
-    
-    // Lemparkan error kembali agar bisa di-catch oleh komponen (jika perlu handling khusus selain 401)
+
     return Promise.reject(error);
   }
 );
