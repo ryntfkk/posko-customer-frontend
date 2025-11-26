@@ -10,10 +10,9 @@ import { fetchServices } from '@/features/services/api';
 import { fetchProviders } from '@/features/providers/api';
 import { fetchProfile, switchRole, registerPartner } from '@/features/auth/api';
 import { useCart } from '@/features/cart/useCart';
-import { User, Service, Provider } from '@/features/auth/types';
+import type { User, Service, Provider } from '@/features/auth/types';
 
 import ServiceCategories from '@/components/home/ServiceCategories';
-import ProviderCarousel from '@/components/home/ProviderCarousel';
 import ChatWidget from '@/components/ChatWidget';
 
 export default function HomePage() {
@@ -36,8 +35,8 @@ export default function HomePage() {
   // Helpers
   const profileName = userProfile?.fullName || 'User Posko';
   const profileEmail = userProfile?.email || '-';
-  const profileBadge = userProfile?.activeRole ?  userProfile.activeRole.charAt(0).toUpperCase() + userProfile.activeRole.slice(1) : 'Member';
-  const profileAvatar = userProfile?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`;
+  const profileBadge = userProfile?.activeRole ? userProfile.activeRole.charAt(0).toUpperCase() + userProfile.activeRole.slice(1) : 'Member';
+  const profileAvatar = userProfile?.profilePictureUrl || `https://api.dicebear. com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`;
   const isProviderMode = userProfile?.activeRole === 'provider';
   const hasProviderRole = userProfile?.roles.includes('provider');
 
@@ -93,7 +92,7 @@ export default function HomePage() {
         if (token) {
           setIsLoggedIn(true);
           const res = await fetchProfile();
-          setUserProfile(res. data. profile);
+          setUserProfile(res. data.profile);
         } else {
           setIsLoggedIn(false);
           setUserProfile(null);
@@ -120,7 +119,6 @@ export default function HomePage() {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'posko_token') {
         if (event.newValue) {
-          // Token baru disimpan, refresh profile
           fetchProfile()
             .then(res => setUserProfile(res.data.profile))
             .catch(() => {
@@ -128,7 +126,6 @@ export default function HomePage() {
               setUserProfile(null);
             });
         } else {
-          // Token dihapus (logout)
           setIsLoggedIn(false);
           setUserProfile(null);
         }
@@ -148,7 +145,7 @@ export default function HomePage() {
       if (!categoriesMap.has(service.category)) {
         categoriesMap.set(service.category, {
           name: service.category,
-          slug: encodeURIComponent(service.category. replace(/\s+/g, '-')),
+          slug: encodeURIComponent(service.category.replace(/\s+/g, '-')),
           iconUrl: service.iconUrl,
         });
       }
@@ -179,14 +176,14 @@ export default function HomePage() {
     setUserProfile(null);
     setIsLoggedIn(false);
     setIsProfileOpen(false);
-    router.refresh();
+    router. refresh();
   };
 
   const handleSwitchModeDesktop = async () => {
-    if (! userProfile) return;
+    if (!userProfile) return;
     setSwitching(true);
     try {
-      if (! userProfile.roles.includes('provider')) {
+      if (!userProfile.roles.includes('provider')) {
         await registerPartner();
         alert('Selamat!  Anda berhasil mendaftar sebagai Mitra.');
       } else {
@@ -233,12 +230,12 @@ export default function HomePage() {
             </Link>
 
             {/* Auth Section */}
-            {isLoadingProfile ? (
+            {isLoadingProfile ?  (
               <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
             ) : isLoggedIn && userProfile ? (
               <div className="relative">
                 <button
-                  onClick={() => setIsProfileOpen(! isProfileOpen)}
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   <Image
@@ -312,10 +309,45 @@ export default function HomePage() {
         </section>
 
         {/* Services Section */}
-        <ServiceCategories services={services} isLoading={isLoadingServices} />
+        <ServiceCategories isLoading={isLoadingServices} categories={categories} />
 
-        {/* Providers Section */}
-        <ProviderCarousel providers={providers} isLoading={isLoadingProviders} />
+        {/* Providers Carousel */}
+        {isLoadingProviders ? (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
+          </div>
+        ) : providers.length > 0 ? (
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-900">Mitra Terpercaya</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {providers.slice(0, 6).map((provider) => (
+                <Link
+                  key={provider._id}
+                  href={`/provider/${provider._id}`}
+                  className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:border-red-200 transition-all duration-300"
+                >
+                  <div className="p-6 space-y-4">
+                    <Image
+                      src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId.fullName}`}
+                      alt={provider.userId.fullName}
+                      width={80}
+                      height={80}
+                      className="w-20 h-20 rounded-full object-cover mx-auto group-hover:scale-110 transition-transform"
+                    />
+                    <div className="text-center">
+                      <h3 className="font-bold text-gray-900">{provider. userId.fullName}</h3>
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        <span className="text-sm text-yellow-500">★</span>
+                        <span className="text-sm font-bold text-gray-700">{provider.rating ? provider.rating. toFixed(1) : 'New'}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 line-clamp-2 mt-2">{provider.userId.bio}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
 
       {/* Floating Cart Button */}
@@ -324,7 +356,7 @@ export default function HomePage() {
         className="fixed bottom-24 left-4 lg:bottom-8 lg:left-8 z-50 flex items-center gap-2 px-4 py-3 bg-red-600 text-white rounded-full shadow-xl shadow-red-300 hover:bg-red-700 hover:scale-105 transition-all duration-300"
       >
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01. 042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1h7.586a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM5 16a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+          <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a. 997.997 0 00. 01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6. 414 14H15a1 1 0 000-2H6.414l1-1h7.586a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1. 243A1 1 0 005 1H3zM5 16a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
         <span className="font-bold">{totalAmount > 0 ? `Rp ${(totalAmount / 1000000).toFixed(1)}jt` : 'Keranjang'}</span>
       </Link>
@@ -334,3 +366,4 @@ export default function HomePage() {
     </div>
   );
 }
+          

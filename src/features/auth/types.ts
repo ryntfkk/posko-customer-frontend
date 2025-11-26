@@ -1,42 +1,34 @@
 // src/features/auth/types.ts
-export type Role = 'customer' | 'provider' | 'admin';
-
 export interface Address {
   province: string;
-  district: string;
   city: string;
-  village: string;
-  postalCode: string;
+  district?: string;
+  village?: string;
+  postalCode?: string;
   detail: string;
 }
 
-export interface GeoLocation {
+export interface Location {
   type: 'Point';
-  coordinates: number[];
-}
-// Interface untuk Jadwal (disalin struktur minimalnya agar User type mengenalinya)
-interface UserScheduleDay {
-  dayIndex: number;
-  dayName: string;
-  isOpen: boolean;
-  start: string;
-  end: string;
+  coordinates: [number, number]; // [longitude, latitude]
 }
 
 export interface User {
-  _id: string;    
-  userId: string;  
+  _id: string;
+  userId?: string;
   fullName: string;
   email: string;
-  roles: Role[];
-  activeRole: Role;
-  phoneNumber?: string;
-  birthDate?: string; 
-  address?: Address;
-  location?: GeoLocation; 
+  roles: string[];
+  activeRole: 'customer' | 'provider' | 'admin';
   profilePictureUrl?: string;
-  balance?: number; 
-  schedule?: UserScheduleDay[];
+  bannerPictureUrl?: string;
+  bio?: string;
+  birthDate?: string;
+  phoneNumber?: string;
+  address?: Address;
+  location?: Location;
+  balance?: number;
+  status?: string;
 }
 
 export interface Tokens {
@@ -44,18 +36,21 @@ export interface Tokens {
   refreshToken: string;
 }
 
+export interface AuthData {
+  tokens: Tokens;
+  profile: User;
+  userId?: string;
+}
+
 export interface AuthResponse {
-  messageKey: string;
-  message: string;
-  data: {
-    tokens: Tokens;
-    profile: User;
-  };
+  messageKey?: string;
+  message?: string;
+  data: AuthData;
 }
 
 export interface ProfileResponse {
-  messageKey: string;
-  message: string;
+  messageKey?: string;
+  message?: string;
   data: {
     profile: User;
   };
@@ -70,10 +65,31 @@ export interface RegisterPayload {
   fullName: string;
   email: string;
   password: string;
-  phoneNumber: string;
-  birthDate: string;
-  gender: string;
-  roles: Role[];
-  address: Address;
-  location?: GeoLocation;
+  roles?: string[];
+  activeRole?: string;
+  address?: Address;
+  location?: Location;
+  profilePictureUrl?: string;
+  bannerPictureUrl?: string;
+  bio?: string;
+  birthDate?: string;
+  phoneNumber?: string;
+  balance?: number;
+  status?: string;
+}
+
+export interface Service {
+  _id: string;
+  name: string;
+  description?: string;
+  category: string;
+  basePrice: number;
+  iconUrl?: string;
+}
+
+export interface Provider {
+  _id: string;
+  userId: User;
+  services: any[];
+  rating: number;
 }

@@ -8,7 +8,8 @@ import Image from 'next/image';
 import { useCart, getCartItemId } from '@/features/cart/useCart';
 import { createOrder } from '@/features/orders/api';
 import { fetchProviderById } from '@/features/providers/api';
-import { Provider } from '@/features/providers/types';
+import { CreateOrderPayload } from '@/features/orders/types';
+import { Provider } from '@/features/auth/types';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -32,7 +33,7 @@ function OrderSummaryContent() {
     district: '',
     detail: '',
   });
-  const [location, setLocation] = useState({ type: 'Point', coordinates: [0, 0] });
+  const [location, setLocation] = useState({ type: 'Point' as const, coordinates: [0, 0] as [number, number] });
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,19 +41,19 @@ function OrderSummaryContent() {
   const [isLoadingProvider, setIsLoadingProvider] = useState(false);
 
   // Parse query params
-  const orderTypeParam = searchParams?. get('type') || 'basic';
+  const orderTypeParam = (searchParams?. get('type') || 'basic') as 'basic' | 'direct';
   const providerIdParam = searchParams?.get('providerId');
   const categoryParam = searchParams?.get('category');
 
   // Filter active cart items
   const activeCartItems = useMemo(() => {
-    return cart.filter((item) => {
+    return cart. filter((item) => {
       if (item.quantity <= 0) return false;
       
       if (orderTypeParam === 'basic') {
         if (item.orderType !== 'basic') return false;
         if (categoryParam) {
-          return (item.category ??  null) === categoryParam;
+          return (item.category ?? null) === categoryParam;
         }
         return true;
       } else {
@@ -62,7 +63,7 @@ function OrderSummaryContent() {
   }, [cart, orderTypeParam, providerIdParam, categoryParam]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  const currentTotalItems = activeCartItems. reduce((sum, item) => sum + item.quantity, 0);
+  const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item. quantity, 0);
 
   const estimatedDiscount = 0;
   const payableAmount = Math.max(currentTotalAmount - estimatedDiscount, 0);
@@ -93,7 +94,7 @@ function OrderSummaryContent() {
   // =====================================================================
   useEffect(() => {
     const now = new Date();
-    const futureDate = new Date(now.getTime() + 15 * 60000); // 15 menit dari sekarang
+    const futureDate = new Date(now.getTime() + 15 * 60000);
     const isoString = futureDate.toISOString().slice(0, 16);
     setScheduledAt(isoString);
   }, []);
@@ -108,7 +109,7 @@ function OrderSummaryContent() {
           const { latitude, longitude } = position.coords;
           setLocation({
             type: 'Point',
-            coordinates: [longitude, latitude], // [lng, lat] untuk GeoJSON
+            coordinates: [longitude, latitude],
           });
         },
         (error) => {
@@ -127,7 +128,7 @@ function OrderSummaryContent() {
       return false;
     }
 
-    if (!scheduledAt) {
+    if (! scheduledAt) {
       setError('Pilih tanggal dan waktu kunjungan.');
       return false;
     }
@@ -169,32 +170,36 @@ function OrderSummaryContent() {
 
     setIsSubmitting(true);
     try {
-      // Prepare order data
-      const orderPayload = {
+      const orderPayload: CreateOrderPayload = {
         orderType: orderTypeParam,
-        providerId: orderTypeParam === 'direct' ?  providerIdParam : null,
+        providerId: orderTypeParam === 'direct' ?  providerIdParam || null : null,
         totalAmount: payableAmount,
         items: activeCartItems.map(item => ({
           serviceId: item.serviceId,
           name: item.serviceName,
           quantity: item. quantity,
-          price: item.pricePerUnit,
+          price: item. pricePerUnit,
           note: ''
         })),
         scheduledAt: new Date(scheduledAt).toISOString(),
-        shippingAddress,
-        location
+        shippingAddress: {
+          province: shippingAddress.province,
+          city: shippingAddress.city,
+          district: shippingAddress.district || '',
+          detail: shippingAddress.detail,
+        },
+        location: {
+          type: 'Point',
+          coordinates: [location.coordinates[0], location. coordinates[1]]
+        }
       };
 
-      // Create order
       const response = await createOrder(orderPayload);
       
       if (response.data && response.data._id) {
         const orderId = response.data._id;
         clearCart();
-        
-        // Redirect to payment page
-        router.push(`/payment?orderId=${orderId}`);
+        router.push(`/payment? orderId=${orderId}`);
       } else {
         setError('Gagal membuat pesanan. Silakan coba lagi.');
       }
@@ -222,7 +227,7 @@ function OrderSummaryContent() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
         </svg>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
-        <p className="text-gray-600 mb-6">Silakan kembali ke checkout untuk memilih layanan.</p>
+        <p className="text-gray-600 mb-6">Silakan kembali ke checkout untuk memilih layanan. </p>
         <button
           onClick={() => router.back()}
           className="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors"
@@ -269,8 +274,8 @@ function OrderSummaryContent() {
             ) : provider ? (
               <div className="flex items-start gap-4">
                 <Image
-                  src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId.fullName}`}
-                  alt={provider. userId.fullName}
+                  src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${provider.userId.fullName}`}
+                  alt={provider.userId.fullName}
                   width={80}
                   height={80}
                   className="w-20 h-20 rounded-full object-cover"
@@ -285,7 +290,7 @@ function OrderSummaryContent() {
                 </div>
               </div>
             ) : (
-              <p className="text-gray-500">Mitra tidak ditemukan.</p>
+              <p className="text-gray-500">Mitra tidak ditemukan. </p>
             )}
           </section>
         )}
@@ -334,7 +339,7 @@ function OrderSummaryContent() {
                   type="text"
                   placeholder="Bandung"
                   value={shippingAddress.city}
-                  onChange={(e) => setShippingAddress({...shippingAddress, city: e.target. value})}
+                  onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
                 />
               </div>
@@ -346,7 +351,7 @@ function OrderSummaryContent() {
                 type="text"
                 placeholder="Cibiru"
                 value={shippingAddress.district}
-                onChange={(e) => setShippingAddress({...shippingAddress, district: e.target.value})}
+                onChange={(e) => setShippingAddress({...shippingAddress, district: e. target.value})}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
               />
             </div>
@@ -364,7 +369,7 @@ function OrderSummaryContent() {
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-700 font-medium">
-                ℹ️ Lokasi otomatis diambil dari GPS perangkat Anda.  Koordinat: [{location.coordinates[0]. toFixed(4)}, {location.coordinates[1]. toFixed(4)}]
+                ℹ️ Lokasi otomatis diambil dari GPS perangkat Anda. Koordinat: [{location.coordinates[0].toFixed(4)}, {location.coordinates[1]. toFixed(4)}]
               </p>
             </div>
           </div>
@@ -436,16 +441,16 @@ function OrderSummaryContent() {
           onClick={handlePlaceOrderAndPay}
           disabled={isSubmitting || !isHydrated}
           className={`w-full py-4 rounded-xl font-bold text-white text-lg flex justify-center items-center gap-2 transition-all ${
-            isSubmitting || ! isHydrated
+            isSubmitting || !isHydrated
               ? 'bg-gray-300 cursor-not-allowed'
               : 'bg-red-600 hover:bg-red-700 active:scale-95'
           }`}
         >
           {isSubmitting ? (
             <>
-              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3. org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7. 962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Memproses...
             </>
