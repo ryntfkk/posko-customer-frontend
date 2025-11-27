@@ -32,13 +32,38 @@ export default function HomePage() {
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [isLoadingProviders, setIsLoadingProviders] = useState(true);
   
-  // Helpers
-  const profileName = userProfile?.fullName || 'User Posko';
-  const profileEmail = userProfile?.email || '-';
-  const profileBadge = userProfile?.activeRole ? userProfile.activeRole.charAt(0).toUpperCase() + userProfile.activeRole.slice(1) : 'Member';
-  const profileAvatar = userProfile?.profilePictureUrl || `https://api.dicebear. com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`;
-  const isProviderMode = userProfile?.activeRole === 'provider';
-  const hasProviderRole = userProfile?.roles.includes('provider');
+  // Memoize profile-related computed values
+  const profileName = useMemo(() => 
+    userProfile?.fullName || 'User Posko', 
+    [userProfile?.fullName]
+  );
+  
+  const profileEmail = useMemo(() => 
+    userProfile?.email || '-', 
+    [userProfile?.email]
+  );
+  
+  const profileBadge = useMemo(() => 
+    userProfile?.activeRole 
+      ? userProfile.activeRole.charAt(0).toUpperCase() + userProfile.activeRole.slice(1) 
+      : 'Member', 
+    [userProfile?.activeRole]
+  );
+  
+  const profileAvatar = useMemo(() => 
+    userProfile?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profileName)}`,
+    [userProfile?.profilePictureUrl, profileName]
+  );
+  
+  const isProviderMode = useMemo(() => 
+    userProfile?.activeRole === 'provider',
+    [userProfile?.activeRole]
+  );
+  
+  const hasProviderRole = useMemo(() => 
+    userProfile?.roles.includes('provider'),
+    [userProfile?.roles]
+  );
 
   // =====================================================================
   // EFFECT 1: Fetch Services (Independent)
@@ -94,7 +119,7 @@ export default function HomePage() {
         if (token) {
           setIsLoggedIn(true);
           const res = await fetchProfile();
-          setUserProfile(res. data.profile);
+          setUserProfile(res.data.profile);
         } else {
           setIsLoggedIn(false);
           setUserProfile(null);
@@ -178,7 +203,7 @@ export default function HomePage() {
     setUserProfile(null);
     setIsLoggedIn(false);
     setIsProfileOpen(false);
-    router. refresh();
+    router.refresh();
   };
 
   const handleSwitchModeDesktop = async () => {
@@ -187,13 +212,16 @@ export default function HomePage() {
     try {
       if (!userProfile.roles.includes('provider')) {
         await registerPartner();
-        alert('Selamat!  Anda berhasil mendaftar sebagai Mitra.');
+        alert('Selamat! Anda berhasil mendaftar sebagai Mitra.');
       } else {
         await switchRole(userProfile.activeRole === 'provider' ? 'customer' : 'provider');
       }
       window.location.reload();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Gagal mengubah mode');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error && 'response' in error 
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message 
+        : undefined;
+      alert(errorMessage || 'Gagal mengubah mode');
       setSwitching(false);
     }
   };
@@ -232,7 +260,7 @@ export default function HomePage() {
             </Link>
 
             {/* Auth Section */}
-            {isLoadingProfile ?  (
+            {isLoadingProfile ? (
               <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
             ) : isLoggedIn && userProfile ? (
               <div className="relative">
@@ -247,7 +275,7 @@ export default function HomePage() {
                     height={32}
                     className="w-8 h-8 rounded-full object-cover"
                   />
-                  <span className="hidden lg:inline font-semibold text-sm text-gray-900">{profileName. split(' ')[0]}</span>
+                  <span className="hidden lg:inline font-semibold text-sm text-gray-900">{profileName.split(' ')[0]}</span>
                 </button>
 
                 {isProfileOpen && (
@@ -337,10 +365,10 @@ export default function HomePage() {
                       className="w-20 h-20 rounded-full object-cover mx-auto group-hover:scale-110 transition-transform"
                     />
                     <div className="text-center">
-                      <h3 className="font-bold text-gray-900">{provider. userId.fullName}</h3>
+                      <h3 className="font-bold text-gray-900">{provider.userId.fullName}</h3>
                       <div className="flex items-center justify-center gap-1 mt-2">
                         <span className="text-sm text-yellow-500">★</span>
-                        <span className="text-sm font-bold text-gray-700">{provider.rating ? provider.rating. toFixed(1) : 'New'}</span>
+                        <span className="text-sm font-bold text-gray-700">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
                       </div>
                       <p className="text-xs text-gray-500 line-clamp-2 mt-2">{provider.userId.bio}</p>
                     </div>
@@ -358,7 +386,7 @@ export default function HomePage() {
         className="fixed bottom-24 left-4 lg:bottom-8 lg:left-8 z-50 flex items-center gap-2 px-4 py-3 bg-red-600 text-white rounded-full shadow-xl shadow-red-300 hover:bg-red-700 hover:scale-105 transition-all duration-300"
       >
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a. 997.997 0 00. 01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6. 414 14H15a1 1 0 000-2H6.414l1-1h7.586a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1. 243A1 1 0 005 1H3zM5 16a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+          <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1h7.586a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM5 16a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
         <span className="font-bold">{totalAmount > 0 ? `Rp ${(totalAmount / 1000000).toFixed(1)}jt` : 'Keranjang'}</span>
       </Link>

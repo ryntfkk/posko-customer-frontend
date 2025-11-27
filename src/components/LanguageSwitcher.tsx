@@ -1,4 +1,4 @@
-// src/components/LanguageSwitcher. tsx
+// src/components/LanguageSwitcher.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,17 +12,22 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
   const [isOpen, setIsOpen] = useState(false);
 
   // =====================================================================
-  // EFFECT: Load language dari localStorage
+  // EFFECT: Load language dari localStorage and apply to document
   // =====================================================================
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     const savedLang = localStorage.getItem('posko_lang') || 'id';
     setCurrentLang(savedLang);
-
-    // Apply language ke HTML lang attribute
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = savedLang;
-    }
   }, []);
+
+  // =====================================================================
+  // EFFECT: Apply language to document when changed
+  // =====================================================================
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = currentLang;
+    }
+  }, [currentLang]);
 
   // =====================================================================
   // HANDLER: Change language
@@ -32,14 +37,9 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
     localStorage.setItem('posko_lang', lang);
     setCurrentLang(lang);
 
-    // Update HTML lang attribute
-    if (typeof document !== 'undefined') {
-      document.documentElement.lang = lang;
-    }
-
     // Trigger custom event agar komponen lain bisa mendengarkan
     if (typeof window !== 'undefined') {
-      window. dispatchEvent(
+      window.dispatchEvent(
         new CustomEvent('languageChange', { detail: { lang } })
       );
     }
@@ -48,7 +48,7 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
     
     // Reload halaman untuk apply perubahan bahasa di semua tempat
     // (Untuk implementasi i18n yang lebih advanced, gunakan library seperti next-intl)
-    window.location. reload();
+    window.location.reload();
   };
 
   const languages = [
@@ -89,10 +89,10 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
           {languages.map((lang) => (
             <button
               key={lang.code}
-              onClick={() => handleChangeLanguage(lang. code as 'id' | 'en')}
+              onClick={() => handleChangeLanguage(lang.code as 'id' | 'en')}
               className={`w-full text-left px-4 py-2 flex items-center gap-3 transition-colors ${
                 currentLang === lang.code
-                  ?  'bg-red-50 text-red-600 font-semibold'
+                  ? 'bg-red-50 text-red-600 font-semibold'
                   : 'text-gray-700 hover:bg-gray-100'
               }`}
             >
@@ -103,7 +103,7 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
               </div>
               {currentLang === lang.code && (
                 <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1. 414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
               )}
             </button>

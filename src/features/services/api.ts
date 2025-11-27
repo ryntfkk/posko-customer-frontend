@@ -1,11 +1,11 @@
 // src/features/services/api.ts
 import api from '@/lib/axios';
-import { Service, ServiceResponse } from './types';
+import { Service, ServiceResponse, ServiceCreatePayload } from './types';
 
 export const fetchServices = async (category?: string | null) => {
   try {
     const params = category ? { category } : {};
-    const response = await api. get<{ data: Service[] }>('/services', { params });
+    const response = await api.get<{ data: Service[] }>('/services', { params });
     
     // Ensure response.data.data is always an array
     const servicesData = response.data.data;
@@ -28,7 +28,7 @@ export const getServiceById = async (serviceId: string) => {
   }
 };
 
-export const createService = async (payload: any) => {
+export const createService = async (payload: ServiceCreatePayload) => {
   try {
     const response = await api.post<ServiceResponse>('/services', payload);
     return response.data;
@@ -38,7 +38,7 @@ export const createService = async (payload: any) => {
   }
 };
 
-export const updateService = async (serviceId: string, payload: any) => {
+export const updateService = async (serviceId: string, payload: Partial<ServiceCreatePayload>) => {
   try {
     const response = await api.put<ServiceResponse>(`/services/${serviceId}`, payload);
     return response.data;
