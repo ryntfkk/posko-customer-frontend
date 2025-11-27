@@ -1,4 +1,4 @@
-// src/app/layout.tsx
+import React from "react"; // Added import
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -30,12 +30,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}
         suppressHydrationWarning={true}
       >
-        {/* Language Switcher (Fixed Position) */}
         <div className="fixed top-4 right-4 z-50">
           <LanguageSwitcher />
         </div>
-
-        {/* Main Content */}
         {children}
       </body>
     </html>
