@@ -1,4 +1,3 @@
-// src/features/auth/types.ts
 export interface Address {
   province: string;
   city: string;
@@ -24,6 +23,7 @@ export interface User {
   bannerPictureUrl?: string;
   bio?: string;
   birthDate?: string;
+  gender?: string; // Added gender
   phoneNumber?: string;
   address?: Address;
   location?: Location;
@@ -73,6 +73,7 @@ export interface RegisterPayload {
   bannerPictureUrl?: string;
   bio?: string;
   birthDate?: string;
+  gender?: string; // Added gender to payload
   phoneNumber?: string;
   balance?: number;
   status?: string;
