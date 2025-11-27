@@ -1,25 +1,14 @@
-// src/features/services/types.ts
 export interface Service {
   _id: string;
   name: string;
-  description?: string;
   category: string;
+  iconUrl: string;
   basePrice: number;
-  iconUrl?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface ServiceCreatePayload {
-  name: string;
-  description?: string;
-  category: string;
-  basePrice: number;
-  iconUrl?: string;
+  description: string;
+  isActive: boolean;
 }
 
 export interface ServiceResponse {
-  messageKey?: string;
-  message?: string;
-  data: Service | Service[];
+  message: string;
+  data: Service[];
 }

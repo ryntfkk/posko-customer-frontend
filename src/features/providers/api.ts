@@ -1,84 +1,36 @@
 // src/features/providers/api.ts
 import api from '@/lib/axios';
-import { Provider } from './types';
+import { ProviderListResponse, Provider } from './types';
 
-interface ProviderQueryParams {
-  category?: string;
+// Interface untuk parameter query
+export interface FetchProvidersParams {
   lat?: number;
   lng?: number;
-  radius?: number;
+  category?: string;
+  search?: string;
+  sortBy?: 'distance' | 'price_asc' | 'price_desc' | 'rating';
 }
 
-interface ProviderResponse {
-  messageKey?: string;
-  message?: string;
-  data: Provider | Provider[];
-}
-
-interface AvailabilityPayload {
-  isOnline?: boolean;
-  blockedDates?: string[];
-}
-
-export const fetchProviders = async (params?: ProviderQueryParams) => {
-  try {
-    const response = await api.get<ProviderResponse>('/providers', { params });
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching providers:', error);
-    throw error;
-  }
+export const fetchProviders = async (params: FetchProvidersParams) => {
+  // Axios otomatis mengubah object params menjadi query string:
+  const response = await api.get<ProviderListResponse>('/providers', { params });
+  return response.data;
 };
 
-export const fetchProviderById = async (providerId: string) => {
-  try {
-    const response = await api.get<ProviderResponse>(`/providers/${providerId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching provider by ID:', error);
-    throw error;
-  }
+export const fetchProviderById = async (id: string) => {
+  const response = await api.get<{ data: Provider }>(`/providers/${id}`);
+  return response.data;
 };
 
-export const getProviderProfile = async () => {
-  try {
-    const response = await api.get<ProviderResponse>('/providers/me');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching provider profile:', error);
-    throw error;
-  }
-};
-
+// Get My Provider Profile (Untuk Dashboard)
 export const fetchMyProviderProfile = async () => {
-  try {
-    const response = await api.get<ProviderResponse>('/providers/me');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching my provider profile:', error);
-    throw error;
-  }
+  const response = await api.get<{ data: Provider }>('/providers/me');
+  return response.data;
 };
 
-export const createProvider = async (payload: { services: Array<{ serviceId: string; price: number }> }) => {
-  try {
-    const response = await api.post<ProviderResponse>('/providers', payload);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating provider:', error);
-    throw error;
-  }
+// [UPDATE] Update Ketersediaan (Blocked Dates)
+// Menggantikan updateProviderSchedule
+export const updateAvailability = async (blockedDates: string[]) => {
+  const response = await api.put<{ message: string; data: string[] }>('/providers/availability', { blockedDates });
+  return response.data;
 };
-
-export const updateProviderAvailability = async (payload: AvailabilityPayload) => {
-  try {
-    const response = await api.put<ProviderResponse>('/providers/availability', payload);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating provider availability:', error);
-    throw error;
-  }
-};
-
-// Alias for backward compatibility
-export const updateAvailability = updateProviderAvailability;

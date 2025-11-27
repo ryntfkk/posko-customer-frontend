@@ -11,7 +11,7 @@ import { fetchProfile } from '@/features/auth/api';
 import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
 
-// --- MOCK DATA ---
+// --- MOCK DATA (Hanya untuk Portofolio) ---
 const MOCK_PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1581094794329-cd8119608f84?q=80&w=500&auto=format&fit=crop",
@@ -68,15 +68,22 @@ export default function ProviderProfilePage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  // Validasi Tanggal & Jam
+  // (Kita gunakan logika sederhana di sini: klik "Pilih" -> ke halaman checkout -> baru validasi detail di sana)
+  // Namun validasi visual tetap kita tampilkan di kalender
+  const handleOrderClick = (e: React.MouseEvent<HTMLAnchorElement>, dateStr?: string) => {
+      // Fungsi ini opsional jika ingin direct action dari kalender,
+      // tapi saat ini flow kita adalah tombol "Pilih" di list layanan.
+      // Validasi detail ada di halaman Checkout atau saat klik tombol "Pilih".
+  };
+
   useEffect(() => {
     if (!providerId) return;
     const loadData = async () => {
       try {
         setIsLoading(true);
         const providerRes = await fetchProviderById(providerId);
-        // FIX: Handle potential array return type
-        const providerData = Array.isArray(providerRes.data) ? providerRes.data[0] : providerRes.data;
-        setProvider(providerData);
+        setProvider(providerRes.data);
 
         const token = localStorage.getItem('posko_token');
         if (token) {

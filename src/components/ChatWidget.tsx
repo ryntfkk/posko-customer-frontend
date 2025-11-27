@@ -1,136 +1,93 @@
 // src/components/ChatWidget.tsx
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import api from '@/lib/axios';
 import Image from 'next/image';
+import api from '@/lib/axios';
+
+// --- ICONS ---
+const CloseIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>; // Chevron Down
+const OpenIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>; // Chevron Up
+const SendIcon = () => <svg className="w-5 h-5 text-white translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>;
+const BackIcon = () => <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
+
+interface ChatUser {
+  _id: string;
+  fullName: string;
+  profilePictureUrl: string;
+}
 
 interface Message {
-  _id?: string;
-  sender: string | { _id: string; fullName: string; profilePictureUrl?: string };
+  _id: string;
   content: string;
-  createdAt?: string;
+  sender: string | { _id: string, fullName: string };
+  sentAt: string;
 }
 
 interface ChatRoom {
   _id: string;
-  participants: Array<{ _id: string; fullName: string; profilePictureUrl?: string }>;
+  participants: ChatUser[];
   messages: Message[];
-  updatedAt?: string;
+  updatedAt: string;
 }
 
-interface ChatWidgetUser {
-  _id: string;
-  userId?: string;
-  fullName: string;
-  profilePictureUrl?: string;
-}
-
-interface ChatWidgetProps {
-  user: ChatWidgetUser | null;
-}
-
-export default function ChatWidget({ user }: ChatWidgetProps) {
+export default function ChatWidget({ user }: { user: any }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isUnread, setIsUnread] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const SOCKET_URL = 'https://posko-backend.vercel.app';
+  const SOCKET_URL = 'https://posko-backend.vercel.app/api';
 
-  // FIX LINE 47: Proper type annotation
-  const myId: string = user?._id || localStorage.getItem('userId') || '';
+  // --- [FIX 1] Ambil ID yang benar (User ID dari DB biasanya _id) ---
+  const myId = user?._id || user?.userId;
 
   useEffect(() => {
-    if (!user || !myId) return;
-
     const token = localStorage.getItem('posko_token');
     if (!token) return;
 
-    const initializeChat = async () => {
-      try {
-        setIsLoading(true);
-        const res = await api.get('/chat');
-        setRooms(res.data.data || []);
+    api.get('/chat').then(res => setRooms(res.data.data)).catch(console.error);
 
-        const newSocket = io(SOCKET_URL, {
-          auth: { token },
-          reconnection: true,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-          reconnectionAttempts: 5,
-        });
+    const newSocket = io(SOCKET_URL, { auth: { token } });
 
-        newSocket.on('connect', () => {
-          console.log('✅ Socket connected:', newSocket.id);
-        });
+    newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
+      setRooms(prev => {
+        const roomIndex = prev.findIndex(r => r._id === data.roomId);
+        if (roomIndex === -1) return prev; 
 
-        newSocket.on('receive_message', (data: { roomId: string; message: Message }) => {
-          setRooms((prev) => {
-            const roomIndex = prev.findIndex((r) => r._id === data.roomId);
-            if (roomIndex === -1) return prev;
+        const updatedRoom = { 
+            ...prev[roomIndex], 
+            messages: [...prev[roomIndex].messages, data.message],
+            updatedAt: new Date().toISOString()
+        };
+        const newRooms = [...prev];
+        newRooms.splice(roomIndex, 1);
+        newRooms.unshift(updatedRoom);
+        return newRooms;
+      });
 
-            const updatedRoom = {
-              ...prev[roomIndex],
-              messages: [...prev[roomIndex].messages, data.message],
-              updatedAt: new Date().toISOString(),
-            };
-            
-            const newRooms = [...prev];
-            newRooms.splice(roomIndex, 1);
-            newRooms.unshift(updatedRoom);
-            return newRooms;
-          });
+      setActiveRoom(current => {
+        if (current && current._id === data.roomId) {
+          return { ...current, messages: [...current.messages, data.message] };
+        }
+        // Jika chat tertutup atau room lain aktif, tandai unread (opsional visual)
+        if (!current || current._id !== data.roomId) setIsUnread(true);
+        return current;
+      });
+    });
 
-          setActiveRoom((current) => {
-            if (current && current._id === data.roomId) {
-              return {
-                ...current,
-                messages: [...current.messages, data.message],
-              };
-            }
-            if (!current || current._id !== data.roomId) {
-              setIsUnread(true);
-            }
-            return current;
-          });
-        });
-
-        newSocket.on('disconnect', () => {
-          console.log('❌ Socket disconnected');
-        });
-
-        newSocket.on('error', (error: Error) => {
-          console.error('Socket error:', error);
-        });
-
-        setSocket(newSocket);
-      } catch (error) {
-        console.error('Error initializing chat:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeChat();
-
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, myId]);
+    setSocket(newSocket);
+    return () => { newSocket.disconnect(); };
+  }, [SOCKET_URL]);
 
   useEffect(() => {
     if (isOpen && activeRoom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      setIsUnread(false);
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        setIsUnread(false);
     }
   }, [activeRoom?.messages, isOpen, activeRoom]);
 
@@ -140,202 +97,198 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
 
     socket.emit('send_message', {
       roomId: activeRoom._id,
-      content: newMessage,
+      content: newMessage
     });
-    
     setNewMessage('');
   };
 
   const openRoom = async (room: ChatRoom) => {
     try {
-      setIsLoading(true);
-      const res = await api.get(`/chat/${room._id}`);
-      const detailRoom = res.data.data;
-      setActiveRoom(detailRoom);
-      
-      if (socket) {
-        socket.emit('join_chat', room._id);
-      }
+        // [FIX 2] Selalu fetch detail agar data sender lengkap (bukan string ID saja)
+        const res = await api.get(`/chat/${room._id}`);
+        setActiveRoom(res.data.data);
+        socket?.emit('join_chat', room._id);
     } catch (error) {
-      console.error('Error opening room:', error);
-    } finally {
-      setIsLoading(false);
+        console.error(error);
     }
   };
 
-  const getOpponent = (room: ChatRoom): ChatRoom['participants'][0] => {
-    if (!myId) return room.participants[0];
-    return room.participants.find((p) => p._id !== myId) || room.participants[0];
+  const getOpponent = (room: ChatRoom) => {
+    return room.participants.find(p => p._id !== myId) || room.participants[0];
   };
 
-  const getSenderId = (sender: string | { _id: string }): string => {
+  const getSenderId = (sender: string | { _id: string }) => {
     return typeof sender === 'object' ? sender._id : sender;
   };
 
-  const getSenderName = (sender: string | { _id: string; fullName?: string }): string => {
-    if (typeof sender === 'object' && sender.fullName) {
-      return sender.fullName;
-    }
-    return 'User';
-  };
-
-  const getSenderAvatar = (sender: string | { _id: string; profilePictureUrl?: string }): string => {
-    if (typeof sender === 'object' && sender.profilePictureUrl) {
-      return sender.profilePictureUrl;
-    }
-    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`;
-  };
-
-  if (!user) return null;
-
+  // ==================================================================================
+  // TAMPILAN FLOATING DOCKED (ALA FACEBOOK/LINKEDIN)
+  // ==================================================================================
+  
   return (
-    <>
-      {/* Floating Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-8 right-8 z-40 w-16 h-16 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center hover:scale-110"
-      >
-        {isUnread && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full animate-pulse" />
-        )}
-        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-          <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
-          <path d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14. 057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      </button>
-
-      {/* Chat Panel */}
-      {isOpen && (
-        <div className="fixed bottom-24 right-8 z-40 w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="bg-blue-600 text-white p-4 flex items-center justify-between">
-            <h2 className="font-bold text-lg">Pesan</h2>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="hover:bg-blue-700 p-1 rounded-lg transition-colors"
+    // Container utama fix di kanan bawah
+    <div className="fixed bottom-0 right-4 z-50 flex flex-col items-end font-sans">
+        
+        {/* WINDOW CHAT (Kotak) */}
+        <div 
+            className={`bg-white border border-gray-300 rounded-t-lg shadow-2xl flex flex-col transition-all duration-300 ease-in-out overflow-hidden w-[320px] md:w-[360px] ${
+                isOpen ? 'h-[500px]' : 'h-[48px]' // Tinggi berubah saat open/closed
+            }`}
+        >
+            {/* 1. HEADER (Selalu Tampil) - Berfungsi sebagai toggle */}
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                className={`h-12 px-4 flex items-center justify-between cursor-pointer shrink-0 ${
+                    isOpen ? 'bg-red-600 border-b border-red-700' : 'bg-white hover:bg-gray-50'
+                }`}
             >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4. 293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111. 414 1.414L11. 414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11. 414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Rooms List / Messages */}
-          <div className="flex-1 overflow-y-auto">
-            {! activeRoom ? (
-              <div className="space-y-2 p-4">
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
-                  </div>
-                ) : rooms.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">Belum ada chat</p>
-                ) : (
-                  rooms.map((room) => {
-                    const opponent = getOpponent(room);
-                    const lastMessage = room.messages[room.messages.length - 1];
-                    
-                    return (
-                      <button
-                        key={room._id}
-                        onClick={() => openRoom(room)}
-                        className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors text-left border border-transparent hover:border-gray-200"
-                      >
-                        <Image
-                          src={opponent?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${opponent?.fullName || 'user'}`}
-                          alt={opponent?.fullName || 'User'}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 text-sm">{opponent?.fullName}</p>
-                          <p className="text-xs text-gray-500 truncate">
-                            {lastMessage?.content || 'Tidak ada pesan'}
-                          </p>
+                {/* Kiri: Status / Judul */}
+                <div className="flex items-center gap-2 overflow-hidden">
+                    {isOpen && activeRoom ? (
+                        // Header saat chat room terbuka
+                        <>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); setActiveRoom(null); }} 
+                                className="p-1 -ml-2 rounded-full hover:bg-white/20 transition-colors mr-1"
+                            >
+                                <BackIcon />
+                            </button>
+                            <div className="relative w-8 h-8 shrink-0">
+                                <Image 
+                                    src={getOpponent(activeRoom)?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${getOpponent(activeRoom)?.fullName}`} 
+                                    alt="User" width={32} height={32} 
+                                    className="rounded-full bg-white border border-white/30 object-cover"
+                                />
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-red-600 rounded-full"></span>
+                            </div>
+                            <div className="flex flex-col text-white">
+                                <span className="font-bold text-sm leading-tight truncate max-w-[140px]">
+                                    {getOpponent(activeRoom)?.fullName}
+                                </span>
+                                <span className="text-[10px] text-red-100 opacity-90">Active now</span>
+                            </div>
+                        </>
+                    ) : (
+                        // Header Default (List atau Tertutup)
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isOpen ? 'bg-white/20 border-white/30 text-white' : 'bg-red-600 border-transparent text-white'}`}>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                                </div>
+                                {isUnread && !isOpen && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
+                            </div>
+                            <span className={`font-bold text-sm ${isOpen ? 'text-white' : 'text-gray-800'}`}>
+                                Pesan
+                            </span>
                         </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col p-4 space-y-3">
-                {activeRoom.messages.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">Mulai percakapan</p>
-                ) : (
-                  activeRoom.messages.map((msg, idx) => {
-                    const senderId = getSenderId(msg.sender);
-                    const senderName = getSenderName(msg.sender);
-                    const senderAvatar = getSenderAvatar(msg.sender);
-                    const isFromMe = myId ? senderId === myId : false;
+                    )}
+                </div>
 
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex gap-2 ${isFromMe ? 'flex-row-reverse' : 'flex-row'}`}
-                      >
-                        <Image
-                          src={senderAvatar}
-                          alt={senderName}
-                          width={32}
-                          height={32}
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                        <div className={`flex flex-col ${isFromMe ? 'items-end' : 'items-start'}`}>
-                          <p className="text-xs text-gray-500 mb-1">{senderName}</p>
-                          <div
-                            className={`px-3 py-2 rounded-lg text-sm ${
-                              isFromMe
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-200 text-gray-900'
-                            }`}
-                          >
-                            {msg.content}
-                          </div>
+                {/* Kanan: Ikon Toggle */}
+                <div className={`${isOpen ? 'text-white' : 'text-gray-500'}`}>
+                    {isOpen ? <CloseIcon /> : <OpenIcon />}
+                </div>
+            </div>
+
+            {/* 2. CONTENT AREA (Hanya tampil saat Open) */}
+            {isOpen && (
+                <div className="flex-1 bg-gray-50 overflow-y-auto custom-scrollbar relative flex flex-col">
+                    {!activeRoom ? (
+                        // --- LIST ROOM ---
+                        <div className="divide-y divide-gray-100 bg-white min-h-full">
+                            {rooms.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6 text-center opacity-60">
+                                    <p className="text-sm">Belum ada pesan.</p>
+                                </div>
+                            ) : (
+                                rooms.map(room => {
+                                    const opponent = getOpponent(room);
+                                    const lastMsg = room.messages[room.messages.length - 1];
+                                    return (
+                                        <button 
+                                            key={room._id} 
+                                            onClick={() => openRoom(room)} 
+                                            className="w-full flex items-center gap-3 p-3 hover:bg-red-50/50 transition-colors text-left group"
+                                        >
+                                            <div className="relative shrink-0">
+                                                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-100">
+                                                    <Image 
+                                                        src={opponent?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${opponent?.fullName}`} 
+                                                        alt="User" width={40} height={40} className="object-cover"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-baseline mb-0.5">
+                                                    <h4 className="text-sm font-bold text-gray-900 truncate group-hover:text-red-600">{opponent?.fullName}</h4>
+                                                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{lastMsg ? new Date(lastMsg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false}) : ''}</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 truncate font-medium">
+                                                    {lastMsg ? (
+                                                        // [FIX LOGIKA SENDER LIST]
+                                                        getSenderId(lastMsg.sender) === myId 
+                                                        ? `Anda: ${lastMsg.content}` 
+                                                        : lastMsg.content
+                                                    ) : <span className="italic font-normal text-gray-400">Mulai percakapan...</span>}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    )
+                                })
+                            )}
                         </div>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
+                    ) : (
+                        // --- ROOM CHAT BUBBLES ---
+                        <div className="flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar bg-[#f0f2f5]">
+                            {activeRoom.messages.map((msg, idx) => {
+                                // [FIX 3] Logika isMe menggunakan myId (yang sudah menghandle _id/userId)
+                                const senderId = getSenderId(msg.sender);
+                                const isMe = senderId === myId;
+
+                                return (
+                                    <div key={idx} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] px-3 py-2 text-sm shadow-sm break-words ${
+                                            isMe 
+                                            ? 'bg-red-600 text-white rounded-2xl rounded-br-sm' 
+                                            : 'bg-white text-gray-900 border border-gray-200 rounded-2xl rounded-bl-sm'
+                                        }`}>
+                                            {msg.content}
+                                            <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-red-100' : 'text-gray-400'}`}>
+                                                {new Date(msg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false})}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <div ref={messagesEndRef} />
+                        </div>
+                    )}
+                </div>
             )}
-          </div>
 
-          {/* Message Input */}
-          {activeRoom && (
-            <form onSubmit={handleSendMessage} className="border-t border-gray-200 p-4 flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Ketik pesan..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5.951-2.976 5.951 2.976a1 1 0 001.169-1.409l-7-14z" />
-                </svg>
-              </button>
-            </form>
-          )}
-
-          {/* Back Button */}
-          {activeRoom && (
-            <button
-              onClick={() => setActiveRoom(null)}
-              className="border-t border-gray-200 px-4 py-2 text-sm font-semibold text-blue-600 hover:bg-gray-50 transition-colors"
-            >
-              ← Kembali ke Daftar Chat
-            </button>
-          )}
+            {/* 3. INPUT FOOTER (Hanya saat Open & di Room) */}
+            {isOpen && activeRoom && (
+                <div className="p-3 bg-white border-t border-gray-200 shrink-0">
+                    <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                        <input 
+                            type="text" 
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Tulis pesan..." 
+                            className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:bg-white transition-all outline-none placeholder-gray-500 text-gray-900"
+                            autoFocus
+                        />
+                        <button 
+                            type="submit" 
+                            disabled={!newMessage.trim()} 
+                            className="w-9 h-9 bg-red-600 text-white rounded-full flex items-center justify-center hover:bg-red-700 shadow-md transition-all disabled:bg-gray-200 disabled:shadow-none active:scale-95"
+                        >
+                            <SendIcon />
+                        </button>
+                    </form>
+                </div>
+            )}
         </div>
-      )}
-    </>
+    </div>
   );
 }

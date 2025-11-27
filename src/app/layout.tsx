@@ -1,9 +1,9 @@
-import React from "react"; // Added import
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google"; // Gunakan import ini
 import "./globals.css";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
+// Konfigurasi Font dari Google (Otomatis Download)
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -25,14 +25,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="id">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}
         suppressHydrationWarning={true}
       >
-        <div className="fixed top-4 right-4 z-50">
-          <LanguageSwitcher />
-        </div>
+        <LanguageSwitcher />
         {children}
       </body>
     </html>

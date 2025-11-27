@@ -1,7 +1,8 @@
+// src/app/checkout/page.tsx
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState, useRef, Suspense, useCallback } from 'react';
+import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
@@ -28,6 +29,7 @@ interface CheckoutOption {
   price: number;
 }
 
+// Komponen Content dipisah agar bisa dibungkus Suspense (Best Practice Next.js untuk useSearchParams)
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,15 +47,13 @@ function CheckoutContent() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Ref untuk mencegah infinite loop - DIPERBAIKI dengan mounted flag
+  // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
-  const isMounted = useRef(true);
 
-  const categoryParam = searchParams?. get('category') || null;
+  // Ambil parameter 'category' dengan aman (menggunakan optional chaining)
+  const categoryParam = searchParams?.get('category') || null;
 
-  // =====================================================================
-  // EFFECT 1: Sinkronisasi Query Params & State
-  // =====================================================================
+  // 1. Sinkronisasi Query Params & State
   useEffect(() => {
     if (!searchParams) return;
 
@@ -64,112 +64,36 @@ function CheckoutContent() {
     setSelectedProviderId(providerParam);
   }, [searchParams]);
 
-  // =====================================================================
-  // EFFECT 2: Fetch Services atau Provider Detail
-  // =====================================================================
+  // 2. Fetch Data Berdasarkan Tipe Order
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       setError(null);
       try {
         if (checkoutType === 'basic') {
+          // Mengirim categoryParam ke API
           const res = await fetchServices(categoryParam);
-          // PERBAIKAN: Pastikan res.data adalah array
-          const servicesArray = Array.isArray(res.data) ? res.data : [];
-          if (isMounted.current) {
-            setServices(servicesArray);
-          }
+          setServices(res.data);
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
-          if (isMounted.current) {
-<<<<<<< HEAD
-            // FIX: Handle potential array return type
-            const providerData = Array.isArray(res.data) ? res.data[0] : res.data;
-            setProvider(providerData);
-=======
-            setProvider(res.data);
->>>>>>> 8985b2c72a7509b054237d5348e038190bf23d1b
-          }
+          setProvider(res.data);
         }
       } catch (err) {
         console.error(err);
-        if (isMounted.current) {
-          setError('Gagal memuat data layanan. Silakan coba lagi.');
-        }
+        setError('Gagal memuat data layanan. Silakan coba lagi.');
       } finally {
-        if (isMounted.current) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
+    // Jalankan fetch jika mode basic atau (direct + ada providerId)
     if (checkoutType === 'basic' || (checkoutType === 'direct' && selectedProviderId)) {
-      loadData();
+        loadData();
     }
   }, [checkoutType, selectedProviderId, categoryParam]);
 
-  // =====================================================================
-  // EFFECT 3: Auto-Add Service dari URL (DIPERBAIKI - NO RACE CONDITION)
-  // =====================================================================
-  useEffect(() => {
-    if (!searchParams || !isHydrated) return;
-
-    const serviceIdParam = searchParams.get('serviceId');
-    const options = generateAvailableOptions();
-
-    if (options.length > 0 && serviceIdParam && !hasAutoAdded.current) {
-      const targetOption = options.find(o => o.id === serviceIdParam);
-      
-      if (targetOption) {
-        const key = getCartItemId(
-          targetOption.id, 
-          checkoutType, 
-          checkoutType === 'direct' ? selectedProviderId : undefined
-        );
-        const existing = cart.find(c => c.id === key);
-
-        if (!existing || existing.quantity === 0) {
-          upsertItem({
-            serviceId: targetOption.id,
-            serviceName: targetOption.name,
-            category: targetOption.category,
-            orderType: checkoutType,
-            quantity: 1,
-            pricePerUnit: targetOption.price,
-            providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
-            providerName: checkoutType === 'direct' ? getProviderLabel() : undefined,
-          });
-        }
-        
-        hasAutoAdded.current = true;
-        
-        // Bersihkan URL parameter serviceId
-        if (isMounted.current) {
-          const newParams = new URLSearchParams(searchParams.toString());
-          newParams.delete('serviceId');
-          window.history.replaceState(null, '', `?${newParams.toString()}`);
-        }
-      }
-    }
-<<<<<<< HEAD
-  }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem]); // Removed expensive dependencies
-=======
-  }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem, generateAvailableOptions, getProviderLabel]);
->>>>>>> 8985b2c72a7509b054237d5348e038190bf23d1b
-
-  // =====================================================================
-  // EFFECT 4: Cleanup on Unmount
-  // =====================================================================
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  // =====================================================================
-  // HELPER FUNCTIONS - Memoized
-  // =====================================================================
-  const generateAvailableOptions = useCallback((): CheckoutOption[] => {
+  // 3. Normalisasi Data untuk UI
+  const availableOptions: CheckoutOption[] = useMemo(() => {
     if (checkoutType === 'basic') {
       return services.map(s => ({
         id: s._id,
@@ -193,39 +117,66 @@ function CheckoutContent() {
     }
   }, [checkoutType, services, provider]);
 
-<<<<<<< HEAD
-  const getProviderLabel = (): string => {
-=======
-  const getProviderLabel = useCallback((): string => {
->>>>>>> 8985b2c72a7509b054237d5348e038190bf23d1b
+  const providerLabel = useMemo(() => {
     if (!selectedProviderId) return 'Cari Cepat';
     if (provider) return provider.userId.fullName;
     return 'Memuat Nama Mitra...';
   }, [selectedProviderId, provider]);
 
-  // Memoize results since these are used in effect dependencies
-  const availableOptions = useMemo(() => generateAvailableOptions(), [generateAvailableOptions]);
-  const providerLabel = useMemo(() => getProviderLabel(), [getProviderLabel]);
-
   // Filter keranjang agar HANYA menampilkan item yang sesuai dengan mode saat ini
   const activeCartItems = useMemo(() => {
     return cart.filter((item) => {
-      if (item.quantity <= 0) return false;
-      
-      if (checkoutType === 'basic') {
-        if (item.orderType !== 'basic') return false;
-        if (categoryParam) {
-          return (item.category ?? null) === categoryParam;
+        if (item.quantity <= 0) return false;
+        
+        if (checkoutType === 'basic') {
+            if (item.orderType !== 'basic') return false;
+            if (categoryParam) {
+                return (item.category ?? null) === categoryParam;
+            }
+            return true;
+        } else {
+            return item.orderType === 'direct' && item.providerId === selectedProviderId;
         }
-        return true;
-      } else {
-        return item.orderType === 'direct' && item.providerId === selectedProviderId;
-      }
     });
   }, [cart, checkoutType, selectedProviderId, categoryParam]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Auto-Add Service jika ada `serviceId` di URL
+  useEffect(() => {
+    if (!searchParams) return;
+    
+    const serviceIdParam = searchParams.get('serviceId');
+    
+    if (isHydrated && !hasAutoAdded.current && serviceIdParam && availableOptions.length > 0) {
+        const targetOption = availableOptions.find(o => o.id === serviceIdParam);
+        
+        if (targetOption) {
+            const key = getCartItemId(targetOption.id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
+            const existing = cart.find(c => c.id === key);
+
+            if (!existing || existing.quantity === 0) {
+                upsertItem({
+                    serviceId: targetOption.id,
+                    serviceName: targetOption.name,
+                    category: targetOption.category,
+                    orderType: checkoutType,
+                    quantity: 1,
+                    pricePerUnit: targetOption.price,
+                    providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
+                    providerName: checkoutType === 'direct' ? providerLabel : undefined,
+                });
+            }
+            hasAutoAdded.current = true;
+            
+            // Bersihkan URL parameter serviceId agar tidak add berulang kali
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.delete('serviceId');
+            window.history.replaceState(null, '', `?${newParams.toString()}`);
+        }
+    }
+  }, [isHydrated, searchParams, availableOptions, checkoutType, selectedProviderId, providerLabel, upsertItem, cart]);
 
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
@@ -243,12 +194,13 @@ function CheckoutContent() {
 
     setIsSubmitting(true);
     try {
+      // Buat query params untuk memberi tahu halaman Summary item mana yang harus diproses
       const queryParams = new URLSearchParams({
         type: checkoutType,
       });
       
       if (checkoutType === 'basic' && categoryParam) {
-        queryParams. append('category', categoryParam);
+        queryParams.append('category', categoryParam);
       }
 
       if (checkoutType === 'direct' && selectedProviderId) {
@@ -258,25 +210,25 @@ function CheckoutContent() {
       router.push(`/order/summary?${queryParams.toString()}`);
     } catch (err) {
       console.error(err);
-      alert('Terjadi kendala.  Silakan coba lagi.');
+      alert('Terjadi kendala. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleSwitchMode = (targetMode: CheckoutType) => {
-    if (targetMode === 'direct' && ! selectedProviderId) {
-      alert('Silakan pilih mitra dari halaman pencarian terlebih dahulu.');
-      return;
-    }
-    
-    hasAutoAdded.current = false;
-    setCheckoutType(targetMode);
-    
-    if (targetMode === 'basic') {
-      setSelectedProviderId(null);
-      router.replace('/checkout? type=basic');
-    }
+      if (targetMode === 'direct' && !selectedProviderId) {
+          alert("Silakan pilih mitra dari halaman pencarian terlebih dahulu.");
+          return;
+      }
+      
+      hasAutoAdded.current = false;
+      
+      setCheckoutType(targetMode);
+      if (targetMode === 'basic') {
+          setSelectedProviderId(null);
+          router.replace('/checkout?type=basic');
+      }
   };
 
   const renderServiceOption = (option: CheckoutOption) => {
@@ -289,8 +241,8 @@ function CheckoutContent() {
         category: option.category,
         orderType: checkoutType,
         quantity: newQuantity,
-        pricePerUnit: option. price,
-        providerId: checkoutType === 'direct' ?  selectedProviderId || undefined : undefined,
+        pricePerUnit: option.price,
+        providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
         providerName: checkoutType === 'direct' ? providerLabel : undefined,
       });
     };
@@ -306,7 +258,7 @@ function CheckoutContent() {
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-bold text-gray-900">{option.name}</h3>
             <span className="text-[12px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
-              {option.category}
+                {option.category}
             </span>
           </div>
           <p className="text-sm text-gray-600 line-clamp-2">{option.description}</p>
@@ -326,7 +278,7 @@ function CheckoutContent() {
             disabled={checkoutType === 'direct' && !provider}
             className={`w-10 h-10 rounded-lg font-bold flex items-center justify-center ${
               checkoutType === 'direct' && !provider
-                ?  'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : 'bg-red-600 text-white hover:bg-red-700'
             }`}
           >
@@ -351,7 +303,7 @@ function CheckoutContent() {
             <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Checkout</span>
             <h1 className="text-xl font-bold text-gray-900">{checkoutType === 'direct' ? 'Pesan Mitra' : 'Pesan Cepat'}</h1>
             <p className="text-xs text-gray-500 truncate max-w-[200px]">
-              {checkoutType === 'direct' ? `Order ke: ${providerLabel}` : 'Sistem akan mencarikan mitra terdekat'}
+                {checkoutType === 'direct' ? `Order ke: ${providerLabel}` : 'Sistem akan mencarikan mitra terdekat'}
             </p>
           </div>
         </div>
@@ -359,19 +311,19 @@ function CheckoutContent() {
 
       <main className="max-w-4xl mx-auto px-4 lg:px-8 py-8 space-y-6">
         {isLoading && (
-          <div className="flex flex-col items-center justify-center py-12 space-y-4">
-            <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
-            <p className="text-sm text-gray-500">Memuat data layanan...</p>
-          </div>
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
+                <p className="text-sm text-gray-500">Memuat data layanan...</p>
+            </div>
         )}
         
         {error && (
-          <div className="p-6 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-center font-medium">
-            {error}
-          </div>
+            <div className="p-6 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-center font-medium">
+                {error}
+            </div>
         )}
 
-        {! isLoading && !error && (
+        {!isLoading && !error && (
           <>
             <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               {/* Header Section Tipe Order */}
@@ -380,15 +332,15 @@ function CheckoutContent() {
                   <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Mode Pemesanan</p>
                   <p className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     {checkoutType === 'direct' ? (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        Direct Order (Pilih Mitra)
-                      </>
+                        <>
+                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Direct Order (Pilih Mitra)
+                        </>
                     ) : (
-                      <>
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        Basic Order (Otomatis)
-                      </>
+                        <>
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                            Basic Order (Otomatis)
+                        </>
                     )}
                   </p>
                 </div>
@@ -434,18 +386,18 @@ function CheckoutContent() {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white uppercase tracking-wider">Mitra Pilihan</span>
+                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white uppercase tracking-wider">Mitra Pilihan</span>
                         </div>
                         <h3 className="text-lg font-bold text-gray-900 leading-tight">{provider.userId.fullName}</h3>
                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{provider.userId.bio || 'Mitra profesional Posko siap melayani kebutuhan Anda.'}</p>
                         
                         <div className="flex items-center gap-3 mt-2">
-                          <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-gray-200 shadow-sm">
-                            <span className="text-xs text-yellow-500">★</span>
-                            <span className="text-xs font-bold text-gray-700">{provider.rating ?  provider.rating.toFixed(1) : 'New'}</span>
-                          </div>
-                          <span className="text-[10px] text-gray-400">•</span>
-                          <span className="text-xs text-gray-600 font-medium">Harga Ratecard Khusus</span>
+                            <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-gray-200 shadow-sm">
+                                <span className="text-xs text-yellow-500">★</span>
+                                <span className="text-xs font-bold text-gray-700">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
+                            </div>
+                            <span className="text-[10px] text-gray-400">•</span>
+                            <span className="text-xs text-gray-600 font-medium">Harga Ratecard Khusus</span>
                         </div>
                       </div>
                     </div>
@@ -457,7 +409,7 @@ function CheckoutContent() {
 
                   {checkoutType === 'direct' && availableOptions.length === 0 && (
                     <div className="p-6 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                      <p className="text-sm text-gray-500">Mitra ini belum memiliki layanan aktif yang dapat dipesan.</p>
+                        <p className="text-sm text-gray-500">Mitra ini belum memiliki layanan aktif yang dapat dipesan.</p>
                     </div>
                   )}
 
@@ -471,7 +423,7 @@ function CheckoutContent() {
                   <div className="flex justify-between items-center border-b border-gray-200 pb-2">
                     <p className="text-sm font-bold text-gray-900">Ringkasan Pesanan</p>
                     {activeCartItems.length > 0 && (
-                      <button onClick={clearCart} className="text-[10px] text-red-600 font-bold hover:underline">Hapus Semua</button>
+                        <button onClick={clearCart} className="text-[10px] text-red-600 font-bold hover:underline">Hapus Semua</button>
                     )}
                   </div>
                   
@@ -479,8 +431,8 @@ function CheckoutContent() {
                     <p className="text-sm text-gray-500 animate-pulse">Memuat keranjang...</p>
                   ) : activeCartItems.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
-                      <svg className="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                      <p className="text-xs">Keranjang kosong</p>
+                        <svg className="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                        <p className="text-xs">Keranjang kosong</p>
                     </div>
                   ) : (
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
@@ -532,15 +484,15 @@ function CheckoutContent() {
                 }`}
               >
                 {isSubmitting ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    Memproses...
-                  </>
+                    <>
+                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        Memproses...
+                    </>
                 ) : (
-                  <>
-                    Lanjutkan Pembayaran
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                  </>
+                    <>
+                        Lanjutkan Pembayaran
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </>
                 )}
               </button>
             </section>
@@ -551,6 +503,7 @@ function CheckoutContent() {
   );
 }
 
+// Wrapper untuk Suspense agar sesuai standar Next.js 13+ untuk Client Component yang menggunakan useSearchParams
 export default function CheckoutPageWrapper() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>}>

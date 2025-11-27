@@ -1,86 +1,39 @@
-// src/features/orders/api.ts
 import api from '@/lib/axios';
-import { CreateOrderPayload } from './types';
+import { CreateOrderPayload, Order } from './types';
 
+// Buat Pesanan Baru
 export const createOrder = async (payload: CreateOrderPayload) => {
-  try {
-    const response = await api.post('/orders', payload);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating order:', error);
-    throw error;
-  }
+  const response = await api.post<{ message: string; data: Order }>('/orders', payload);
+  return response.data;
 };
 
-export const getOrder = async (orderId: string) => {
-  try {
-    const response = await api.get(`/orders/${orderId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching order:', error);
-    throw error;
-  }
+export const fetchMyOrders = async (view: 'customer' | 'provider' = 'customer') => {
+  const response = await api.get<{ data: Order[] }>('/orders', {
+    params: { view } 
+  }); 
+  return response.data;
 };
 
-export const fetchOrderById = async (orderId: string) => {
-  try {
-    const response = await api.get(`/orders/${orderId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching order by ID:', error);
-    throw error;
-  }
-};
-
-export const listOrders = async (view?: string) => {
-  try {
-    const params = view ? `?view=${view}` : '';
-    const response = await api.get(`/orders${params}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error listing orders:', error);
-    throw error;
-  }
-};
-
-// PERBAIKAN: Hapus parameter yang tidak perlu
-export const fetchMyOrders = async () => {
-  try {
-    const response = await api.get('/orders');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching my orders:', error);
-    throw error;
-  }
-};
-
-// PERBAIKAN: Hapus parameter yang tidak perlu
+// Ambil Pesanan Masuk (Untuk Provider) - Jika backend belum ada route ini, 
+// pastikan Anda menambahkannya di backend atau gunakan filter di endpoint utama.
 export const fetchIncomingOrders = async () => {
-  try {
-    const response = await api.get('/orders/incoming');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching incoming orders:', error);
-    throw error;
-  }
+  const response = await api.get<{ data: Order[] }>('/orders/incoming');
+  return response.data;
 };
 
+// [TAMBAHAN] Update progres kerja provider
 export const updateOrderStatus = async (orderId: string, status: string) => {
-  try {
-    const response = await api.patch(`/orders/${orderId}/status`, { status });
-    return response.data;
-  } catch (error) {
-    console. error('Error updating order status:', error);
-    throw error;
-  }
+  const response = await api.patch<{ message: string; data: Order }>(`/orders/${orderId}/status`, { status });
+  return response.data;
 };
 
-export const acceptOrder = async (orderId: string) => {
-  try {
-    const response = await api.patch(`/orders/${orderId}/accept`, {});
-    return response.data;
-  } catch (error) {
-    console.error('Error accepting order:', error);
-    throw error;
-  }
+// Ambil Detail Pesanan
+export const fetchOrderById = async (orderId: string) => {
+  const response = await api.get<{ data: Order }>(`/orders/${orderId}`);
+  return response.data;
 };
+export const acceptOrder = async (orderId: string) => {
+  const response = await api.patch<{ message: string; data: Order }>(`/orders/${orderId}/accept`, {});
+  return response.data;
+};
+
