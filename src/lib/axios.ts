@@ -9,9 +9,9 @@ const api = axios.create({
 
 // Flag to prevent infinite loop refresh token
 let isRefreshing = false;
-let failedQueue: { resolve: (value: any) => void; reject: (reason?: any) => void }[] = [];
+let failedQueue: { resolve: (value: string | null) => void; reject: (reason?: Error) => void }[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);

@@ -40,6 +40,7 @@ export const useCart = () => {
     const [isHydrated, setIsHydrated] = useState(false);
 
     // Mark as hydrated on mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         setIsHydrated(true);
     }, []);

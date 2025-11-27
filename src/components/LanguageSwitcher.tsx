@@ -14,6 +14,7 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
   // =====================================================================
   // EFFECT: Load language dari localStorage and apply to document
   // =====================================================================
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     const savedLang = localStorage.getItem('posko_lang') || 'id';
     setCurrentLang(savedLang);
