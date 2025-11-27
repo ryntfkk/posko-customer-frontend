@@ -39,7 +39,11 @@ export const useCart = () => {
     const [cart, setCart] = useState<CartItem[]>(() => loadCartFromStorage());
     const [isHydrated, setIsHydrated] = useState(false);
 
-    // Mark as hydrated on mount - simple boolean state without dependencies
+    // Mark as hydrated on mount
+    // This is a standard hydration pattern - we need to set state once on mount
+    // to indicate client-side hydration is complete. This doesn't cause cascading
+    // renders because it's a simple boolean with no dependencies.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         setIsHydrated(true);
     }, []);
