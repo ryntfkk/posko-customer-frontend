@@ -41,13 +41,13 @@ function OrderSummaryContent() {
   const [isLoadingProvider, setIsLoadingProvider] = useState(false);
 
   // Parse query params
-  const orderTypeParam = (searchParams?. get('type') || 'basic') as 'basic' | 'direct';
+  const orderTypeParam = (searchParams?.get('type') || 'basic') as 'basic' | 'direct';
   const providerIdParam = searchParams?.get('providerId');
   const categoryParam = searchParams?.get('category');
 
   // Filter active cart items
   const activeCartItems = useMemo(() => {
-    return cart. filter((item) => {
+    return cart.filter((item) => {
       if (item.quantity <= 0) return false;
       
       if (orderTypeParam === 'basic') {
@@ -63,7 +63,7 @@ function OrderSummaryContent() {
   }, [cart, orderTypeParam, providerIdParam, categoryParam]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item. quantity, 0);
+  const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const estimatedDiscount = 0;
   const payableAmount = Math.max(currentTotalAmount - estimatedDiscount, 0);
@@ -78,7 +78,9 @@ function OrderSummaryContent() {
       try {
         setIsLoadingProvider(true);
         const res = await fetchProviderById(providerIdParam);
-        setProvider(res.data);
+        // FIX: Handle potential array return type
+        const providerData = Array.isArray(res.data) ? res.data[0] : res.data;
+        setProvider(providerData);
       } catch (err) {
         console.error('Error loading provider:', err);
       } finally {
@@ -128,7 +130,7 @@ function OrderSummaryContent() {
       return false;
     }
 
-    if (! scheduledAt) {
+    if (!scheduledAt) {
       setError('Pilih tanggal dan waktu kunjungan.');
       return false;
     }
@@ -172,13 +174,13 @@ function OrderSummaryContent() {
     try {
       const orderPayload: CreateOrderPayload = {
         orderType: orderTypeParam,
-        providerId: orderTypeParam === 'direct' ?  providerIdParam || null : null,
+        providerId: orderTypeParam === 'direct' ? providerIdParam || null : null,
         totalAmount: payableAmount,
         items: activeCartItems.map(item => ({
           serviceId: item.serviceId,
           name: item.serviceName,
-          quantity: item. quantity,
-          price: item. pricePerUnit,
+          quantity: item.quantity,
+          price: item.pricePerUnit,
           note: ''
         })),
         scheduledAt: new Date(scheduledAt).toISOString(),
@@ -190,7 +192,7 @@ function OrderSummaryContent() {
         },
         location: {
           type: 'Point',
-          coordinates: [location.coordinates[0], location. coordinates[1]]
+          coordinates: [location.coordinates[0], location.coordinates[1]]
         }
       };
 
@@ -199,7 +201,7 @@ function OrderSummaryContent() {
       if (response.data && response.data._id) {
         const orderId = response.data._id;
         clearCart();
-        router.push(`/payment? orderId=${orderId}`);
+        router.push(`/payment?orderId=${orderId}`);
       } else {
         setError('Gagal membuat pesanan. Silakan coba lagi.');
       }
@@ -227,7 +229,7 @@ function OrderSummaryContent() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
         </svg>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
-        <p className="text-gray-600 mb-6">Silakan kembali ke checkout untuk memilih layanan. </p>
+        <p className="text-gray-600 mb-6">Silakan kembali ke checkout untuk memilih layanan.</p>
         <button
           onClick={() => router.back()}
           className="px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors"
@@ -274,7 +276,7 @@ function OrderSummaryContent() {
             ) : provider ? (
               <div className="flex items-start gap-4">
                 <Image
-                  src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${provider.userId.fullName}`}
+                  src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId.fullName}`}
                   alt={provider.userId.fullName}
                   width={80}
                   height={80}
@@ -290,7 +292,7 @@ function OrderSummaryContent() {
                 </div>
               </div>
             ) : (
-              <p className="text-gray-500">Mitra tidak ditemukan. </p>
+              <p className="text-gray-500">Mitra tidak ditemukan.</p>
             )}
           </section>
         )}
@@ -329,7 +331,7 @@ function OrderSummaryContent() {
                   type="text"
                   placeholder="Jawa Barat"
                   value={shippingAddress.province}
-                  onChange={(e) => setShippingAddress({... shippingAddress, province: e.target.value})}
+                  onChange={(e) => setShippingAddress({...shippingAddress, province: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
                 />
               </div>
@@ -351,7 +353,7 @@ function OrderSummaryContent() {
                 type="text"
                 placeholder="Cibiru"
                 value={shippingAddress.district}
-                onChange={(e) => setShippingAddress({...shippingAddress, district: e. target.value})}
+                onChange={(e) => setShippingAddress({...shippingAddress, district: e.target.value})}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
               />
             </div>
@@ -361,7 +363,7 @@ function OrderSummaryContent() {
               <textarea
                 placeholder="Jl. Merdeka No. 10, Apt 2B"
                 value={shippingAddress.detail}
-                onChange={(e) => setShippingAddress({...shippingAddress, detail: e. target.value})}
+                onChange={(e) => setShippingAddress({...shippingAddress, detail: e.target.value})}
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600"
               />
@@ -369,7 +371,7 @@ function OrderSummaryContent() {
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-700 font-medium">
-                ℹ️ Lokasi otomatis diambil dari GPS perangkat Anda. Koordinat: [{location.coordinates[0].toFixed(4)}, {location.coordinates[1]. toFixed(4)}]
+                ℹ️ Lokasi otomatis diambil dari GPS perangkat Anda. Koordinat: [{location.coordinates[0].toFixed(4)}, {location.coordinates[1].toFixed(4)}]
               </p>
             </div>
           </div>
@@ -448,9 +450,9 @@ function OrderSummaryContent() {
         >
           {isSubmitting ? (
             <>
-              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3. org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7. 962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Memproses...
             </>

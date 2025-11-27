@@ -1,8 +1,7 @@
-// src/app/checkout/page.tsx
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
+import { useEffect, useMemo, useState, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
@@ -83,7 +82,9 @@ function CheckoutContent() {
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
           if (isMounted.current) {
-            setProvider(res. data);
+            // FIX: Handle potential array return type
+            const providerData = Array.isArray(res.data) ? res.data[0] : res.data;
+            setProvider(providerData);
           }
         }
       } catch (err) {
@@ -107,55 +108,46 @@ function CheckoutContent() {
   // EFFECT 3: Auto-Add Service dari URL (DIPERBAIKI - NO RACE CONDITION)
   // =====================================================================
   useEffect(() => {
-    if (!searchParams) return;
+    if (!searchParams || !isHydrated) return;
 
-    const autoAddService = async () => {
-      if (!isMounted.current || !isHydrated) return;
+    const serviceIdParam = searchParams.get('serviceId');
+    const options = generateAvailableOptions();
+
+    if (options.length > 0 && serviceIdParam && !hasAutoAdded.current) {
+      const targetOption = options.find(o => o.id === serviceIdParam);
       
-      const serviceIdParam = searchParams.get('serviceId');
-      const availableOptions = useMemo(
-        () => generateAvailableOptions(),
-        [checkoutType, services, provider]
-      );
+      if (targetOption) {
+        const key = getCartItemId(
+          targetOption.id, 
+          checkoutType, 
+          checkoutType === 'direct' ? selectedProviderId : undefined
+        );
+        const existing = cart.find(c => c.id === key);
 
-      if (isHydrated && availableOptions.length > 0 && serviceIdParam && !hasAutoAdded.current) {
-        const targetOption = availableOptions.find(o => o.id === serviceIdParam);
+        if (!existing || existing.quantity === 0) {
+          upsertItem({
+            serviceId: targetOption.id,
+            serviceName: targetOption.name,
+            category: targetOption.category,
+            orderType: checkoutType,
+            quantity: 1,
+            pricePerUnit: targetOption.price,
+            providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
+            providerName: checkoutType === 'direct' ? getProviderLabel() : undefined,
+          });
+        }
         
-        if (targetOption) {
-          const key = getCartItemId(
-            targetOption.id, 
-            checkoutType, 
-            checkoutType === 'direct' ?  selectedProviderId : undefined
-          );
-          const existing = cart.find(c => c.id === key);
-
-          if (!existing || existing.quantity === 0) {
-            upsertItem({
-              serviceId: targetOption.id,
-              serviceName: targetOption.name,
-              category: targetOption.category,
-              orderType: checkoutType,
-              quantity: 1,
-              pricePerUnit: targetOption.price,
-              providerId: checkoutType === 'direct' ?  selectedProviderId || undefined : undefined,
-              providerName: checkoutType === 'direct' ? getProviderLabel() : undefined,
-            });
-          }
-          
-          hasAutoAdded.current = true;
-          
-          // Bersihkan URL parameter serviceId
-          if (isMounted.current) {
-            const newParams = new URLSearchParams(searchParams.toString());
-            newParams.delete('serviceId');
-            window.history.replaceState(null, '', `?${newParams.toString()}`);
-          }
+        hasAutoAdded.current = true;
+        
+        // Bersihkan URL parameter serviceId
+        if (isMounted.current) {
+          const newParams = new URLSearchParams(searchParams.toString());
+          newParams.delete('serviceId');
+          window.history.replaceState(null, '', `?${newParams.toString()}`);
         }
       }
-    };
-
-    autoAddService();
-  }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem]);
+    }
+  }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem]); // Removed expensive dependencies
 
   // =====================================================================
   // EFFECT 4: Cleanup on Unmount
@@ -173,8 +165,8 @@ function CheckoutContent() {
     if (checkoutType === 'basic') {
       return services.map(s => ({
         id: s._id,
-        name: s. name,
-        category: s. category,
+        name: s.name,
+        category: s.category,
         description: s.description || 'Layanan standar aplikasi.',
         price: s.basePrice
       }));
@@ -184,17 +176,17 @@ function CheckoutContent() {
       return provider.services
         .filter(item => item.isActive)
         .map(item => ({
-          id: item. serviceId._id,
-          name: item. serviceId.name,
+          id: item.serviceId._id,
+          name: item.serviceId.name,
           category: item.serviceId.category,
-          description: `Layanan spesifik oleh ${provider.userId. fullName}`,
+          description: `Layanan spesifik oleh ${provider.userId.fullName}`,
           price: item.price 
         }));
     }
   };
 
   const getProviderLabel = (): string => {
-    if (! selectedProviderId) return 'Cari Cepat';
+    if (!selectedProviderId) return 'Cari Cepat';
     if (provider) return provider.userId.fullName;
     return 'Memuat Nama Mitra...';
   };
@@ -210,7 +202,7 @@ function CheckoutContent() {
       if (checkoutType === 'basic') {
         if (item.orderType !== 'basic') return false;
         if (categoryParam) {
-          return (item.category ??  null) === categoryParam;
+          return (item.category ?? null) === categoryParam;
         }
         return true;
       } else {
@@ -225,11 +217,11 @@ function CheckoutContent() {
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
     const existing = cart.find((item) => item.id === key);
-    return existing?.quantity ??  0;
+    return existing?.quantity ?? 0;
   };
 
   const handleConfirmOrder = async () => {
-    if (! isHydrated) return;
+    if (!isHydrated) return;
     
     if (activeCartItems.length === 0 || currentTotalItems <= 0) {
       alert('Pilih minimal satu layanan sebelum melanjutkan.');
