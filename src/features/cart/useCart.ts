@@ -39,8 +39,7 @@ export const useCart = () => {
     const [cart, setCart] = useState<CartItem[]>(() => loadCartFromStorage());
     const [isHydrated, setIsHydrated] = useState(false);
 
-    // Mark as hydrated on mount
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Mark as hydrated on mount - simple boolean state without dependencies
     useEffect(() => {
         setIsHydrated(true);
     }, []);

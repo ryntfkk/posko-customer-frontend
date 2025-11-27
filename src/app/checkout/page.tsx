@@ -110,9 +110,10 @@ function CheckoutContent() {
     if (!searchParams || !isHydrated) return;
 
     const serviceIdParam = searchParams.get('serviceId');
+    const options = generateAvailableOptions();
 
-    if (availableOptions.length > 0 && serviceIdParam && !hasAutoAdded.current) {
-      const targetOption = availableOptions.find(o => o.id === serviceIdParam);
+    if (options.length > 0 && serviceIdParam && !hasAutoAdded.current) {
+      const targetOption = options.find(o => o.id === serviceIdParam);
       
       if (targetOption) {
         const key = getCartItemId(
@@ -131,7 +132,7 @@ function CheckoutContent() {
             quantity: 1,
             pricePerUnit: targetOption.price,
             providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
-            providerName: checkoutType === 'direct' ? providerLabel : undefined,
+            providerName: checkoutType === 'direct' ? getProviderLabel() : undefined,
           });
         }
         
@@ -145,7 +146,7 @@ function CheckoutContent() {
         }
       }
     }
-  }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem, availableOptions, providerLabel]);
+  }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem, generateAvailableOptions, getProviderLabel]);
 
   // =====================================================================
   // EFFECT 4: Cleanup on Unmount
@@ -189,6 +190,7 @@ function CheckoutContent() {
     return 'Memuat Nama Mitra...';
   }, [selectedProviderId, provider]);
 
+  // Memoize results since these are used in effect dependencies
   const availableOptions = useMemo(() => generateAvailableOptions(), [generateAvailableOptions]);
   const providerLabel = useMemo(() => getProviderLabel(), [getProviderLabel]);
 
@@ -215,11 +217,11 @@ function CheckoutContent() {
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
     const existing = cart.find((item) => item.id === key);
-    return existing?.quantity ??  0;
+    return existing?.quantity ?? 0;
   };
 
   const handleConfirmOrder = async () => {
-    if (! isHydrated) return;
+    if (!isHydrated) return;
     
     if (activeCartItems.length === 0 || currentTotalItems <= 0) {
       alert('Pilih minimal satu layanan sebelum melanjutkan.');

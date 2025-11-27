@@ -80,12 +80,5 @@ export const updateProviderAvailability = async (payload: AvailabilityPayload) =
   }
 };
 
-export const updateAvailability = async (payload: AvailabilityPayload) => {
-  try {
-    const response = await api.put<ProviderResponse>('/providers/availability', payload);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating availability:', error);
-    throw error;
-  }
-};
+// Alias for backward compatibility
+export const updateAvailability = updateProviderAvailability;
