@@ -1,58 +1,71 @@
-// src/lib/axios.ts
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: 'https://posko-backend.vercel.app/api',
+const api = axios. create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// 1. REQUEST INTERCEPTOR (Pasang Token & Bahasa)
-api.interceptors.request.use(
+// Request interceptor - add token
+api.interceptors. request.use(
   (config) => {
-    if (typeof window !== 'undefined') {
-      // Pasang Token
+    try {
       const token = localStorage.getItem('posko_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-
-      // Integrasi Bahasa
-      const lang = localStorage.getItem('posko_lang') || 'id';
-      config.headers['Accept-Language'] = lang;
+    } catch (e) {
+      console. error('Error accessing localStorage:', e);
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// 2. [BARU] RESPONSE INTERCEPTOR (Handle Token Expired)
-api.interceptors.response.use(
-  (response) => {
-    // Jika sukses, kembalikan respons apa adanya
-    return response;
-  },
-  (error) => {
-    // Cek apakah error response ada dan statusnya 401 (Unauthorized)
-    if (error.response && error.response.status === 401) {
-      if (typeof window !== 'undefined') {
-        // 1. Hapus token yang sudah tidak valid/kadaluwarsa
-        localStorage.removeItem('posko_token');
-        
-        // 2. Redirect paksa ke halaman login
-        // Kita gunakan window.location agar state aplikasi benar-benar ter-reset
-        // Cek agar tidak looping redirect jika sudah di halaman login
-        if (!window.location.pathname.startsWith('/login')) {
-            alert("Sesi Anda telah berakhir. Silakan login kembali.");
-            window.location.href = '/login';
+// Response interceptor - handle 401 dan refresh token
+api. interceptors.response. use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Jika 401 dan belum retry
+    if (error. response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem('posko_refresh_token');
+        if (! refreshToken) {
+          // Tidak ada refresh token, redirect ke login
+          window.location.href = '/login';
+          return Promise.reject(error);
         }
+
+        // Attempt refresh
+        const response = await axios.post(
+          `${api.defaults.baseURL}/auth/refresh-token`,
+          { refreshToken }
+        );
+
+        const newAccessToken = response.data.data.tokens.accessToken;
+        const newRefreshToken = response.data.data.tokens. refreshToken;
+
+        localStorage.setItem('posko_token', newAccessToken);
+        localStorage.setItem('posko_refresh_token', newRefreshToken);
+
+        // Retry original request
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh gagal, clear tokens dan redirect
+        localStorage. removeItem('posko_token');
+        localStorage.removeItem('posko_refresh_token');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
       }
     }
-    
-    // Lemparkan error kembali agar bisa di-catch oleh komponen (jika perlu handling khusus selain 401)
+
     return Promise.reject(error);
   }
 );
