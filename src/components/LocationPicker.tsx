@@ -34,11 +34,17 @@ function LocationMarker({
 }: { 
   onLocationSelect: (lat: number, lng: number) => void,
   onEndLocate: () => void,
-  onError: (e: any) => void,
+  onError: (error: L.ErrorEvent) => void,
   initialLat?: number,
   initialLng?: number
 }) {
-  const [position, setPosition] = useState<L.LatLng | null>(null);
+  // Use lazy initialization to set initial position
+  const [position, setPosition] = useState<L.LatLng | null>(() => {
+    if (initialLat && initialLng) {
+      return new L.LatLng(initialLat, initialLng);
+    }
+    return null;
+  });
   
   const map = useMapEvents({
     click(e) {
@@ -57,13 +63,12 @@ function LocationMarker({
     },
   });
 
+  // Fly to initial location on mount if provided
   useEffect(() => {
-    if (initialLat && initialLng) {
-      const newPos = new L.LatLng(initialLat, initialLng);
-      setPosition(newPos);
-      map.flyTo(newPos, 16);
+    if (initialLat && initialLng && position) {
+      map.flyTo(position, 16);
     }
-  }, [initialLat, initialLng, map]);
+  }, [initialLat, initialLng, map, position]);
 
   return position === null ? null : (
     <Marker position={position}>
@@ -87,7 +92,7 @@ function MapControls({ onStartLocate }: { onStartLocate: () => void }) {
             btn.innerHTML = iconSvg;
             btn.title = title;
             btn.type = "button";
-            btn.onclick = (e: any) => {
+            btn.onclick = (e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onClick(e);
@@ -183,7 +188,7 @@ export default function LocationPicker({ onLocationSelect, initialLat, initialLn
   }, []);
 
   // 2. Handle Error
-  const handleError = useCallback((e: any) => {
+  const handleError = useCallback((e: L.ErrorEvent) => {
     // Filter error kosong (bug Leaflet di beberapa browser/ekstensi)
     if (!e || (!e.code && !e.message)) {
         return; 

@@ -8,7 +8,7 @@ const useMidtrans = () => {
     // Ganti client key di bawah dengan env variable Anda
     const myClientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ''; 
 
-    let scriptTag = document.createElement('script');
+    const scriptTag = document.createElement('script');
     scriptTag.src = midtransScriptUrl;
     scriptTag.setAttribute('data-client-key', myClientKey);
     scriptTag.onload = () => {

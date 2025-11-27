@@ -1,5 +1,5 @@
 // src/features/cart/useCart.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
 // Tipe untuk satu item di Keranjang
 export interface CartItem {
@@ -21,21 +21,26 @@ export const getCartItemId = (serviceId: string, orderType: 'direct' | 'basic', 
     return `${serviceId}-${orderType}-${providerId || 'default'}`;
 };
 
-export const useCart = () => {
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [isHydrated, setIsHydrated] = useState(false);
-
-    // Ambil dari localStorage saat inisialisasi
-    useEffect(() => {
+// Helper function to load cart from localStorage
+const loadCartFromStorage = (): CartItem[] => {
+    try {
         const savedCart = localStorage.getItem(CART_KEY);
         if (savedCart) {
-            try {
-                setCart(JSON.parse(savedCart));
-            } catch (e) {
-                console.error("Failed to parse cart from localStorage", e);
-                setCart([]);
-            }
+            return JSON.parse(savedCart);
         }
+    } catch (e) {
+        console.error("Failed to parse cart from localStorage", e);
+    }
+    return [];
+};
+
+export const useCart = () => {
+    // Initialize state with a lazy initializer to avoid reading localStorage on every render
+    const [cart, setCart] = useState<CartItem[]>(() => loadCartFromStorage());
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    // Mark as hydrated on mount
+    useEffect(() => {
         setIsHydrated(true);
     }, []);
 
@@ -130,12 +135,20 @@ export const useCart = () => {
         setCart([]);
     }, []);
 
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+    // Memoize computed values to avoid recalculating on every render
+    const totalItems = useMemo(() => 
+        cart.reduce((sum, item) => sum + item.quantity, 0),
+        [cart]
+    );
+    
+    const totalAmount = useMemo(() => 
+        cart.reduce((sum, item) => sum + item.totalPrice, 0),
+        [cart]
+    );
 
     return {
         cart,
-        upsertItem, // Gunakan nama konsisten
+        upsertItem,
         removeItem,
         clearCart,
         totalItems,
