@@ -82,9 +82,13 @@ function CheckoutContent() {
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
           if (isMounted.current) {
+<<<<<<< HEAD
             // FIX: Handle potential array return type
             const providerData = Array.isArray(res.data) ? res.data[0] : res.data;
             setProvider(providerData);
+=======
+            setProvider(res.data);
+>>>>>>> 8985b2c72a7509b054237d5348e038190bf23d1b
           }
         }
       } catch (err) {
@@ -147,7 +151,11 @@ function CheckoutContent() {
         }
       }
     }
+<<<<<<< HEAD
   }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem]); // Removed expensive dependencies
+=======
+  }, [isHydrated, searchParams, checkoutType, selectedProviderId, cart, upsertItem, generateAvailableOptions, getProviderLabel]);
+>>>>>>> 8985b2c72a7509b054237d5348e038190bf23d1b
 
   // =====================================================================
   // EFFECT 4: Cleanup on Unmount
@@ -159,9 +167,9 @@ function CheckoutContent() {
   }, []);
 
   // =====================================================================
-  // HELPER FUNCTIONS
+  // HELPER FUNCTIONS - Memoized
   // =====================================================================
-  const generateAvailableOptions = (): CheckoutOption[] => {
+  const generateAvailableOptions = useCallback((): CheckoutOption[] => {
     if (checkoutType === 'basic') {
       return services.map(s => ({
         id: s._id,
@@ -183,16 +191,21 @@ function CheckoutContent() {
           price: item.price 
         }));
     }
-  };
+  }, [checkoutType, services, provider]);
 
+<<<<<<< HEAD
   const getProviderLabel = (): string => {
+=======
+  const getProviderLabel = useCallback((): string => {
+>>>>>>> 8985b2c72a7509b054237d5348e038190bf23d1b
     if (!selectedProviderId) return 'Cari Cepat';
     if (provider) return provider.userId.fullName;
     return 'Memuat Nama Mitra...';
-  };
+  }, [selectedProviderId, provider]);
 
-  const availableOptions = useMemo(() => generateAvailableOptions(), [checkoutType, services, provider]);
-  const providerLabel = useMemo(() => getProviderLabel(), [selectedProviderId, provider]);
+  // Memoize results since these are used in effect dependencies
+  const availableOptions = useMemo(() => generateAvailableOptions(), [generateAvailableOptions]);
+  const providerLabel = useMemo(() => getProviderLabel(), [getProviderLabel]);
 
   // Filter keranjang agar HANYA menampilkan item yang sesuai dengan mode saat ini
   const activeCartItems = useMemo(() => {

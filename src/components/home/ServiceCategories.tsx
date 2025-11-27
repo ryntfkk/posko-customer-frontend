@@ -1,7 +1,7 @@
 // src/components/home/ServiceCategories.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, memo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -16,13 +16,13 @@ interface ServiceCategoriesProps {
   categories: Category[];
 }
 
-export default function ServiceCategories({ isLoading, categories }: ServiceCategoriesProps) {
+function ServiceCategories({ isLoading, categories }: ServiceCategoriesProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const getCategoryLink = (category: Category) => {
+  const getCategoryLink = useCallback((category: Category) => {
     const params = new URLSearchParams({ category: category.name, categoryId: category.slug });
-    return `/services/${category.slug}? ${params.toString()}`;
-  };
+    return `/services/${category.slug}?${params.toString()}`;
+  }, []);
 
   const LIMIT = 7;
   const shouldShowMoreBtn = categories.length > 8 && !isExpanded;
@@ -49,7 +49,7 @@ export default function ServiceCategories({ isLoading, categories }: ServiceCate
         </div>
       ) : categories.length === 0 ? (
         <div className="p-6 lg:p-10 text-center bg-white lg:bg-gray-50 rounded-2xl lg:rounded-3xl border border-gray-100 lg:border-gray-200 shadow-sm lg:shadow-none">
-          <p className="text-xs lg:text-lg text-gray-400 lg:text-gray-500">Belum ada kategori layanan tersedia. </p>
+          <p className="text-xs lg:text-lg text-gray-400 lg:text-gray-500">Belum ada kategori layanan tersedia.</p>
         </div>
       ) : (
         <>
@@ -64,13 +64,13 @@ export default function ServiceCategories({ isLoading, categories }: ServiceCate
                 <div className="relative w-[3.25rem] h-[3.25rem] lg:w-16 lg:h-16 bg-white lg:bg-gray-50 rounded-2xl border border-gray-100 lg:border-none shadow-sm lg:shadow-none flex items-center justify-center overflow-hidden p-3 lg:group-hover:scale-110 lg:group-hover:bg-red-50 lg:transition-all">
                   <Image
                     src={cat.iconUrl || '/icons/logo-posko.png'}
-                    alt={cat. name}
+                    alt={cat.name}
                     width={40}
                     height={40}
                     className="object-contain"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.src = '/icons/logo-posko. png';
+                      target.src = '/icons/logo-posko.png';
                     }}
                   />
                 </div>
@@ -97,3 +97,5 @@ export default function ServiceCategories({ isLoading, categories }: ServiceCate
     </section>
   );
 }
+
+export default memo(ServiceCategories);

@@ -47,7 +47,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
   const myId: string = user?._id || localStorage.getItem('userId') || '';
 
   useEffect(() => {
-    if (! user || !myId) return;
+    if (!user || !myId) return;
 
     const token = localStorage.getItem('posko_token');
     if (!token) return;
@@ -56,7 +56,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
       try {
         setIsLoading(true);
         const res = await api.get('/chat');
-        setRooms(res.data. data || []);
+        setRooms(res.data.data || []);
 
         const newSocket = io(SOCKET_URL, {
           auth: { token },
@@ -72,7 +72,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
 
         newSocket.on('receive_message', (data: { roomId: string; message: Message }) => {
           setRooms((prev) => {
-            const roomIndex = prev.findIndex((r) => r._id === data. roomId);
+            const roomIndex = prev.findIndex((r) => r._id === data.roomId);
             if (roomIndex === -1) return prev;
 
             const updatedRoom = {
@@ -81,8 +81,8 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
               updatedAt: new Date().toISOString(),
             };
             
-            const newRooms = [... prev];
-            newRooms. splice(roomIndex, 1);
+            const newRooms = [...prev];
+            newRooms.splice(roomIndex, 1);
             newRooms.unshift(updatedRoom);
             return newRooms;
           });
@@ -101,11 +101,11 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
           });
         });
 
-        newSocket. on('disconnect', () => {
+        newSocket.on('disconnect', () => {
           console.log('❌ Socket disconnected');
         });
 
-        newSocket.on('error', (error: any) => {
+        newSocket.on('error', (error: Error) => {
           console.error('Socket error:', error);
         });
 
@@ -124,6 +124,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
         socket.disconnect();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, myId]);
 
   useEffect(() => {
@@ -162,7 +163,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
     }
   };
 
-  const getOpponent = (room: ChatRoom): any => {
+  const getOpponent = (room: ChatRoom): ChatRoom['participants'][0] => {
     if (!myId) return room.participants[0];
     return room.participants.find((p) => p._id !== myId) || room.participants[0];
   };
@@ -241,7 +242,7 @@ export default function ChatWidget({ user }: ChatWidgetProps) {
                         className="w-full flex items-start gap-3 p-3 rounded-lg hover:bg-gray-100 transition-colors text-left border border-transparent hover:border-gray-200"
                       >
                         <Image
-                          src={opponent?.profilePictureUrl || `https://api.dicebear. com/7.x/avataaars/svg?seed=${opponent?.fullName || 'user'}`}
+                          src={opponent?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${opponent?.fullName || 'user'}`}
                           alt={opponent?.fullName || 'User'}
                           width={40}
                           height={40}
