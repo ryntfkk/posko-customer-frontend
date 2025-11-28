@@ -1,0 +1,113 @@
+// src/app/(customer)/layout.tsx
+'use client';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { usePathname } from 'next/navigation';
+
+// Icon Components
+const HomeIcon = ({ active }: { active: boolean }) => (
+  <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
+const SearchIcon = ({ active }: { active: boolean }) => (
+  <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+  </svg>
+);
+
+const OrderIcon = ({ active }: { active: boolean }) => (
+  <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h. 01M9 16h.01" />
+  </svg>
+);
+
+const UserIcon = ({ active }: { active: boolean }) => (
+  <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+);
+
+// Desktop Navbar
+function Navbar() {
+  return (
+    <header className="hidden lg:block fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-9 h-9 relative">
+            <Image src="/logo.png" alt="Posko" fill className="object-contain" />
+          </div>
+          <span className="text-xl font-bold">Posko<span className="text-red-600">. </span></span>
+        </Link>
+        
+        <nav className="flex items-center gap-8">
+          <Link href="/" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Beranda</Link>
+          <Link href="/services" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Layanan</Link>
+          <Link href="/orders" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Pesanan</Link>
+        </nav>
+        
+        <div className="flex items-center gap-4">
+          <Link href="/profile" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Akun Saya</Link>
+          <Link href="/login" className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors">
+            Masuk
+          </Link>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// Mobile Bottom Navigation
+function BottomNav() {
+  const pathname = usePathname();
+  
+  const isActive = (path: string) => {
+    if (path === '/' && pathname === '/') return true;
+    if (path !== '/' && pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  return (
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-5 pt-2 px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+      <div className="flex justify-between items-center">
+        <Link href="/" className="flex flex-col items-center gap-1 w-16">
+          <HomeIcon active={isActive('/')} />
+          <span className={`text-[10px] font-bold ${isActive('/') ? 'text-red-600' : 'text-gray-400'}`}>Beranda</span>
+        </Link>
+        
+        <Link href="/services" className="flex flex-col items-center gap-1 w-16">
+          <SearchIcon active={isActive('/services')} />
+          <span className={`text-[10px] font-bold ${isActive('/services') ? 'text-red-600' : 'text-gray-400'}`}>Layanan</span>
+        </Link>
+        
+        <Link href="/orders" className="flex flex-col items-center gap-1 w-16">
+          <OrderIcon active={isActive('/orders')} />
+          <span className={`text-[10px] font-bold ${isActive('/orders') ? 'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
+        </Link>
+
+        <Link href="/profile" className="flex flex-col items-center gap-1 w-16">
+          <UserIcon active={isActive('/profile')} />
+          <span className={`text-[10px] font-bold ${isActive('/profile') ? 'text-red-600' : 'text-gray-400'}`}>Akun</span>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export default function CustomerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <>
+      <Navbar />
+      <main className="min-h-screen pt-0 lg:pt-20 pb-24 lg:pb-0">
+        {children}
+      </main>
+      <BottomNav />
+    </>
+  );
+}
