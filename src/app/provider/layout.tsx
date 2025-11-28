@@ -1,11 +1,9 @@
 // src/app/provider/layout.tsx
-import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
-
-export default function ProviderLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      {children}
-      <ProviderBottomNav />
-    </>
-  );
+// Layout netral untuk public provider profile (tanpa bottom nav)
+export default function PublicProviderLayout({ 
+  children 
+}: { 
+  children: React.ReactNode 
+}) {
+  return <>{children}</>;
 }
