@@ -50,9 +50,9 @@ export default function ProviderBottomNav() {
           <span className={`text-[10px] font-bold ${isActive('/') ? 'text-red-600' : 'text-gray-400'}`}>Beranda</span>
         </Link>
         
-        <Link href="/provider/jobs" className="flex flex-col items-center gap-1 w-16">
-          <OrderIcon active={isActive('/provider/jobs')} />
-          <span className={`text-[10px] font-bold ${isActive('/provider/jobs') ? 'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
+        <Link href="/jobs" className="flex flex-col items-center gap-1 w-16">
+          <OrderIcon active={isActive('/jobs')} />
+          <span className={`text-[10px] font-bold ${isActive('/jobs') ? 'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
         </Link>
 
         <Link href="/chat" className="flex flex-col items-center gap-1 w-16">
@@ -60,9 +60,9 @@ export default function ProviderBottomNav() {
           <span className={`text-[10px] font-bold ${isActive('/chat') ? 'text-red-600' : 'text-gray-400'}`}>Chat</span>
         </Link>
 
-        <Link href="/profile" className="flex flex-col items-center gap-1 w-16">
-          <UserIcon active={isActive('/profile')} />
-          <span className={`text-[10px] font-bold ${isActive('/profile') ? 'text-red-600' : 'text-gray-400'}`}>Akun</span>
+        <Link href="/settings" className="flex flex-col items-center gap-1 w-16">
+          <UserIcon active={isActive('/settings')} />
+          <span className={`text-[10px] font-bold ${isActive('/settings') ? 'text-red-600' : 'text-gray-400'}`}>Akun</span>
         </Link>
       </div>
     </div>
