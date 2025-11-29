@@ -1,7 +1,7 @@
 // src/app/(customer)/services/[category]/page.tsx
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { fetchProviders } from '@/features/providers/api';
@@ -39,11 +39,16 @@ export default function ServiceCategoryPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<User | null>(null);
+  // [FIX] Track apakah profile sudah selesai loading
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
   
   // Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'distance' | 'price_asc' | 'price_desc' | 'rating'>('distance');
   const [showFilterMobile, setShowFilterMobile] = useState(false);
+
+  // [FIX] Ref untuk tracking request terbaru dan abort controller
+  const requestIdRef = useRef<number>(0);
 
   // Debounce search term
   const debouncedSearch = useDebounce(searchTerm, 500);
@@ -74,14 +79,26 @@ export default function ServiceCategoryPage() {
         }
       } catch (error) {
         console.error("Gagal memuat profil user:", error);
+      } finally {
+        // [FIX] Tandai profile sudah selesai loading (baik sukses maupun gagal)
+        setIsProfileLoaded(true);
       }
     };
     loadUserProfile();
   }, []);
 
-  // Load Providers with Category Filter
+  // [FIX] Load Providers with Category Filter - Tunggu sampai profile selesai loading
   useEffect(() => {
+    // [FIX] Jangan fetch providers sampai profile selesai loading
+    // Ini mencegah race condition antara request tanpa lokasi dan dengan lokasi
+    if (! isProfileLoaded) {
+      return;
+    }
+
     const loadProviders = async () => {
+      // [FIX] Generate unique request ID untuk tracking
+      const currentRequestId = ++requestIdRef.current;
+      
       setIsLoading(true);
       try {
         let lat: number | undefined;
@@ -92,7 +109,7 @@ export default function ServiceCategoryPage() {
           [lng, lat] = userProfile.location.coordinates;
         }
 
-        console.log("Fetching providers for category:", categoryParam);
+        console.log(`[Request ${currentRequestId}] Fetching providers for category:`, categoryParam);
 
         const response = await fetchProviders({
           lat,
@@ -102,19 +119,31 @@ export default function ServiceCategoryPage() {
           sortBy: sortBy
         });
 
-        console.log("Providers found:", response.data);
-        setProviders(Array.isArray(response.data) ? response.data : []);
+        // [FIX] Hanya update state jika ini adalah request terbaru
+        // Mencegah response lama menimpa response baru
+        if (currentRequestId === requestIdRef.current) {
+          console.log(`[Request ${currentRequestId}] Providers found:`, response.data?.length || 0);
+          setProviders(Array.isArray(response.data) ? response.data : []);
+        } else {
+          console.log(`[Request ${currentRequestId}] Discarded - newer request exists`);
+        }
       } catch (error) {
-        console.error("Gagal memuat data provider:", error);
-        setProviders([]);
+        // [FIX] Hanya update state error jika ini adalah request terbaru
+        if (currentRequestId === requestIdRef.current) {
+          console.error("Gagal memuat data provider:", error);
+          setProviders([]);
+        }
       } finally {
-        setIsLoading(false);
+        // [FIX] Hanya update loading state jika ini adalah request terbaru
+        if (currentRequestId === requestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
     // Jalankan fetch setiap kali filter berubah
     loadProviders();
-  }, [categoryParam, debouncedSearch, sortBy, userProfile]);
+  }, [categoryParam, debouncedSearch, sortBy, userProfile, isProfileLoaded]);
 
   // --- LOGIKA DISPLAY HELPER ---
   
@@ -146,7 +175,7 @@ export default function ServiceCategoryPage() {
 
   const getLocationLabel = (provider: Provider) => {
     const addr = provider.userId?.address;
-    if (!addr) return 'Lokasi Mitra';
+    if (! addr) return 'Lokasi Mitra';
     if (addr.district) return `Kec.${addr.district}`;
     if (addr.city) return addr.city;
     return 'Lokasi Mitra';
@@ -173,13 +202,13 @@ export default function ServiceCategoryPage() {
       <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 lg:py-6">
         
         {/* PROMO BANNER */}
-        <section className="bg-gradient-to-r from-red-600 via-red-500 to-orange-500 rounded-2xl p-5 lg:p-8 mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden shadow-lg shadow-red-100">
+        <section className="bg-gradient-to-r from-red-600 via-red-500 to-orange-500 rounded-2xl p-5 lg:p-8 mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden">
           <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
           <div className="relative z-10">
-            <h2 className="text-2xl lg:text-3xl font-black text-white mb-2">Promo Layanan {categoryDisplayName}!</h2>
+            <h2 className="text-2xl lg:text-3xl font-black text-white mb-2">Promo Layanan {categoryDisplayName}! </h2>
             <p className="text-sm text-white/90 font-medium">Dapatkan diskon hingga <span className="font-bold text-lg">30%</span> untuk pengguna baru</p>
           </div>
-          <button onClick={handleBasicOrder} className="relative z-10 bg-white text-red-600 font-bold px-6 py-3 rounded-xl hover:bg-red-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm lg:text-base">
+          <button onClick={handleBasicOrder} className="relative z-10 bg-white text-red-600 font-bold px-6 py-3 rounded-xl hover:bg-red-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5">
             Pesan Sekarang →
           </button>
         </section>
@@ -223,7 +252,7 @@ export default function ServiceCategoryPage() {
 
           {/* Sort - Mobile */}
           <button 
-            onClick={() => setShowFilterMobile(!showFilterMobile)} 
+            onClick={() => setShowFilterMobile(! showFilterMobile)} 
             className="lg:hidden bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 flex items-center justify-between hover:border-red-300 transition-colors"
           >
             <span>🎚️ Filter & Urutkan</span>
@@ -245,7 +274,7 @@ export default function ServiceCategoryPage() {
                   onClick={() => { setSortBy(opt.value as typeof sortBy); setShowFilterMobile(false); }}
                   className={`px-4 py-2.5 rounded-lg text-sm font-bold border transition-all text-left ${
                     sortBy === opt.value 
-                      ? 'bg-red-600 text-white border-red-600' 
+                      ?  'bg-red-600 text-white border-red-600' 
                       : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-red-50'
                   }`}
                 >
