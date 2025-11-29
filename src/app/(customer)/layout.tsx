@@ -9,7 +9,7 @@ import { fetchProfile } from '@/features/auth/api';
 // Icon Components
 const HomeIcon = ({ active }: { active: boolean }) => (
   <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9M9 20l-2-7m6 7l2-7M9 5l3-3m6 3l-3-3" />
   </svg>
 );
 
@@ -21,7 +21,7 @@ const SearchIcon = ({ active }: { active: boolean }) => (
 
 const OrderIcon = ({ active }: { active: boolean }) => (
   <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
   </svg>
 );
 
@@ -44,7 +44,7 @@ function BottomNav() {
         if (token) {
           const res = await fetchProfile();
           // Cek apakah user sedang dalam mode provider
-          setIsProviderMode(res.data.profile?. activeRole === 'provider');
+          setIsProviderMode(res.data.profile?.activeRole === 'provider');
         }
       } catch (error) {
         // Jika error (misal token expired), anggap sebagai customer
@@ -58,7 +58,7 @@ function BottomNav() {
   
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true;
-    if (path !== '/' && pathname. startsWith(path)) return true;
+    if (path !== '/' && pathname.startsWith(path)) return true;
     return false;
   };
 
@@ -89,12 +89,12 @@ function BottomNav() {
         
         <Link href="/services" className="flex flex-col items-center gap-1 w-16">
           <SearchIcon active={isActive('/services')} />
-          <span className={`text-[10px] font-bold ${isActive('/services') ?  'text-red-600' : 'text-gray-400'}`}>Layanan</span>
+          <span className={`text-[10px] font-bold ${isActive('/services') ? 'text-red-600' : 'text-gray-400'}`}>Layanan</span>
         </Link>
         
         <Link href="/orders" className="flex flex-col items-center gap-1 w-16">
           <OrderIcon active={isActive('/orders')} />
-          <span className={`text-[10px] font-bold ${isActive('/orders') ?  'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
+          <span className={`text-[10px] font-bold ${isActive('/orders') ? 'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
         </Link>
 
         <Link href="/profile" className="flex flex-col items-center gap-1 w-16">
