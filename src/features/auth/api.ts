@@ -24,10 +24,10 @@ function safeGetToken(): string | null {
 
 function safeRemoveToken(): void {
   try {
-    localStorage. removeItem('posko_token');
+    localStorage.removeItem('posko_token');
     localStorage.removeItem('posko_refresh_token');
   } catch (e) {
-    console. error('Failed to remove token:', e);
+    console.error('Failed to remove token:', e);
   }
 }
 
@@ -36,9 +36,9 @@ export const loginUser = async (credentials: LoginPayload) => {
   
   // [FIX] Simpan token dengan error handling
   if (response.data.data.tokens) {
-    safeSetToken(response.data.data. tokens.accessToken);
+    safeSetToken(response.data.data.tokens.accessToken);
     try {
-      localStorage. setItem('posko_refresh_token', response. data.data.tokens.refreshToken);
+      localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
     } catch (e) {
       console.error('Failed to save refresh token:', e);
     }
@@ -48,19 +48,19 @@ export const loginUser = async (credentials: LoginPayload) => {
 };
 
 export const registerUser = async (payload: RegisterPayload) => {
-  const response = await api. post<AuthResponse>('/auth/register', payload);
+  const response = await api.post<AuthResponse>('/auth/register', payload);
   
   // [FIX] Simpan token setelah register agar user langsung login
-  if (response.data.data. tokens) {
+  if (response.data.data.tokens) {
     safeSetToken(response.data.data.tokens.accessToken);
     try {
-      localStorage.setItem('posko_refresh_token', response.data.data. tokens.refreshToken);
+      localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
     } catch (e) {
       console.error('Failed to save refresh token:', e);
     }
   }
   
-  return response. data;
+  return response.data;
 };
 
 export const fetchProfile = async () => {
@@ -76,10 +76,10 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
     const response = await api.post<AuthResponse>('/auth/refresh-token', { refreshToken });
     
-    if (response.data. data.tokens) {
-      safeSetToken(response.data.data.tokens. accessToken);
-      localStorage.setItem('posko_refresh_token', response.data. data.tokens.refreshToken);
-      return response.data. data.tokens.accessToken;
+    if (response.data.data.tokens) {
+      safeSetToken(response.data.data.tokens.accessToken);
+      localStorage.setItem('posko_refresh_token', response.data.data.tokens.refreshToken);
+      return response.data.data.tokens.accessToken;
     }
     
     return null;
@@ -96,7 +96,7 @@ export const logoutUser = async () => {
     const refreshToken = localStorage.getItem('posko_refresh_token');
     await api.post('/auth/logout', { refreshToken });
   } catch (error) {
-    console. error('Logout error:', error);
+    console.error('Logout error:', error);
   } finally {
     safeRemoveToken();
   }
@@ -106,17 +106,17 @@ export const switchRole = async (targetRole: 'customer' | 'provider') => {
   const response = await api.post<AuthResponse>('/auth/switch-role', { role: targetRole });
   
   if (response.data.data.tokens) {
-    safeSetToken(response.data. data.tokens.accessToken);
+    safeSetToken(response.data.data.tokens.accessToken);
   }
   
   return response.data;
 };
 
 export const registerPartner = async () => {
-  const response = await api. post<AuthResponse>('/auth/register-partner', {});
+  const response = await api.post<AuthResponse>('/auth/register-partner', {});
   
   if (response.data.data.tokens) {
-    safeSetToken(response.data. data.tokens.accessToken);
+    safeSetToken(response.data.data.tokens.accessToken);
   }
 
   return response.data;

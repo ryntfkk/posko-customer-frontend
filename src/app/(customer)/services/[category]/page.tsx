@@ -1,4 +1,4 @@
-// src/app/(customer)/services/[category]/page. tsx
+// src/app/(customer)/services/[category]/page.tsx
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -51,7 +51,7 @@ export default function ServiceCategoryPage() {
   // [FIX] Ambil parameter kategori dengan aman dan normalize ke lowercase
   const rawCategory = Array.isArray(params.category) ? params.category[0] : params.category;
   // Decode dan normalize: lowercase untuk konsistensi dengan backend
-  const categoryParam = decodeURIComponent(rawCategory || ''). toLowerCase(). trim();
+  const categoryParam = decodeURIComponent(rawCategory || '').toLowerCase().trim();
   
   // Konversi slug ke nama kategori yang readable untuk judul (capitalize first letter of each word)
   const categoryDisplayName = useMemo(() => {
@@ -73,7 +73,7 @@ export default function ServiceCategoryPage() {
           setUserProfile(res.data.profile);
         }
       } catch (error) {
-        console. error("Gagal memuat profil user:", error);
+        console.error("Gagal memuat profil user:", error);
       }
     };
     loadUserProfile();
@@ -88,7 +88,7 @@ export default function ServiceCategoryPage() {
         let lng: number | undefined;
 
         // Gunakan lokasi user jika tersedia
-        if (userProfile?. location?. coordinates) {
+        if (userProfile?.location?.coordinates) {
           [lng, lat] = userProfile.location.coordinates;
         }
 
@@ -134,7 +134,7 @@ export default function ServiceCategoryPage() {
     
     const prices = activeServices.map((s: ProviderServiceItem) => s.price);
     const minPrice = Math.min(...prices);
-    return `Rp ${new Intl.NumberFormat('id-ID'). format(minPrice)}`;
+    return `Rp ${new Intl.NumberFormat('id-ID').format(minPrice)}`;
   };
 
   const getRatingLabel = (provider: Provider) => {
@@ -145,9 +145,9 @@ export default function ServiceCategoryPage() {
   };
 
   const getLocationLabel = (provider: Provider) => {
-    const addr = provider.userId?. address;
+    const addr = provider.userId?.address;
     if (!addr) return 'Lokasi Mitra';
-    if (addr.district) return `Kec. ${addr.district}`;
+    if (addr.district) return `Kec.${addr.district}`;
     if (addr.city) return addr.city;
     return 'Lokasi Mitra';
   };
@@ -196,7 +196,7 @@ export default function ServiceCategoryPage() {
               placeholder="Cari nama mitra atau lokasi..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2. 5 lg:py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 lg:py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all"
             />
           </div>
 
@@ -210,7 +210,7 @@ export default function ServiceCategoryPage() {
               <button 
                 key={opt.value}
                 onClick={() => setSortBy(opt.value as typeof sortBy)}
-                className={`px-4 py-2. 5 rounded-xl text-sm font-bold border transition-all ${
+                className={`px-4 py-2.5 rounded-xl text-sm font-bold border transition-all ${
                   sortBy === opt.value 
                     ? 'bg-red-600 text-white border-red-600 shadow-md' 
                     : 'bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600'
@@ -244,12 +244,12 @@ export default function ServiceCategoryPage() {
                   key={opt.value}
                   onClick={() => { setSortBy(opt.value as typeof sortBy); setShowFilterMobile(false); }}
                   className={`px-4 py-2.5 rounded-lg text-sm font-bold border transition-all text-left ${
-                    sortBy === opt. value 
+                    sortBy === opt.value 
                       ? 'bg-red-600 text-white border-red-600' 
                       : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-red-50'
                   }`}
                 >
-                  <span>{opt.icon}</span> {opt. label}
+                  <span>{opt.icon}</span> {opt.label}
                 </button>
               ))}
             </div>
@@ -273,20 +273,20 @@ export default function ServiceCategoryPage() {
             </div>
           )}
 
-          {!isLoading && providers. length === 0 && (
+          {!isLoading && providers.length === 0 && (
             <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 border-dashed">
               <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9. 172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               </div>
               <h4 className="text-base font-bold text-gray-900">Tidak ada mitra</h4>
-              <p className="text-xs text-gray-500 mt-1">Belum ada mitra yang sesuai filter Anda di area ini. </p>
+              <p className="text-xs text-gray-500 mt-1">Belum ada mitra yang sesuai filter Anda di area ini.</p>
               <button onClick={() => { setSearchTerm(''); setSortBy('distance'); }} className="mt-4 text-xs font-bold text-red-600 hover:underline">Reset Filter</button>
             </div>
           )}
 
           {!isLoading && providers.length > 0 && (
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-6">
-              {providers. map((provider) => (
+              {providers.map((provider) => (
                 <div 
                   key={provider._id} 
                   onClick={() => handleOpenProvider(provider._id)}
@@ -295,7 +295,7 @@ export default function ServiceCategoryPage() {
                   {/* Image */}
                   <div className="relative h-28 lg:h-36 bg-gray-100 overflow-hidden">
                     <Image 
-                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${provider. userId?.fullName || 'User'}`} 
+                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId?.fullName || 'User'}`} 
                       alt={provider.userId?.fullName || 'Mitra'} 
                       fill 
                       className="object-cover group-hover:scale-110 transition-transform duration-500" 
@@ -307,7 +307,7 @@ export default function ServiceCategoryPage() {
                     
                     {provider.distance && (
                       <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] lg:text-[10px] font-medium text-gray-700">
-                        📍 {(provider.distance / 1000). toFixed(1)} km
+                        📍 {(provider.distance / 1000).toFixed(1)} km
                       </div>
                     )}
                   </div>
@@ -325,16 +325,16 @@ export default function ServiceCategoryPage() {
                     <div className="flex flex-wrap gap-1 my-1">
                       {provider.services
                         .filter(s => s.isActive)
-                        . slice(0, 2) 
+                        .slice(0, 2) 
                         .map((svc, idx) => (
-                          <span key={idx} className="text-[9px] lg:text-[10px] px-1. 5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 line-clamp-1">
+                          <span key={idx} className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 line-clamp-1">
                             {svc.serviceId?.name}
                           </span>
                         ))
                       }
-                      {provider.services. filter(s => s.isActive).length > 2 && (
+                      {provider.services.filter(s => s.isActive).length > 2 && (
                         <span className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded border border-gray-100">
-                          +{provider. services.filter(s => s. isActive).length - 2}
+                          +{provider.services.filter(s => s.isActive).length - 2}
                         </span>
                       )}
                     </div>

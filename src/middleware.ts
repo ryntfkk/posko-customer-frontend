@@ -27,7 +27,7 @@ const ADMIN_ROUTES = ['/admin'];
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   if (pathname.startsWith('/services/')) return true;
-  if (pathname. startsWith('/provider/')) return true; // Public profile /provider/[id]
+  if (pathname.startsWith('/provider/')) return true; // Public profile /provider/[id]
   return false;
 }
 
@@ -40,7 +40,7 @@ function isProviderRoute(pathname: string): boolean {
 }
 
 function isAdminRoute(pathname: string): boolean {
-  return pathname. startsWith('/admin');
+  return pathname.startsWith('/admin');
 }
 
 function getTokenFromCookies(request: NextRequest): string | null {
@@ -50,7 +50,7 @@ function getTokenFromCookies(request: NextRequest): string | null {
 function decodeToken(token: string): DecodedToken | null {
   try {
     const decoded = jwtDecode<DecodedToken>(token);
-    if (decoded. exp * 1000 < Date.now()) {
+    if (decoded.exp * 1000 < Date.now()) {
       return null;
     }
     return decoded;
@@ -60,15 +60,15 @@ function decodeToken(token: string): DecodedToken | null {
 }
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request. nextUrl;
+  const { pathname } = request.nextUrl;
   
   // Skip middleware for static files and API routes
   if (
     pathname.startsWith('/_next') ||
-    pathname. startsWith('/api') ||
-    pathname. includes('.')
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
   ) {
-    return NextResponse. next();
+    return NextResponse.next();
   }
 
   const token = getTokenFromCookies(request);
@@ -86,7 +86,7 @@ export function middleware(request: NextRequest) {
   // =============================================
   if (! user) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams. set('redirect', pathname);
+    loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 

@@ -49,7 +49,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
           </div>
         </div>
         <div className="flex gap-4 overflow-x-auto px-4 pb-4 no-scrollbar">
-          {[1, 2, 3, 4]. map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="w-48 shrink-0 bg-gray-100 rounded-2xl h-64 animate-pulse" />
           ))}
         </div>
@@ -68,7 +68,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
         </div>
         <div className="px-4">
           <div className="bg-gray-50 rounded-2xl p-8 text-center border border-dashed border-gray-200">
-            <p className="text-gray-500 text-sm">Belum ada mitra tersedia di sekitar Anda. </p>
+            <p className="text-gray-500 text-sm">Belum ada mitra tersedia di sekitar Anda.</p>
           </div>
         </div>
       </section>
@@ -98,8 +98,8 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
             <div className="aspect-[4/3] w-full bg-gray-100 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 z-10"></div>
               <Image
-                src={prov.userId?. profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${prov.userId?.fullName || 'default'}`}
-                alt={prov. userId?.fullName || 'Mitra'}
+                src={prov.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${prov.userId?.fullName || 'default'}`}
+                alt={prov.userId?.fullName || 'Mitra'}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
@@ -115,7 +115,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
               {/* Online Badge */}
               {prov.isOnline && (
                 <div className="absolute top-2 right-2 z-20">
-                  <div className="w-2. 5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                  <div className="w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
                 </div>
               )}
             </div>
@@ -126,7 +126,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
                 {prov.userId?.fullName || 'Nama Tidak Tersedia'}
               </h3>
               <p className="text-[10px] text-gray-500 truncate mt-0.5">
-                {prov.userId?.address?. city || 'Lokasi tidak tersedia'}
+                {prov.userId?.address?.city || 'Lokasi tidak tersedia'}
               </p>
 
               {/* Services Preview */}
@@ -136,10 +136,10 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
                     key={idx}
                     className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full truncate max-w-[80px]"
                   >
-                    {svc. serviceId?. name || 'Layanan'}
+                    {svc.serviceId?.name || 'Layanan'}
                   </span>
                 ))}
-                {(prov.services?. length || 0) > 2 && (
+                {(prov.services?.length || 0) > 2 && (
                   <span className="text-[9px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full">
                     +{(prov.services?.length || 0) - 2}
                   </span>
@@ -150,12 +150,12 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
               <div className="mt-auto pt-2 border-t border-gray-50">
                 <p className="text-[10px] text-gray-400">Mulai dari</p>
                 <p className="text-sm font-bold text-red-600">
-                  {prov.services && prov.services. length > 0
+                  {prov.services && prov.services.length > 0
                     ? new Intl.NumberFormat('id-ID', {
                         style: 'currency',
                         currency: 'IDR',
                         minimumFractionDigits: 0,
-                      }). format(Math.min(... prov.services. map((s) => s. price || 0)))
+                      }).format(Math.min(...prov.services.map((s) => s.price || 0)))
                     : 'Hubungi CS'}
                 </p>
               </div>

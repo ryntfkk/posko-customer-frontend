@@ -19,7 +19,7 @@ const JobsIcon = () => (
 
 const MessagesIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h. 01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-. 949L3 20l1. 395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
   </svg>
 );
 
@@ -46,7 +46,7 @@ export default function ProviderBottomNav() {
         const token = localStorage.getItem('posko_token');
         if (token) {
           const res = await fetchProfile();
-          setIsProviderMode(res.data.profile?. activeRole === 'provider');
+          setIsProviderMode(res.data.profile?.activeRole === 'provider');
         } else {
           setIsProviderMode(false);
         }
@@ -73,7 +73,7 @@ export default function ProviderBottomNav() {
   }
 
   // PENTING: Jangan render di halaman services/[category]
-  if (pathname && pathname.match(/^\/services\/. +$/)) {
+  if (pathname && pathname.match(/^\/services\/.+$/)) {
     return null;
   }
 
@@ -102,10 +102,10 @@ export default function ProviderBottomNav() {
             className="flex flex-col items-center gap-1 w-16"
           >
             <div className={`${isActive(item.href) ?  'text-red-600' : 'text-gray-400'}`}>
-              {item. icon}
+              {item.icon}
             </div>
             <span className={`text-[10px] font-bold ${isActive(item.href) ? 'text-red-600' : 'text-gray-400'}`}>
-              {item. label}
+              {item.label}
             </span>
           </Link>
         ))}

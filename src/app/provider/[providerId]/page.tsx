@@ -1,4 +1,4 @@
-// src/app/provider/[providerId]/page. tsx
+// src/app/provider/[providerId]/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -29,7 +29,7 @@ import {
 
 export default function ProviderProfilePage() {
   const params = useParams();
-  const providerId = Array.isArray(params. providerId) ? params.providerId[0] : params.providerId;
+  const providerId = Array.isArray(params.providerId) ? params.providerId[0] : params.providerId;
 
   // Data State
   const [provider, setProvider] = useState<Provider | null>(null);
@@ -67,12 +67,12 @@ export default function ProviderProfilePage() {
         const token = localStorage.getItem('posko_token');
         if (token) {
           const userRes = await fetchProfile();
-          setCurrentUser(userRes.data. profile);
+          setCurrentUser(userRes.data.profile);
         } else {
           setDistance('Login untuk Jarak');
         }
       } catch (error) {
-        console. error('Gagal memuat data:', error);
+        console.error('Gagal memuat data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -83,9 +83,9 @@ export default function ProviderProfilePage() {
 
   // Calculate Distance
   useEffect(() => {
-    if (provider && currentUser?. location?. coordinates && provider.userId?. location?.coordinates) {
+    if (provider && currentUser?.location?.coordinates && provider.userId?.location?.coordinates) {
       const [uLng, uLat] = currentUser.location.coordinates;
-      const [pLng, pLat] = provider. userId.location.coordinates;
+      const [pLng, pLat] = provider.userId.location.coordinates;
 
       setDistance(uLat === 0 ? 'Set Alamat' : calculateDistance(uLat, uLng, pLat, pLng));
     }
@@ -97,7 +97,7 @@ export default function ProviderProfilePage() {
     if (navigator.share && provider) {
       try {
         await navigator.share({
-          title: `Jasa ${provider.userId?. fullName || 'Mitra'}`,
+          title: `Jasa ${provider.userId?.fullName || 'Mitra'}`,
           text: 'Cek jasa profesional ini di Posko! ',
           url: window.location.href,
         });
@@ -125,7 +125,7 @@ export default function ProviderProfilePage() {
 
   const handleChangeMonth = (delta: number) => {
     const newDate = new Date(currentMonth);
-    newDate. setMonth(newDate.getMonth() + delta);
+    newDate.setMonth(newDate.getMonth() + delta);
     setCurrentMonth(newDate);
   };
 
@@ -176,7 +176,7 @@ export default function ProviderProfilePage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 lg:px-8 py-6 space-y-6">
-        {/* 1. HERO SECTION */}
+        {/* 1.HERO SECTION */}
         <ProviderHeroSection
           provider={provider}
           distance={distance}

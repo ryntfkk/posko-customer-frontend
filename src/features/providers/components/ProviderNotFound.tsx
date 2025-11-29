@@ -1,4 +1,4 @@
-// src/features/providers/components/ProviderNotFound. tsx
+// src/features/providers/components/ProviderNotFound.tsx
 
 import Link from 'next/link';
 import { CloseIcon } from './Icons';
@@ -13,7 +13,7 @@ export default function ProviderNotFound() {
       <p className="text-sm text-gray-500">Mitra yang Anda cari tidak tersedia atau sudah tidak aktif. </p>
       <Link
         href="/"
-        className="px-6 py-2. 5 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+        className="px-6 py-2.5 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
       >
         Kembali ke Beranda
       </Link>

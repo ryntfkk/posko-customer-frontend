@@ -84,8 +84,8 @@ export default function RegisterPage() {
 
   // Load Provinsi saat mount
   useEffect(() => {
-    fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces. json')
-      . then(res => res.json())
+    fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json')
+      .then(res => res.json())
       .then(setProvinces)
       .catch(console.error);
   }, []);
@@ -96,7 +96,7 @@ export default function RegisterPage() {
       hasMinLength: password.length >= 8,
       hasLowercase: /[a-z]/.test(password),
       hasUppercase: /[A-Z]/.test(password),
-      hasNumber: /[0-9]/. test(password),
+      hasNumber: /[0-9]/.test(password),
     });
   };
 
@@ -133,7 +133,7 @@ export default function RegisterPage() {
 
   // Handler Wilayah
   const handleRegionChange = (type: 'province' | 'city' | 'district' | 'village', e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target. value;
+    const id = e.target.value;
     const index = e.target.selectedIndex;
     const text = index > 0 ? e.target.options[index].text : '';
 
@@ -154,10 +154,10 @@ export default function RegisterPage() {
         addressPostalCode: '' 
       }));
       if(id) {
-        fetch(`https://www. emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
+        fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
           .then(r => r.json())
           .then(setCities)
-          . catch(console.error);
+          .catch(console.error);
       }
     } 
     else if (type === 'city') {
@@ -174,7 +174,7 @@ export default function RegisterPage() {
         addressPostalCode: '' 
       }));
       if(id) {
-        fetch(`https://www. emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
+        fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
           .then(r => r.json())
           .then(setDistricts)
           .catch(console.error);
@@ -192,14 +192,14 @@ export default function RegisterPage() {
       }));
       if(id) {
         fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
-          .then(r => r. json())
-          . then(setVillages)
-          . catch(console.error);
+          .then(r => r.json())
+          .then(setVillages)
+          .catch(console.error);
       }
     }
     else if (type === 'village') {
       setSelectedVillageId(id);
-      const dummyPostalCode = id ?  `1${id. substring(0, 4)}` : ''; 
+      const dummyPostalCode = id ?  `1${id.substring(0, 4)}` : ''; 
       setFormData(prev => ({ 
         ...prev, 
         addressVillage: text, 
@@ -230,14 +230,14 @@ export default function RegisterPage() {
       return;
     }
 
-    navigator.geolocation. getCurrentPosition(
+    navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position. coords;
+        const { latitude, longitude } = position.coords;
         setFormData(prev => ({ ...prev, latitude, longitude }));
       },
       (error) => {
         console.error(error);
-        alert("Gagal mengambil lokasi. Pastikan GPS aktif dan izinkan akses lokasi pada browser.");
+        alert("Gagal mengambil lokasi.Pastikan GPS aktif dan izinkan akses lokasi pada browser.");
       },
       { enableHighAccuracy: true }
     );
@@ -245,7 +245,7 @@ export default function RegisterPage() {
 
   // Validasi Email (Dummy untuk demo)
   const handleVerifyEmail = () => {
-    if (!formData.email. includes('@') || !formData. email.includes('.')) {
+    if (!formData.email.includes('@') || !formData.email.includes('.')) {
       return alert('Masukkan email yang valid');
     }
     setEmailStatus('sending');
@@ -268,7 +268,7 @@ export default function RegisterPage() {
     if (step === 1) {
       // Validasi Email
       if (!formData.email) {
-        return 'Email wajib diisi. ';
+        return 'Email wajib diisi.';
       }
       if (!formData.email.includes('@') || !formData.email.includes('.')) {
         return 'Format email tidak valid.';
@@ -294,15 +294,15 @@ export default function RegisterPage() {
       if (! formData.confirmPassword) {
         return 'Konfirmasi password wajib diisi.';
       }
-      if (formData. password !== formData. confirmPassword) {
+      if (formData.password !== formData.confirmPassword) {
         return 'Konfirmasi password tidak sesuai.';
       }
     }
     
     if (step === 2) {
       // Validasi Nama Lengkap
-      if (!formData. fullName) {
-        return 'Nama lengkap wajib diisi. ';
+      if (!formData.fullName) {
+        return 'Nama lengkap wajib diisi.';
       }
       if (formData.fullName.trim().length < 3) {
         return 'Nama lengkap minimal 3 karakter.';
@@ -310,7 +310,7 @@ export default function RegisterPage() {
       
       // Validasi Tanggal Lahir
       if (!formData.birthDate) {
-        return 'Tanggal lahir wajib diisi. ';
+        return 'Tanggal lahir wajib diisi.';
       }
       const birthDateObj = new Date(formData.birthDate);
       const today = new Date();
@@ -359,7 +359,7 @@ export default function RegisterPage() {
     setErrorMsg('');
     
     // Validasi koordinat
-    if (formData.latitude === null || formData. longitude === null) {
+    if (formData.latitude === null || formData.longitude === null) {
       setErrorMsg('Pilih lokasi pada peta dengan mengetuk titik rumah Anda.');
       return;
     }
@@ -386,10 +386,10 @@ export default function RegisterPage() {
     
     try {
       const payload: RegisterPayload = {
-        fullName: formData. fullName. trim(),
-        email: formData.email. toLowerCase().trim(),
+        fullName: formData.fullName.trim(),
+        email: formData.email.toLowerCase().trim(),
         password: formData.password,
-        phoneNumber: formData. phoneNumber,
+        phoneNumber: formData.phoneNumber,
         birthDate: formData.birthDate,
         gender: formData.gender,
         roles: ['customer'],
@@ -399,11 +399,11 @@ export default function RegisterPage() {
           city: formData.addressCity,
           village: formData.addressVillage,
           postalCode: formData.addressPostalCode,
-          detail: formData. addressDetail. trim()
+          detail: formData.addressDetail.trim()
         },
         location: { 
           type: 'Point', 
-          coordinates: [formData. longitude!, formData.latitude! ] 
+          coordinates: [formData.longitude!, formData.latitude! ] 
         }
       };
       
@@ -414,7 +414,7 @@ export default function RegisterPage() {
       router.refresh();
       
     } catch (err: any) {
-      const errorMessage = err. response?.data?.message || 'Gagal mendaftar. Silakan coba lagi. ';
+      const errorMessage = err.response?.data?.message || 'Gagal mendaftar.Silakan coba lagi.';
       setErrorMsg(errorMessage);
     } finally {
       setIsLoading(false);
@@ -436,10 +436,10 @@ export default function RegisterPage() {
               <div className="relative w-10 h-10 bg-white rounded-xl p-1 shadow-lg group-hover:scale-105 transition-transform">
                 <Image src="/logo.png" alt="Posko Logo" fill className="object-contain" />
               </div>
-              <span className="text-3xl font-extrabold tracking-tight hover:text-red-100 transition-colors">Posko. </span>
+              <span className="text-3xl font-extrabold tracking-tight hover:text-red-100 transition-colors">Posko.</span>
             </Link>
             <p className="text-red-100 mt-5 text-sm leading-relaxed opacity-90">
-              Bergabunglah dengan ribuan pengguna dan temukan bantuan profesional dalam hitungan menit. 
+              Bergabunglah dengan ribuan pengguna dan temukan bantuan profesional dalam hitungan menit.
             </p>
           </div>
 
@@ -492,7 +492,7 @@ export default function RegisterPage() {
                 <div className="relative w-6 h-6">
                   <Image src="/logo.png" alt="Logo" fill className="object-contain" />
                 </div>
-                Posko<span className="text-red-600">. </span>
+                Posko<span className="text-red-600">.</span>
               </Link>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold bg-gray-100 px-3 py-1 rounded-full text-gray-600">
@@ -519,7 +519,7 @@ export default function RegisterPage() {
                   {step === 3 && 'Lokasi Tempat Tinggal'}
                 </h2>
                 <p className="text-gray-500 text-sm">
-                  Silakan lengkapi form di bawah ini dengan data yang valid. 
+                  Silakan lengkapi form di bawah ini dengan data yang valid.
                 </p>
               </div>
 
@@ -529,7 +529,7 @@ export default function RegisterPage() {
                 {errorMsg && (
                   <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-lg font-medium animate-pulse flex items-center gap-2">
                     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1. 333-3.464 0L3.34 16c-.77 1.333. 192 3 1.732 3z"/>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                     <span>{errorMsg}</span>
                   </div>
@@ -563,7 +563,7 @@ export default function RegisterPage() {
                               : 'bg-gray-900 text-white border-gray-900 hover:bg-gray-800 hover:-translate-y-0.5 shadow-md'
                           } disabled:bg-gray-200 disabled:text-gray-400 disabled:border-gray-200 disabled:shadow-none disabled:translate-y-0`}
                         >
-                          {emailStatus === 'verified' ? '✓ Terverifikasi' : emailStatus === 'sending' ? 'Memeriksa.. .' : 'Cek Email'}
+                          {emailStatus === 'verified' ? '✓ Terverifikasi' : emailStatus === 'sending' ? 'Memeriksa...' : 'Cek Email'}
                         </button>
                       </div>
                     </div>
@@ -589,12 +589,12 @@ export default function RegisterPage() {
                         >
                           {showPassword ? (
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13. 875 18.825A10.05 10.05 0 0112 19c-4.478 0-8. 268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858. 908a3 3 0 114.243 4.243M9. 878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3. 29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                             </svg>
                           ) : (
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8. 268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           )}
                         </button>
@@ -605,10 +605,10 @@ export default function RegisterPage() {
                         <div className="mt-2 space-y-2">
                           {/* Progress Bar */}
                           <div className="flex gap-1">
-                            {[1, 2, 3, 4]. map((i) => (
+                            {[1, 2, 3, 4].map((i) => (
                               <div 
                                 key={i}
-                                className={`h-1. 5 flex-1 rounded-full transition-colors duration-300 ${
+                                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
                                   getPasswordScore() >= i ? getPasswordScoreColor() : 'bg-gray-200'
                                 }`}
                               ></div>
@@ -630,21 +630,21 @@ export default function RegisterPage() {
                           {/* Detail Requirements */}
                           <div className="flex flex-wrap gap-x-3 gap-y-1">
                             <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                              passwordStrength. hasMinLength ? 'text-green-600' : 'text-gray-400'
+                              passwordStrength.hasMinLength ? 'text-green-600' : 'text-gray-400'
                             }`}>
-                              {passwordStrength. hasMinLength ? (
+                              {passwordStrength.hasMinLength ? (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
                                 </svg>
                               ) : (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h. 01" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01" />
                                 </svg>
                               )}
                               8+ karakter
                             </span>
                             <span className={`text-[10px] font-medium flex items-center gap-1 ${
-                              passwordStrength. hasLowercase ? 'text-green-600' : 'text-gray-400'
+                              passwordStrength.hasLowercase ? 'text-green-600' : 'text-gray-400'
                             }`}>
                               {passwordStrength.hasLowercase ? (
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -711,12 +711,12 @@ export default function RegisterPage() {
                         >
                           {showConfirmPassword ? (
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18. 825A10.05 10.05 0 0112 19c-4. 478 0-8.268-2. 943-9.543-7a9.97 9. 97 0 011.563-3. 029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4. 242 4.242M9.88 9.88l-3.29-3.29m7.532 7. 532l3.29 3.29M3 3l3.59 3. 59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4. 132 5.411m0 0L21 21" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                             </svg>
                           ) : (
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2. 458 12C3. 732 7.943 7. 523 5 12 5c4.478 0 8. 268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                           )}
                         </button>
@@ -793,7 +793,7 @@ export default function RegisterPage() {
                             onChange={handleChange} 
                             className="input-field appearance-none cursor-pointer"
                           >
-                            <option value="">Pilih... </option>
+                            <option value="">Pilih...</option>
                             <option value="Laki-laki">Laki-laki</option>
                             <option value="Perempuan">Perempuan</option>
                           </select>
@@ -831,7 +831,7 @@ export default function RegisterPage() {
                               : 'bg-gray-900 text-white hover:bg-gray-800'
                           } disabled:bg-gray-200 disabled:text-gray-400`}
                         >
-                          {phoneStatus === 'verified' ? '✓' : phoneStatus === 'sending' ? '.. .' : 'Kirim OTP'}
+                          {phoneStatus === 'verified' ? '✓' : phoneStatus === 'sending' ? '...' : 'Kirim OTP'}
                         </button>
                       </div>
                     </div>
@@ -864,7 +864,7 @@ export default function RegisterPage() {
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-400">
                                 <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M5.293 7. 293a1 1 0 011.414 0L10 10. 586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                 </svg>
                               </div>
                             </div>
@@ -881,13 +881,13 @@ export default function RegisterPage() {
                                 disabled={! selectedProvId}
                               >
                                 <option value="">Pilih Kota</option>
-                                {cities. map(c => (
-                                  <option key={c. id} value={c.id}>{c.name}</option>
+                                {cities.map(c => (
+                                  <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-400">
                                 <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10. 586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                 </svg>
                               </div>
                             </div>
@@ -906,13 +906,13 @@ export default function RegisterPage() {
                                 disabled={!selectedCityId}
                               >
                                 <option value="">Pilih Kecamatan</option>
-                                {districts. map(d => (
-                                  <option key={d. id} value={d.id}>{d.name}</option>
+                                {districts.map(d => (
+                                  <option key={d.id} value={d.id}>{d.name}</option>
                                 ))}
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-400">
                                 <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10. 586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                 </svg>
                               </div>
                             </div>
@@ -929,13 +929,13 @@ export default function RegisterPage() {
                                 disabled={!selectedDistrictId}
                               >
                                 <option value="">Pilih Kelurahan</option>
-                                {villages. map(v => (
-                                  <option key={v. id} value={v.id}>{v.name}</option>
+                                {villages.map(v => (
+                                  <option key={v.id} value={v.id}>{v.name}</option>
                                 ))}
                               </select>
                               <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-400">
                                 <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10. 586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                                 </svg>
                               </div>
                             </div>
@@ -951,7 +951,7 @@ export default function RegisterPage() {
                             value={formData.addressDetail} 
                             onChange={handleChange} 
                             className="input-field h-auto py-3 min-h-[80px] resize-none leading-relaxed" 
-                            placeholder="Contoh: Jl. Merdeka No. 10, RT 01/02, Depan Warung Tegal"
+                            placeholder="Contoh: Jl.Merdeka No.10, RT 01/02, Depan Warung Tegal"
                           ></textarea>
                         </div>
                       </div>
@@ -970,7 +970,7 @@ export default function RegisterPage() {
                         <div className="w-full h-56 md:h-64 lg:h-full min-h-[240px] rounded-2xl overflow-hidden border-2 border-gray-100 shadow-sm relative z-0 group hover:border-red-100 transition-colors">
                           <LocationPicker 
                             onLocationSelect={handleLocationSelect} 
-                            initialLat={formData. latitude ??  undefined}
+                            initialLat={formData.latitude ??  undefined}
                             initialLng={formData.longitude ?? undefined}
                           />
                         </div>
@@ -979,17 +979,17 @@ export default function RegisterPage() {
                         <button
                           type="button"
                           onClick={handleGetCurrentLocation}
-                          className="w-full py-2. 5 rounded-xl border-2 border-dashed border-gray-200 text-gray-500 text-xs font-bold hover:border-red-300 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                          className="w-full py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-gray-500 text-xs font-bold hover:border-red-300 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17. 657 16.657L13.414 20.9a1. 998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                           Gunakan Lokasi Saya Sekarang
                         </button>
                         
                         <p className="text-[10px] text-gray-400 leading-normal">
-                          *Ketuk lokasi anda di peta dan pin akan terpasang untuk memudahkan pencarian teknisi terdekat. 
+                          *Ketuk lokasi anda di peta dan pin akan terpasang untuk memudahkan pencarian teknisi terdekat.
                         </p>
                       </div>
                     </div>
@@ -1006,7 +1006,7 @@ export default function RegisterPage() {
                 <button 
                   type="button" 
                   onClick={prevStep} 
-                  className="w-full md:w-auto flex-1 py-3. 5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 hover:text-gray-900 transition-colors text-sm"
+                  className="w-full md:w-auto flex-1 py-3.5 rounded-xl border-2 border-gray-200 text-gray-600 font-bold hover:bg-gray-50 hover:text-gray-900 transition-colors text-sm"
                 >
                   Kembali
                 </button>
@@ -1015,15 +1015,15 @@ export default function RegisterPage() {
                 type="button" 
                 onClick={step < 3 ? nextStep : handleSubmit} 
                 disabled={isLoading}
-                className={`w-full md:w-auto flex-[2] py-3. 5 rounded-xl text-white font-bold shadow-lg transition-all hover:-translate-y-0.5 text-sm flex justify-center items-center gap-2
+                className={`w-full md:w-auto flex-[2] py-3.5 rounded-xl text-white font-bold shadow-lg transition-all hover:-translate-y-0.5 text-sm flex justify-center items-center gap-2
                   ${step < 3 ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-gray-900 hover:bg-black shadow-gray-300'} 
                   disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-y-0`}
               >
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www. w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5. 373 0 12h4zm2 5.291A7.962 7. 962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Memproses...
                   </>
@@ -1059,7 +1059,7 @@ export default function RegisterPage() {
 
         /* --- FIX KHUSUS TANGGAL (SAFARI iOS & CHROME) --- */
         
-        /* 1. Reset tampilan default iOS */
+        /* 1.Reset tampilan default iOS */
         input[type="date"] {
           -webkit-appearance: none;
           appearance: none;
@@ -1068,14 +1068,14 @@ export default function RegisterPage() {
           width: 100%;
         }
 
-        /* 2.  Fix text invisible/kosong di iOS */
+        /* 2. Fix text invisible/kosong di iOS */
         input[type="date"]::-webkit-date-and-time-value {
           text-align: left;
           min-height: 1.2em;
           display: block; 
         }
 
-        /* 3.  Sembunyikan icon bawaan browser */
+        /* 3. Sembunyikan icon bawaan browser */
         input[type="date"]::-webkit-calendar-picker-indicator {
           position: absolute;
           top: 0;
@@ -1089,7 +1089,7 @@ export default function RegisterPage() {
         }
 
         /* Animasi Halaman */
-        . animate-fadeIn { 
+        .animate-fadeIn { 
           animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
         }
         

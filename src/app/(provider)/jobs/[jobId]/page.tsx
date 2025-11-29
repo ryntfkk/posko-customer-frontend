@@ -23,7 +23,7 @@ export default function ProviderJobDetail() {
       const res = await fetchOrderById(orderId as string);
       setOrder(res.data);
     } catch (error) {
-      console. error("Gagal memuat pesanan:", error);
+      console.error("Gagal memuat pesanan:", error);
       router.push('/provider/jobs');
     } finally {
       setIsLoading(false);
@@ -37,7 +37,7 @@ export default function ProviderJobDetail() {
   }, [orderId]);
 
   const handleUpdateStatus = async (newStatus: string) => {
-    const actionName = newStatus === 'completed' ? 'Menyelesaikan Pekerjaan' : newStatus. replace(/_/g, ' ');
+    const actionName = newStatus === 'completed' ? 'Menyelesaikan Pekerjaan' : newStatus.replace(/_/g, ' ');
     if (! confirm(`Apakah Anda yakin ingin mengubah status menjadi "${actionName}"?`)) return;
     
     setIsUpdating(true);
@@ -84,12 +84,12 @@ export default function ProviderJobDetail() {
   }
 
   const renderActionButton = () => {
-    if (order. status === 'accepted') {
+    if (order.status === 'accepted') {
       return (
         <button 
           onClick={() => handleUpdateStatus('on_the_way')}
           disabled={isUpdating}
-          className="w-full py-3. 5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition-all active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
+          className="w-full py-3.5 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-200 transition-all active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
         >
           {isUpdating ? 'Memproses...' : '🚀 Berangkat ke Lokasi'}
         </button>
@@ -120,7 +120,7 @@ export default function ProviderJobDetail() {
       );
     }
 
-    if (order. status === 'waiting_approval') {
+    if (order.status === 'waiting_approval') {
       return (
         <div className="w-full py-4 bg-yellow-50 text-yellow-800 font-bold rounded-xl text-center border border-yellow-200 flex flex-col items-center gap-1 animate-pulse">
           <div className="flex items-center gap-2">
@@ -129,12 +129,12 @@ export default function ProviderJobDetail() {
             </svg>
             <span>Menunggu Konfirmasi Pelanggan</span>
           </div>
-          <span className="text-xs font-normal opacity-80">Harap minta pelanggan cek aplikasi mereka. </span>
+          <span className="text-xs font-normal opacity-80">Harap minta pelanggan cek aplikasi mereka.</span>
         </div>
       );
     }
 
-    if (order. status === 'completed') {
+    if (order.status === 'completed') {
       return (
         <div className="w-full py-3 bg-gray-100 text-green-700 font-bold rounded-xl text-center border border-green-200 flex justify-center items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +164,7 @@ export default function ProviderJobDetail() {
         </Link>
         <div>
           <h1 className="text-lg font-bold text-gray-900 leading-none">Detail Pekerjaan</h1>
-          <p className="text-xs text-gray-500 mt-0.5">ID: <span className="font-mono">{order._id. substring(0, 8)}...</span></p>
+          <p className="text-xs text-gray-500 mt-0.5">ID: <span className="font-mono">{order._id.substring(0, 8)}...</span></p>
         </div>
       </header>
 
@@ -175,14 +175,14 @@ export default function ProviderJobDetail() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wide">Pelanggan</h3>
             <span className="px-2 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase rounded-md border border-gray-200">
-              {order.status. replace(/_/g, ' ')}
+              {order.status.replace(/_/g, ' ')}
             </span>
           </div>
           
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-gray-200 rounded-full overflow-hidden border border-gray-100 shrink-0">
               <Image 
-                src={customer?. profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${customer?. fullName || 'user'}`} 
+                src={customer?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${customer?.fullName || 'user'}`} 
                 alt="Customer"
                 width={56}
                 height={56}
@@ -194,7 +194,7 @@ export default function ProviderJobDetail() {
               <div className="flex items-center gap-2 mt-1">
                 <a href={`tel:${customer?.phoneNumber}`} className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-. 502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-. 502l4.493 1.498a1 1 0 01. 684. 949V19a2 2 0 01-2 2h-1C9. 716 21 3 14.284 3 6V5z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                   </svg>
                   {customer?.phoneNumber || '-'}
                 </a>
@@ -210,7 +210,7 @@ export default function ProviderJobDetail() {
                 <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4. 03 8-9 8a9. 863 9.863 0 01-4.255-. 949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3. 582 9 8z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
                 </svg>
               )}
             </button>
@@ -221,14 +221,14 @@ export default function ProviderJobDetail() {
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
             <p className="text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Lokasi Pengerjaan</p>
             <p className="text-sm text-gray-800 font-medium ml-1 leading-relaxed">
-              {orderAddress?. detail || 'Detail jalan tidak tersedia'}, 
-              {orderAddress?.village && ` ${orderAddress. village},`} 
-              {orderAddress?.district && ` Kec. ${orderAddress. district},`} 
+              {orderAddress?.detail || 'Detail jalan tidak tersedia'}, 
+              {orderAddress?.village && ` ${orderAddress.village},`} 
+              {orderAddress?.district && ` Kec.${orderAddress.district},`} 
               {orderAddress?.city || ''}
             </p>
             
             {/* Tombol Buka Maps menggunakan koordinat dari Order */}
-            {orderLocation?. coordinates && orderLocation.coordinates[0] !== 0 && (
+            {orderLocation?.coordinates && orderLocation.coordinates[0] !== 0 && (
               <a 
                 href={`https://www.google.com/maps/dir/? api=1&destination=${orderLocation.coordinates[1]},${orderLocation.coordinates[0]}`}
                 target="_blank"
@@ -236,7 +236,7 @@ export default function ProviderJobDetail() {
                 className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline ml-1"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17. 657 16.657L13.414 20.9a1. 998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                 </svg>
                 Buka Google Maps
@@ -254,7 +254,7 @@ export default function ProviderJobDetail() {
                 <div>
                   <p className="font-bold text-gray-900 text-sm">{item.name}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {item. quantity} unit x Rp {new Intl.NumberFormat('id-ID'). format(item.price)}
+                    {item.quantity} unit x Rp {new Intl.NumberFormat('id-ID').format(item.price)}
                   </p>
                   {item.note && (
                     <p className="text-xs text-gray-500 mt-1 italic bg-yellow-50 text-yellow-700 px-2 py-1 rounded inline-block">
@@ -269,7 +269,7 @@ export default function ProviderJobDetail() {
             ))}
             <div className="flex justify-between pt-3 border-t border-gray-100 text-base font-black">
               <span>Total Pendapatan</span>
-              <span className="text-green-600">Rp {new Intl.NumberFormat('id-ID').format(order. totalAmount)}</span>
+              <span className="text-green-600">Rp {new Intl.NumberFormat('id-ID').format(order.totalAmount)}</span>
             </div>
           </div>
         </div>

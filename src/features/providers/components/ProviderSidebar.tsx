@@ -1,4 +1,4 @@
-// src/features/providers/components/ProviderSidebar. tsx
+// src/features/providers/components/ProviderSidebar.tsx
 
 export default function ProviderSidebar() {
   return (

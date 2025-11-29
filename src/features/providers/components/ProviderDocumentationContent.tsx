@@ -14,10 +14,10 @@ export default function ProviderDocumentationContent({ provider, onImageClick }:
   // Gunakan data asli jika ada, fallback ke dummy jika kosong
   const portfolioImages =
     provider.portfolioImages && provider.portfolioImages.length > 0
-      ? provider. portfolioImages
+      ? provider.portfolioImages
       : FALLBACK_PORTFOLIO_IMAGES;
 
-  const isUsingFallback = !provider.portfolioImages || provider. portfolioImages.length === 0;
+  const isUsingFallback = !provider.portfolioImages || provider.portfolioImages.length === 0;
 
   return (
     <div className="space-y-4">

@@ -25,20 +25,20 @@ export default function ProviderCalendarModal({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayIndex = new Date(year, month, 1).getDay();
 
-  const blanks = Array. from({ length: firstDayIndex }, (_, i) => <div key={`blank-${i}`} />);
+  const blanks = Array.from({ length: firstDayIndex }, (_, i) => <div key={`blank-${i}`} />);
 
   const dayCells = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
     const date = new Date(year, month, day);
     const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    const dateStr = offsetDate. toISOString(). split('T')[0];
+    const dateStr = offsetDate.toISOString().split('T')[0];
 
-    const blockedSet = new Set(provider.blockedDates?. map((d: string) => d. split('T')[0]) || []);
+    const blockedSet = new Set(provider.blockedDates?.map((d: string) => d.split('T')[0]) || []);
     const bookedSet = new Set(provider.bookedDates?.map((d: string) => d.split('T')[0]) || []);
 
     const isBlocked = blockedSet.has(dateStr);
     const isBooked = bookedSet.has(dateStr);
-    const isPast = dateStr < new Date(). toISOString(). split('T')[0];
+    const isPast = dateStr < new Date().toISOString().split('T')[0];
 
     let bgClass = 'bg-green-50 text-green-700 border-green-100';
     let label = 'Ada';
@@ -92,7 +92,7 @@ export default function ProviderCalendarModal({
           </div>
 
           <div className="grid grid-cols-7 gap-1 text-center mb-2">
-            {['M', 'S', 'S', 'R', 'K', 'J', 'S']. map((d, i) => (
+            {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map((d, i) => (
               <span key={i} className="text-[10px] font-bold text-gray-400">
                 {d}
               </span>
@@ -104,10 +104,10 @@ export default function ProviderCalendarModal({
           </div>
 
           <div className="flex gap-3 mt-6 justify-center text-[10px] text-gray-600 bg-gray-50 p-3 rounded-xl border border-gray-100">
-            <div className="flex items-center gap-1. 5">
-              <div className="w-2. 5 h-2.5 bg-green-500 rounded-full"></div>Tersedia
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>Tersedia
             </div>
-            <div className="flex items-center gap-1. 5">
+            <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>Penuh
             </div>
             <div className="flex items-center gap-1.5">
@@ -117,10 +117,10 @@ export default function ProviderCalendarModal({
         </div>
 
         <div className="p-4 bg-gray-50 text-center">
-          <p className="text-xs text-gray-500">Pilih layanan dan tentukan tanggal saat checkout. </p>
+          <p className="text-xs text-gray-500">Pilih layanan dan tentukan tanggal saat checkout.</p>
           <button
             onClick={onClose}
-            className="mt-3 w-full py-2. 5 bg-gray-900 text-white font-bold text-sm rounded-xl hover:bg-gray-800 transition-colors"
+            className="mt-3 w-full py-2.5 bg-gray-900 text-white font-bold text-sm rounded-xl hover:bg-gray-800 transition-colors"
           >
             Tutup
           </button>

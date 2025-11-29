@@ -39,7 +39,7 @@ export default function ProviderHeroSection({
                   provider.userId?.profilePictureUrl ||
                   `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId?.fullName || 'default'}`
                 }
-                alt={provider. userId?.fullName || 'Mitra'}
+                alt={provider.userId?.fullName || 'Mitra'}
                 fill
                 className="object-cover"
               />
@@ -61,7 +61,7 @@ export default function ProviderHeroSection({
               </span>
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              {provider.userId?.address?. city || 'Lokasi tidak tersedia'} • {distance}
+              {provider.userId?.address?.city || 'Lokasi tidak tersedia'} • {distance}
             </p>
           </div>
 
@@ -72,7 +72,7 @@ export default function ProviderHeroSection({
           <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
             {/* Stats */}
             <div className="flex items-center gap-4 divide-x divide-gray-200 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm w-full sm:w-auto justify-center sm:justify-start">
-              <div className="flex items-center gap-1. 5 pr-2">
+              <div className="flex items-center gap-1.5 pr-2">
                 <span className="text-yellow-500 text-lg">★</span>
                 <div className="flex flex-col items-start">
                   <span className="text-sm font-black text-gray-900 leading-none">

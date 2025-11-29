@@ -24,10 +24,10 @@ export default function ProviderSettingsPage() {
             { id: 'account', label: 'Akun' },
           ].map((tab) => (
             <button
-              key={tab. id}
+              key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab. id
+                activeTab === tab.id
                   ?  'bg-red-600 text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
               }`}
@@ -47,7 +47,7 @@ export default function ProviderSettingsPage() {
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-full bg-gray-200 overflow-hidden relative">
                   <Image
-                    src="https://api.dicebear.com/7. x/avataaars/svg? seed=provider"
+                    src="https://api.dicebear.com/7.x/avataaars/svg? seed=provider"
                     alt="Profile"
                     fill
                     className="object-cover"
@@ -102,7 +102,7 @@ export default function ProviderSettingsPage() {
               <p className="text-sm text-gray-500">Kelola layanan yang Anda tawarkan</p>
               
               <div className="space-y-3">
-                {['Service AC', 'Cuci AC', 'Perbaikan Kulkas']. map((service, idx) => (
+                {['Service AC', 'Cuci AC', 'Perbaikan Kulkas'].map((service, idx) => (
                   <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
                     <div>
                       <p className="font-medium text-gray-900">{service}</p>

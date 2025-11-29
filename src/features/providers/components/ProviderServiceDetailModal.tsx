@@ -21,7 +21,7 @@ export default function ProviderServiceDetailModal({
   if (!selectedService) return null;
 
   const service = selectedService.serviceId;
-  const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel((service. unit as any) || 'unit');
+  const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel((service.unit as any) || 'unit');
   const durationText = formatDuration(service.estimatedDuration);
 
   return (
@@ -31,7 +31,7 @@ export default function ProviderServiceDetailModal({
     >
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden"
-        onClick={(e) => e. stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="p-4 border-b border-gray-100 flex justify-between items-start">
@@ -88,7 +88,7 @@ export default function ProviderServiceDetailModal({
             <div>
               <p className="text-xs font-bold text-green-600 uppercase mb-2">✓ Termasuk dalam layanan</p>
               <ul className="space-y-2 bg-green-50 p-3 rounded-xl">
-                {service. includes.map((item, idx) => (
+                {service.includes.map((item, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
                     <CheckIcon />
                     <span>{item}</span>

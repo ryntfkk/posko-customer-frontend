@@ -1,4 +1,4 @@
-// src/features/providers/components/utils. ts
+// src/features/providers/components/utils.ts
 
 export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): string {
   const R = 6371;
@@ -34,7 +34,7 @@ export function formatDuration(minutes?: number): string {
 
 // Fallback portfolio images
 export const FALLBACK_PORTFOLIO_IMAGES = [
-  'https://images.unsplash. com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1581094794329-cd8119608f84?q=80&w=500&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop',

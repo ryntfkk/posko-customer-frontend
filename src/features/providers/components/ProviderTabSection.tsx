@@ -21,13 +21,13 @@ export default function ProviderTabSection({
   onSelectService,
   onImageClick,
 }: ProviderTabSectionProps) {
-  const activeServicesCount = (provider.services as ServiceItem[]).filter((s) => s. isActive).length;
-  const portfolioCount = provider.portfolioImages?. length || 0;
+  const activeServicesCount = (provider.services as ServiceItem[]).filter((s) => s.isActive).length;
+  const portfolioCount = provider.portfolioImages?.length || 0;
 
   return (
     <div className="space-y-4">
       {/* Tab Navigation */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1. 5">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5">
         <div className="flex gap-1">
           <button
             onClick={() => onTabChange('services')}
@@ -38,7 +38,7 @@ export default function ProviderTabSection({
             <ServiceIcon />
             <span>Daftar Layanan</span>
             <span
-              className={`text-[10px] px-1. 5 py-0.5 rounded-full ${
+              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                 activeTab === 'services' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
               }`}
             >

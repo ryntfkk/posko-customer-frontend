@@ -30,12 +30,12 @@ export default function ProviderServicesContent({ provider, onSelectService }: P
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {activeServices.map((item) => {
         const service = item.serviceId;
-        const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel((service. unit as any) || 'unit');
+        const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel((service.unit as any) || 'unit');
         const durationText = formatDuration(service.estimatedDuration);
         const hasDetails =
           (service.includes && service.includes.length > 0) ||
-          (service. excludes && service. excludes.length > 0) ||
-          (service.requirements && service. requirements.length > 0);
+          (service.excludes && service.excludes.length > 0) ||
+          (service.requirements && service.requirements.length > 0);
 
         return (
           <div
@@ -52,7 +52,7 @@ export default function ProviderServicesContent({ provider, onSelectService }: P
             {/* Header: Icon + Name */}
             <div className="flex items-start gap-3 mb-3">
               <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 shrink-0 group-hover:bg-red-50 group-hover:border-red-100 transition-colors">
-                <img src={service.iconUrl || '/file. svg'} alt="Icon" className="w-7 h-7 object-contain opacity-70" />
+                <img src={service.iconUrl || '/file.svg'} alt="Icon" className="w-7 h-7 object-contain opacity-70" />
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-gray-900 text-sm group-hover:text-red-600 transition-colors leading-tight">
@@ -100,7 +100,7 @@ export default function ProviderServicesContent({ provider, onSelectService }: P
                 )}
                 <Link
                   href={`/checkout?type=direct&providerId=${provider._id}`}
-                  className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1. 5 rounded-lg transition-colors"
+                  className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   Pilih
                 </Link>

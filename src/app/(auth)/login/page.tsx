@@ -11,20 +11,20 @@ import { jwtDecode } from 'jwt-decode';
 const EyeIcon = () => (
   <svg className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8. 268 2.943 9.542 7-1.274 4.057-5. 064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
   </svg>
 );
 
 const EyeOffIcon = () => (
   <svg className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13. 875 18.825A10.05 10.05 0 0112 19c-4.478 0-8. 268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858. 908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3. 29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
   </svg>
 );
 
 const Spinner = () => (
-  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www. w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3. 042 1.135 5.824 3 7.938l3-2. 647z"></path>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
   </svg>
 );
 
@@ -68,7 +68,7 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (! email. includes('@')) {
+    if (! email.includes('@')) {
       setErrorMsg('Mohon masukkan alamat email yang valid.');
       return;
     }
@@ -81,7 +81,7 @@ export default function LoginPage() {
 
     try {
       const result = await loginUser({ email, password });
-      const token = result.data. tokens.accessToken;
+      const token = result.data.tokens.accessToken;
       
       // Save token to localStorage
       localStorage.setItem('posko_token', token);
@@ -93,7 +93,7 @@ export default function LoginPage() {
       const decoded = jwtDecode<DecodedToken>(token);
       
       // Redirect based on role
-      const redirectUrl = getRedirectUrl(decoded. role);
+      const redirectUrl = getRedirectUrl(decoded.role);
       
       router.push(redirectUrl);
       router.refresh();
@@ -132,7 +132,7 @@ export default function LoginPage() {
             {errorMsg && (
               <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-xl flex items-center gap-3 animate-pulse">
                 <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h. 01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>{errorMsg}</span>
               </div>
@@ -190,7 +190,7 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Spinner />
-                  <span>Memproses... </span>
+                  <span>Memproses...</span>
                 </>
               ) : (
                 'Masuk Sekarang'
@@ -237,21 +237,21 @@ export default function LoginPage() {
             <div className="w-16 h-1 bg-red-600 rounded-full"></div>
             <h2 className="text-5xl font-bold leading-tight tracking-tight">
               Solusi Cepat <br/> 
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Masalah Rumah. </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">Masalah Rumah.</span>
             </h2>
             <p className="text-gray-300 text-lg max-w-md leading-relaxed">
-              &quot;Posko membantu saya menemukan teknisi AC dalam 15 menit saat darurat.  Sangat direkomendasikan! &quot;
+              &quot;Posko membantu saya menemukan teknisi AC dalam 15 menit saat darurat. Sangat direkomendasikan! &quot;
             </p>
             <div className="flex items-center gap-4 pt-4">
               <div className="flex -space-x-3">
-                {[1,2,3]. map(i => (
+                {[1,2,3].map(i => (
                   <div key={i} className="w-10 h-10 rounded-full border-2 border-gray-900 bg-gray-700 overflow-hidden">
-                    <img src={`https://api.dicebear.com/7. x/avataaars/svg? seed=${i}`} alt="Avatar" className="w-full h-full" />
+                    <img src={`https://api.dicebear.com/7.x/avataaars/svg? seed=${i}`} alt="Avatar" className="w-full h-full" />
                   </div>
                 ))}
               </div>
               <div className="text-sm font-medium text-gray-400">
-                <span className="text-white font-bold">4. 9/5. 0</span> Rating Rata-rata
+                <span className="text-white font-bold">4.9/5.0</span> Rating Rata-rata
               </div>
             </div>
           </div>

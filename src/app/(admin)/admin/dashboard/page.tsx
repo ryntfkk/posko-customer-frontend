@@ -1,10 +1,10 @@
 // src/app/(admin)/admin/dashboard/page.tsx
 export default function AdminDashboardPage() {
   const stats = [
-    { label: 'Total Users', value: '12,345', change: '+12%', color: 'blue' },
-    { label: 'Mitra Aktif', value: '1,234', change: '+8%', color: 'green' },
-    { label: 'Transaksi Hari Ini', value: 'Rp 45.2M', change: '+23%', color: 'purple' },
-    { label: 'Pending Verifikasi', value: '56', change: '-5%', color: 'orange' },
+    { label: 'Total Users', value: '12,345', change: '+12%' },
+    { label: 'Mitra Aktif', value: '1,234', change: '+8%' },
+    { label: 'Transaksi Hari Ini', value: 'Rp 45.2M', change: '+23%' },
+    { label: 'Pending Verifikasi', value: '56', change: '-5%' },
   ];
 
   const recentActivities = [
@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
             <div className="mt-2 flex items-end justify-between">
               <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
               <span className={`text-sm font-medium ${
-                stat.change. startsWith('+') ?  'text-green-600' : 'text-red-600'
+                stat.change.startsWith('+') ?  'text-green-600' : 'text-red-600'
               }`}>
                 {stat.change}
               </span>

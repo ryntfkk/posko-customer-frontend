@@ -73,20 +73,20 @@ function CheckoutContent() {
   // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
 
-  const categoryParam = searchParams?. get('category') || null;
+  const categoryParam = searchParams?.get('category') || null;
 
-  // 1. Sinkronisasi Query Params & State
+  // 1.Sinkronisasi Query Params & State
   useEffect(() => {
     if (! searchParams) return;
 
-    const typeParam = searchParams. get('type') as CheckoutType | null;
+    const typeParam = searchParams.get('type') as CheckoutType | null;
     const providerParam = searchParams.get('providerId');
 
     setCheckoutType(typeParam === 'direct' ?  'direct' : 'basic');
     setSelectedProviderId(providerParam);
   }, [searchParams]);
 
-  // 2. Fetch Data Berdasarkan Tipe Order
+  // 2.Fetch Data Berdasarkan Tipe Order
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -94,14 +94,14 @@ function CheckoutContent() {
       try {
         if (checkoutType === 'basic') {
           const res = await fetchServices(categoryParam);
-          setServices(res. data);
+          setServices(res.data);
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
           setProvider(res.data);
         }
       } catch (err) {
         console.error(err);
-        setError('Gagal memuat data layanan.  Silakan coba lagi.');
+        setError('Gagal memuat data layanan. Silakan coba lagi.');
       } finally {
         setIsLoading(false);
       }
@@ -112,10 +112,10 @@ function CheckoutContent() {
     }
   }, [checkoutType, selectedProviderId, categoryParam]);
 
-  // 3.  Normalisasi Data untuk UI
+  // 3. Normalisasi Data untuk UI
   const availableOptions: CheckoutOption[] = useMemo(() => {
     if (checkoutType === 'basic') {
-      return services. map(s => ({
+      return services.map(s => ({
         id: s._id,
         name: s.name,
         category: s.category,
@@ -137,22 +137,22 @@ function CheckoutContent() {
 
       return provider.services
         .filter(item => item.isActive)
-        . map(item => ({
-          id: item. serviceId._id,
+        .map(item => ({
+          id: item.serviceId._id,
           name: item.serviceId.name,
-          category: item.serviceId. category,
-          description: item.serviceId.description || `Layanan oleh ${provider.userId. fullName}`,
-          shortDescription: item. serviceId.shortDescription,
+          category: item.serviceId.category,
+          description: item.serviceId.description || `Layanan oleh ${provider.userId.fullName}`,
+          shortDescription: item.serviceId.shortDescription,
           price: item.price,
-          unit: item. serviceId.unit || 'unit',
-          unitLabel: item.serviceId. unitLabel,
-          displayUnit: item. serviceId.displayUnit || getUnitLabel(item.serviceId.unit || 'unit', item.serviceId.unitLabel),
+          unit: item.serviceId.unit || 'unit',
+          unitLabel: item.serviceId.unitLabel,
+          displayUnit: item.serviceId.displayUnit || getUnitLabel(item.serviceId.unit || 'unit', item.serviceId.unitLabel),
           estimatedDuration: item.serviceId.estimatedDuration,
           includes: item.serviceId.includes,
-          excludes: item. serviceId.excludes,
+          excludes: item.serviceId.excludes,
           isPromo: item.serviceId.isPromo,
           promoPrice: item.serviceId.promoPrice,
-          discountPercent: item. serviceId.discountPercent,
+          discountPercent: item.serviceId.discountPercent,
         }));
     }
   }, [checkoutType, services, provider]);
@@ -160,7 +160,7 @@ function CheckoutContent() {
   const providerLabel = useMemo(() => {
     if (!selectedProviderId) return 'Cari Cepat';
     if (provider) return provider.userId.fullName;
-    return 'Memuat Nama Mitra... ';
+    return 'Memuat Nama Mitra...';
   }, [selectedProviderId, provider]);
 
   // Filter keranjang
@@ -181,25 +181,25 @@ function CheckoutContent() {
   }, [cart, checkoutType, selectedProviderId, categoryParam]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
-  const currentTotalItems = activeCartItems. reduce((sum, item) => sum + item.quantity, 0);
+  const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   // Auto-Add Service jika ada `serviceId` di URL
   useEffect(() => {
     if (! searchParams) return;
 
-    const serviceIdParam = searchParams. get('serviceId');
+    const serviceIdParam = searchParams.get('serviceId');
 
-    if (isHydrated && ! hasAutoAdded. current && serviceIdParam && availableOptions.length > 0) {
+    if (isHydrated && ! hasAutoAdded.current && serviceIdParam && availableOptions.length > 0) {
       const targetOption = availableOptions.find(o => o.id === serviceIdParam);
 
       if (targetOption) {
-        const key = getCartItemId(targetOption. id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
+        const key = getCartItemId(targetOption.id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
         const existing = cart.find(c => c.id === key);
 
         if (!existing || existing.quantity === 0) {
           upsertItem({
-            serviceId: targetOption. id,
-            serviceName: targetOption. name,
+            serviceId: targetOption.id,
+            serviceName: targetOption.name,
             category: targetOption.category,
             orderType: checkoutType,
             quantity: 1,
@@ -208,7 +208,7 @@ function CheckoutContent() {
             providerName: checkoutType === 'direct' ? providerLabel : undefined,
           });
         }
-        hasAutoAdded. current = true;
+        hasAutoAdded.current = true;
 
         const newParams = new URLSearchParams(searchParams.toString());
         newParams.delete('serviceId');
@@ -219,8 +219,8 @@ function CheckoutContent() {
 
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
-    const existing = cart.find((item) => item. id === key);
-    return existing?. quantity ??  0;
+    const existing = cart.find((item) => item.id === key);
+    return existing?.quantity ??  0;
   };
 
   const handleConfirmOrder = async () => {
@@ -245,10 +245,10 @@ function CheckoutContent() {
         queryParams.append('providerId', selectedProviderId);
       }
 
-      router.push(`/order/summary?${queryParams. toString()}`);
+      router.push(`/order/summary?${queryParams.toString()}`);
     } catch (err) {
       console.error(err);
-      alert('Terjadi kendala.  Silakan coba lagi.');
+      alert('Terjadi kendala. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
     }
@@ -275,7 +275,7 @@ function CheckoutContent() {
     const handleUpdateQuantity = (newQuantity: number) => {
       upsertItem({
         serviceId: option.id,
-        serviceName: option. name,
+        serviceName: option.name,
         category: option.category,
         orderType: checkoutType,
         quantity: newQuantity,
@@ -322,7 +322,7 @@ function CheckoutContent() {
             {/* Durasi */}
             {durationText && (
               <div className="flex items-center gap-1 text-xs text-gray-500">
-                <svg className="w-3. 5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>{durationText}</span>
@@ -335,7 +335,7 @@ function CheckoutContent() {
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>{option.includes. length} termasuk</span>
+                <span>{option.includes.length} termasuk</span>
               </div>
             )}
 
@@ -352,11 +352,11 @@ function CheckoutContent() {
           <div className="flex items-end gap-2">
             {option.isPromo && option.promoPrice ?  (
               <>
-                <p className="text-lg font-black text-red-700">{formatCurrency(option. promoPrice)}</p>
+                <p className="text-lg font-black text-red-700">{formatCurrency(option.promoPrice)}</p>
                 <p className="text-sm text-gray-400 line-through">{formatCurrency(option.price)}</p>
               </>
             ) : (
-              <p className="text-lg font-black text-red-700">{formatCurrency(option. price)}</p>
+              <p className="text-lg font-black text-red-700">{formatCurrency(option.price)}</p>
             )}
             <span className="text-xs text-gray-500 mb-0.5">{option.displayUnit}</span>
           </div>
@@ -475,8 +475,8 @@ function CheckoutContent() {
                     <div className="flex items-start gap-4 p-4 mb-2 bg-blue-50/50 border border-blue-100 rounded-2xl">
                       <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0 bg-gray-200">
                         <Image
-                          src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider. userId.fullName}`}
-                          alt={provider. userId.fullName}
+                          src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId.fullName}`}
+                          alt={provider.userId.fullName}
                           fill
                           className="object-cover"
                         />
@@ -485,13 +485,13 @@ function CheckoutContent() {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600 text-white uppercase tracking-wider">Mitra Pilihan</span>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900 leading-tight">{provider.userId. fullName}</h3>
+                        <h3 className="text-lg font-bold text-gray-900 leading-tight">{provider.userId.fullName}</h3>
                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{provider.userId.bio || 'Mitra profesional Posko siap melayani kebutuhan Anda.'}</p>
 
                         <div className="flex items-center gap-3 mt-2">
                           <div className="flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-gray-200 shadow-sm">
                             <span className="text-xs text-yellow-500">★</span>
-                            <span className="text-xs font-bold text-gray-700">{provider.rating ?  provider.rating. toFixed(1) : 'New'}</span>
+                            <span className="text-xs font-bold text-gray-700">{provider.rating ?  provider.rating.toFixed(1) : 'New'}</span>
                           </div>
                           <span className="text-[10px] text-gray-400">•</span>
                           <span className="text-xs text-gray-600 font-medium">Harga Ratecard Khusus</span>
@@ -507,7 +507,7 @@ function CheckoutContent() {
 
                   {checkoutType === 'direct' && availableOptions.length === 0 && (
                     <div className="p-6 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                      <p className="text-sm text-gray-500">Mitra ini belum memiliki layanan aktif yang dapat dipesan. </p>
+                      <p className="text-sm text-gray-500">Mitra ini belum memiliki layanan aktif yang dapat dipesan.</p>
                     </div>
                   )}
 
@@ -541,13 +541,13 @@ function CheckoutContent() {
                           <div className="space-y-0.5">
                             <p className="font-semibold text-gray-800 leading-tight">{item.serviceName}</p>
                             <p className="text-[10px] text-gray-500">
-                              {item. orderType === 'direct' ? 'Direct' : 'Basic'}
+                              {item.orderType === 'direct' ? 'Direct' : 'Basic'}
                               {item.providerName ?  ` • ${item.providerName}` : ''}
                             </p>
-                            <p className="text-[11px] text-gray-500">{item.quantity} x {formatCurrency(item. pricePerUnit)}</p>
+                            <p className="text-[11px] text-gray-500">{item.quantity} x {formatCurrency(item.pricePerUnit)}</p>
                           </div>
                           <div className="text-right font-bold text-gray-900">
-                            {formatCurrency(item. totalPrice)}
+                            {formatCurrency(item.totalPrice)}
                           </div>
                         </div>
                       ))}
@@ -578,7 +578,7 @@ function CheckoutContent() {
                 onClick={handleConfirmOrder}
                 disabled={isSubmitting || activeCartItems.length === 0}
                 className={`w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-white flex justify-center items-center gap-2 shadow-lg shadow-red-200 transition-all active:scale-95 ${
-                  isSubmitting || activeCartItems. length === 0
+                  isSubmitting || activeCartItems.length === 0
                     ? 'bg-gray-300 cursor-not-allowed shadow-none'
                     : 'bg-red-600 hover:bg-red-700 hover:-translate-y-1'
                 }`}
@@ -587,7 +587,7 @@ function CheckoutContent() {
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5. 373 0 0 5.373 0 12h4zm2 5. 291A7.962 7.962 0 014 12H0c0 3.042 1.135 5. 824 3 7.938l3-2.647z"></path>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Memproses...
                   </>
@@ -622,7 +622,7 @@ function CheckoutContent() {
                     </span>
                   )}
                 </div>
-                <h3 className="font-bold text-lg text-gray-900">{selectedDetail. name}</h3>
+                <h3 className="font-bold text-lg text-gray-900">{selectedDetail.name}</h3>
               </div>
               <button onClick={() => setSelectedDetail(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -652,7 +652,7 @@ function CheckoutContent() {
                 {selectedDetail.estimatedDuration && (
                   <div className="text-right">
                     <p className="text-xs text-gray-500 mb-1">Estimasi</p>
-                    <p className="text-sm font-bold text-gray-900">{formatDuration(selectedDetail. estimatedDuration)}</p>
+                    <p className="text-sm font-bold text-gray-900">{formatDuration(selectedDetail.estimatedDuration)}</p>
                   </div>
                 )}
               </div>
@@ -664,10 +664,10 @@ function CheckoutContent() {
               </div>
 
               {/* Includes */}
-              {selectedDetail.includes && selectedDetail.includes. length > 0 && (
+              {selectedDetail.includes && selectedDetail.includes.length > 0 && (
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase mb-2">✓ Termasuk</p>
-                  <ul className="space-y-1. 5">
+                  <ul className="space-y-1.5">
                     {selectedDetail.includes.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
                         <svg className="w-4 h-4 text-green-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -681,13 +681,13 @@ function CheckoutContent() {
               )}
 
               {/* Excludes */}
-              {selectedDetail.excludes && selectedDetail. excludes.length > 0 && (
+              {selectedDetail.excludes && selectedDetail.excludes.length > 0 && (
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase mb-2">✗ Tidak Termasuk</p>
                   <ul className="space-y-1.5">
                     {selectedDetail.excludes.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-sm text-gray-500">
-                        <svg className="w-4 h-4 text-red-400 shrink-0 mt-0. 5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                         {item}

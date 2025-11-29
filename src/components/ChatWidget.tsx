@@ -43,7 +43,7 @@ export default function ChatWidget({ user }: { user: any }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // ✅ FIX: Perbaiki URL Socket.io dengan path yang benar
-  const SOCKET_URL = process.env. NEXT_PUBLIC_API_URL || 'https://posko-backend.vercel.app';
+  const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'https://posko-backend.vercel.app';
 
   const myId = user?._id || user?.userId;
 
@@ -51,7 +51,7 @@ export default function ChatWidget({ user }: { user: any }) {
     const token = localStorage.getItem('posko_token');
     if (! token) return;
 
-    api.get('/chat'). then(res => setRooms(res.data. data)). catch(console.error);
+    api.get('/chat').then(res => setRooms(res.data.data)).catch(console.error);
 
     // ✅ FIX: Tambahkan path dan transport options yang lebih baik
     const newSocket = io(SOCKET_URL, { 
@@ -82,7 +82,7 @@ export default function ChatWidget({ user }: { user: any }) {
             updatedAt: new Date().toISOString()
         };
         const newRooms = [...prev];
-        newRooms. splice(roomIndex, 1);
+        newRooms.splice(roomIndex, 1);
         newRooms.unshift(updatedRoom);
         return newRooms;
       });
@@ -99,7 +99,7 @@ export default function ChatWidget({ user }: { user: any }) {
     setSocket(newSocket);
     return () => { 
       console.log('🔌 Disconnecting socket...');
-      newSocket. disconnect(); 
+      newSocket.disconnect(); 
     };
   }, [SOCKET_URL]);
 
@@ -108,10 +108,10 @@ export default function ChatWidget({ user }: { user: any }) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         setIsUnread(false);
     }
-  }, [activeRoom?. messages, isOpen, activeRoom]);
+  }, [activeRoom?.messages, isOpen, activeRoom]);
 
   const handleSendMessage = (e: React.FormEvent) => {
-    e. preventDefault();
+    e.preventDefault();
     if (! newMessage.trim() || !activeRoom || !socket) return;
 
     socket.emit('send_message', {
@@ -167,11 +167,11 @@ export default function ChatWidget({ user }: { user: any }) {
                                     alt="User" width={32} height={32} 
                                     className="rounded-full bg-white border border-white/30 object-cover"
                                 />
-                                <span className="absolute bottom-0 right-0 w-2. 5 h-2.5 bg-green-400 border-2 border-red-600 rounded-full"></span>
+                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-red-600 rounded-full"></span>
                             </div>
                             <div className="flex flex-col text-white">
                                 <span className="font-bold text-sm leading-tight truncate max-w-[140px]">
-                                    {getOpponent(activeRoom)?. fullName}
+                                    {getOpponent(activeRoom)?.fullName}
                                 </span>
                                 <span className="text-[10px] text-red-100 opacity-90">Active now</span>
                             </div>
@@ -180,7 +180,7 @@ export default function ChatWidget({ user }: { user: any }) {
                         <div className="flex items-center gap-2">
                             <div className="relative">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isOpen ? 'bg-white/20 border-white/30 text-white' : 'bg-red-600 border-transparent text-white'}`}>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h. 01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                                 </div>
                                 {isUnread && ! isOpen && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
                             </div>
@@ -202,7 +202,7 @@ export default function ChatWidget({ user }: { user: any }) {
                         <div className="divide-y divide-gray-100 bg-white min-h-full">
                             {rooms.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6 text-center opacity-60">
-                                    <p className="text-sm">Belum ada pesan. </p>
+                                    <p className="text-sm">Belum ada pesan.</p>
                                 </div>
                             ) : (
                                 rooms.map(room => {
@@ -225,7 +225,7 @@ export default function ChatWidget({ user }: { user: any }) {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-baseline mb-0.5">
                                                     <h4 className="text-sm font-bold text-gray-900 truncate group-hover:text-red-600">{opponent?.fullName}</h4>
-                                                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{lastMsg ?  new Date(lastMsg.sentAt). toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false}) : ''}</span>
+                                                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{lastMsg ?  new Date(lastMsg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false}) : ''}</span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 truncate font-medium">
                                                     {lastMsg ? (
@@ -242,8 +242,8 @@ export default function ChatWidget({ user }: { user: any }) {
                         </div>
                     ) : (
                         <div className="flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar bg-[#f0f2f5]">
-                            {activeRoom. messages.map((msg, idx) => {
-                                const senderId = getSenderId(msg. sender);
+                            {activeRoom.messages.map((msg, idx) => {
+                                const senderId = getSenderId(msg.sender);
                                 const isMe = senderId === myId;
 
                                 return (
@@ -255,7 +255,7 @@ export default function ChatWidget({ user }: { user: any }) {
                                         }`}>
                                             {msg.content}
                                             <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-red-100' : 'text-gray-400'}`}>
-                                                {new Date(msg.sentAt). toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false})}
+                                                {new Date(msg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false})}
                                             </div>
                                         </div>
                                     </div>
@@ -273,7 +273,7 @@ export default function ChatWidget({ user }: { user: any }) {
                         <input 
                             type="text" 
                             value={newMessage}
-                            onChange={(e) => setNewMessage(e.target. value)}
+                            onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="Tulis pesan..." 
                             className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:bg-white transition-all outline-none placeholder-gray-500 text-gray-900"
                             autoFocus
