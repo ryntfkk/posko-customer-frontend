@@ -2,7 +2,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 
 // Icon Components
@@ -30,42 +29,13 @@ const UserIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-// Desktop Navbar
-function Navbar() {
-  return (
-    <header className="hidden lg:block fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 relative">
-            <Image src="/logo.png" alt="Posko" fill className="object-contain" />
-          </div>
-          <span className="text-xl font-bold">Posko<span className="text-red-600">. </span></span>
-        </Link>
-        
-        <nav className="flex items-center gap-8">
-          <Link href="/" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Beranda</Link>
-          <Link href="/services" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Layanan</Link>
-          <Link href="/orders" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Pesanan</Link>
-        </nav>
-        
-        <div className="flex items-center gap-4">
-          <Link href="/profile" className="text-sm font-medium text-gray-600 hover:text-red-600 transition-colors">Akun Saya</Link>
-          <Link href="/login" className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 transition-colors">
-            Masuk
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-// Mobile Bottom Navigation
+// Mobile Bottom Navigation Only
 function BottomNav() {
   const pathname = usePathname();
   
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true;
-    if (path !== '/' && pathname.startsWith(path)) return true;
+    if (path !== '/' && pathname. startsWith(path)) return true;
     return false;
   };
 
@@ -79,7 +49,7 @@ function BottomNav() {
         
         <Link href="/services" className="flex flex-col items-center gap-1 w-16">
           <SearchIcon active={isActive('/services')} />
-          <span className={`text-[10px] font-bold ${isActive('/services') ? 'text-red-600' : 'text-gray-400'}`}>Layanan</span>
+          <span className={`text-[10px] font-bold ${isActive('/services') ?  'text-red-600' : 'text-gray-400'}`}>Layanan</span>
         </Link>
         
         <Link href="/orders" className="flex flex-col items-center gap-1 w-16">
@@ -103,10 +73,11 @@ export default function CustomerLayout({
 }) {
   return (
     <>
-      <Navbar />
-      <main className="min-h-screen pt-0 lg:pt-20 pb-24 lg:pb-0">
+      {/* TIDAK ADA NAVBAR DESKTOP - Sudah dihandle oleh masing-masing page */}
+      <main className="min-h-screen pb-24 lg:pb-0">
         {children}
       </main>
+      {/* BOTTOM NAV HANYA UNTUK MOBILE */}
       <BottomNav />
     </>
   );
