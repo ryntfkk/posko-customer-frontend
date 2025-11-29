@@ -62,14 +62,21 @@ function BottomNav() {
     return false;
   };
 
-  // PERBAIKAN UTAMA: Jika user dalam mode provider, JANGAN render BottomNav customer
-  // Biarkan ProviderHome yang menangani navbar-nya sendiri
+  // [FIX] Jika sedang loading, jangan render apapun untuk menghindari flash
   if (isLoading) {
-    return null; // Jangan render apapun saat loading
+    return null;
   }
 
+  // [FIX] Jika user dalam mode provider, jangan render BottomNav customer
+  // ProviderHome yang akan menangani navbar-nya sendiri
   if (isProviderMode) {
-    return null; // Jangan render BottomNav customer jika mode provider
+    return null;
+  }
+
+  // [FIX] Jika pathname adalah '/', halaman home handle sendiri bottom nav-nya
+  // Ini untuk menghindari double rendering
+  if (pathname === '/') {
+    return null;
   }
 
   return (
@@ -92,7 +99,7 @@ function BottomNav() {
 
         <Link href="/profile" className="flex flex-col items-center gap-1 w-16">
           <UserIcon active={isActive('/profile')} />
-          <span className={`text-[10px] font-bold ${isActive('/profile') ?  'text-red-600' : 'text-gray-400'}`}>Akun</span>
+          <span className={`text-[10px] font-bold ${isActive('/profile') ? 'text-red-600' : 'text-gray-400'}`}>Akun</span>
         </Link>
       </div>
     </div>

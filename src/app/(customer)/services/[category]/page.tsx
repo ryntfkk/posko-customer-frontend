@@ -1,7 +1,7 @@
 // src/app/(customer)/services/[category]/page.tsx
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import { fetchProviders } from '@/features/providers/api';
@@ -48,25 +48,25 @@ export default function ServiceCategoryPage() {
   // Debounce search term
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const categoryParam = Array.isArray(params.category) ? params.category[0] : params.category;
+  const categoryParam = Array.isArray(params.category) ? params.category[0] : params. category;
   
-  // [PERBAIKAN] Konversi slug ke nama kategori yang readable
+  // Konversi slug ke nama kategori yang readable
   const categoryDisplayName = useMemo(() => {
     if (! categoryParam) return '';
     // Decode URL dan ganti dash dengan spasi, capitalize
     return decodeURIComponent(categoryParam)
       .replace(/-/g, ' ')
-      . replace(/\b\w/g, char => char.toUpperCase());
+      .replace(/\b\w/g, char => char.toUpperCase());
   }, [categoryParam]);
 
-  // Load User Profile
+  // Load User Profile (optional - untuk lokasi)
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
         const token = localStorage.getItem('posko_token');
         if (token) {
           const res = await fetchProfile();
-          setUserProfile(res. data.profile);
+          setUserProfile(res.data. profile);
         }
       } catch (error) {
         console.error("Gagal memuat profil user:", error);
@@ -78,6 +78,7 @@ export default function ServiceCategoryPage() {
   }, []);
 
   // Load Providers with Category Filter
+  // [FIX] Jalankan meskipun user belum login
   useEffect(() => {
     const loadProviders = async () => {
       setIsLoading(true);
@@ -85,12 +86,12 @@ export default function ServiceCategoryPage() {
         let lat: number | undefined;
         let lng: number | undefined;
 
-        if (userProfile?.location?. coordinates) {
+        // Gunakan lokasi user jika tersedia
+        if (userProfile?. location?. coordinates) {
           [lng, lat] = userProfile.location.coordinates; // GeoJSON format [lng, lat]
         }
 
-        // [PERBAIKAN] Kirim category parameter dengan format yang benar
-        // Backend akan menangani konversi dari slug ke nama kategori
+        // Kirim category parameter dengan format yang benar
         const response = await fetchProviders({
           lat,
           lng,
@@ -99,7 +100,7 @@ export default function ServiceCategoryPage() {
           sortBy: sortBy
         });
 
-        setProviders(Array.isArray(response.data) ? response.data : []);
+        setProviders(Array.isArray(response. data) ? response. data : []);
       } catch (error) {
         console.error("Gagal memuat data provider:", error);
         setProviders([]);
@@ -108,7 +109,8 @@ export default function ServiceCategoryPage() {
       }
     };
 
-    // Jalankan ulang jika salah satu dependensi berubah
+    // [FIX] Jalankan segera setelah isUserLoading selesai
+    // Tidak perlu menunggu userProfile ada, karena lokasi optional
     if (! isUserLoading) {
       loadProviders();
     }
@@ -143,7 +145,7 @@ export default function ServiceCategoryPage() {
   };
 
   const getLocationLabel = (provider: Provider) => {
-    const addr = provider.userId?. address;
+    const addr = provider.userId?.address;
     if (! addr) return 'Lokasi Mitra';
     if (addr.district) return `Kec.  ${addr.district}`;
     if (addr.city) return addr.city;
@@ -202,7 +204,7 @@ export default function ServiceCategoryPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-4 py-2. 5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
               />
-              <svg className="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <svg className="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
 
             {/* Desktop Sort */}
@@ -210,7 +212,7 @@ export default function ServiceCategoryPage() {
               <select 
                 value={sortBy} 
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="appearance-none bg-white border border-gray-200 text-gray-700 py-2. 5 pl-4 pr-10 rounded-xl text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer hover:bg-gray-50"
+                className="appearance-none bg-white border border-gray-200 text-gray-700 py-2. 5 pl-4 pr-10 rounded-xl text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="distance">📍 Terdekat</option>
                 <option value="rating">⭐ Rating Tertinggi</option>
@@ -227,7 +229,7 @@ export default function ServiceCategoryPage() {
               onClick={() => setShowFilterMobile(!showFilterMobile)}
               className="lg:hidden p-2. 5 bg-white border border-gray-200 rounded-xl shadow-sm"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2. 586a1 1 0 01-. 293.707l-6. 414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2. 586a1 1 0 01-.293.707l-6.414 6. 414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
             </button>
           </div>
 
@@ -243,7 +245,7 @@ export default function ServiceCategoryPage() {
                 <button 
                   key={opt.val}
                   onClick={() => setSortBy(opt.val as any)}
-                  className={`text-xs font-bold py-2. 5 px-3 rounded-lg flex items-center gap-2 transition-colors ${sortBy === opt.val ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                  className={`text-xs font-bold py-2. 5 px-3 rounded-lg flex items-center gap-2 transition-colors ${sortBy === opt.val ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-gray-100 text-gray-600 border border-gray-100'}`}
                 >
                   <span>{opt.icon}</span> {opt.label}
                 </button>
@@ -291,18 +293,18 @@ export default function ServiceCategoryPage() {
                   {/* Image */}
                   <div className="relative h-28 lg:h-36 bg-gray-100 overflow-hidden">
                     <Image 
-                      src={provider.userId?. profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${provider. userId?.fullName || 'User'}`} 
+                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${provider.userId?.fullName || 'User'}`} 
                       alt={provider.userId?.fullName || 'Mitra'} 
                       fill 
                       className="object-cover group-hover:scale-110 transition-transform duration-500" 
                     />
                     
-                    <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-1. 5 py-0.5 rounded text-[9px] lg:text-[10px] font-bold text-white border border-white/20">
+                    <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-1. 5 py-0.5 rounded text-[9px] lg:text-[10px] font-bold text-white border border-white/10">
                       ⭐ {getRatingLabel(provider)}
                     </div>
                     
                     {provider.distance && (
-                      <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1. 5 py-0.5 rounded text-[9px] lg:text-[10px] font-medium text-gray-700">
+                      <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-0. 5 rounded text-[9px] lg:text-[10px] font-medium text-gray-700">
                         📍 {(provider.distance / 1000).toFixed(1)} km
                       </div>
                     )}
@@ -321,7 +323,7 @@ export default function ServiceCategoryPage() {
                     <div className="flex flex-wrap gap-1 my-1">
                       {provider.services
                         .filter(s => s.isActive)
-                        .slice(0, 2) 
+                        . slice(0, 2) 
                         .map((svc, idx) => (
                           <span key={idx} className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 line-clamp-1">
                             {svc.serviceId?. name}
