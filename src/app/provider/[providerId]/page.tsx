@@ -17,7 +17,7 @@ const MOCK_PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1581094794329-cd8119608f84?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop",
-  "https://images. unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop",
 ];
 
 // --- FUNGSI HELPER ---
@@ -25,10 +25,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a = Math.sin(dLat / 2) * Math. sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math. PI / 180)) *
-    Math. sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math. PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math. atan2(Math. sqrt(a), Math.sqrt(1 - a));
   const d = R * c;
   return d < 1 ? `${(d * 1000).toFixed(0)} m` : `${d.toFixed(1)} km`;
 }
@@ -50,16 +50,21 @@ function formatDuration(minutes?: number): string {
   return `${hours}j ${remainMins}m`;
 }
 
-// --- ICONS ---
+// --- ICONS (DIPERBAIKI - Path SVG Lengkap) ---
 const ShareIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8. 684 13.342C8.886 12.938 9 12.482 9 12c0-. 482-. 114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2. 684l6. 632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5. 368-2.684z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8. 684 13.342C8.886 12.938 9 12.482 9 12c0-. 482-. 114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6. 632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2. 684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5. 368-2.684z" />
   </svg>
 );
 
 const HeartIcon = ({ solid }: { solid: boolean }) => (
-  <svg className={`w-5 h-5 transition-transform active:scale-75 ${solid ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} fill={solid ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4. 318 6.318a4.5 4.5 0 000 6. 364L12 20.364l7. 682-7.682a4.5 4.5 0 00-6. 364-6.364L12 7. 636l-1. 318-1.318a4.5 4.5 0 00-6. 364 0z" />
+  <svg 
+    className={`w-5 h-5 transition-transform active:scale-75 ${solid ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} 
+    fill={solid ? "currentColor" : "none"} 
+    stroke="currentColor" 
+    viewBox="0 0 24 24"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6. 318a4.5 4.5 0 000 6.364L12 20.364l7.682-7. 682a4.5 4.5 0 00-6.364-6. 364L12 7.636l-1.318-1. 318a4.5 4.5 0 00-6.364 0z" />
   </svg>
 );
 
@@ -87,9 +92,35 @@ const XIcon = () => (
   </svg>
 );
 
-const ChevronLeft = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
-const ChevronRight = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>;
-const CloseIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>;
+const ChevronLeft = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+const ChevronRight = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const BackIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+  </svg>
+);
 
 // Interface untuk service item
 interface ServiceItem {
@@ -118,7 +149,7 @@ interface ServiceItem {
 
 export default function ProviderProfilePage() {
   const params = useParams();
-  const providerId = Array.isArray(params.providerId) ? params. providerId[0] : params.providerId;
+  const providerId = Array.isArray(params.providerId) ?  params.providerId[0] : params. providerId;
 
   // Data State
   const [provider, setProvider] = useState<Provider | null>(null);
@@ -128,7 +159,6 @@ export default function ProviderProfilePage() {
 
   // Interaction State
   const [isFavorited, setIsFavorited] = useState(false);
-  const [favCount, setFavCount] = useState(128);
   const [isSharing, setIsSharing] = useState(false);
 
   // Calendar State
@@ -144,7 +174,7 @@ export default function ProviderProfilePage() {
       try {
         setIsLoading(true);
         const providerRes = await fetchProviderById(providerId);
-        setProvider(providerRes.data);
+        setProvider(providerRes. data);
 
         const token = localStorage.getItem('posko_token');
         if (token) {
@@ -190,7 +220,6 @@ export default function ProviderProfilePage() {
 
   const toggleFavorite = () => {
     setIsFavorited(! isFavorited);
-    setFavCount(prev => isFavorited ? prev - 1 : prev + 1);
   };
 
   const changeMonth = (delta: number) => {
@@ -214,13 +243,13 @@ export default function ProviderProfilePage() {
       const day = i + 1;
       const date = new Date(year, month, day);
       const offsetDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
-      const dateStr = offsetDate.toISOString().split('T')[0];
+      const dateStr = offsetDate. toISOString().split('T')[0];
 
-      const blockedSet = new Set(provider.blockedDates?. map(d => d.split('T')[0]) || []);
-      const bookedSet = new Set(provider.bookedDates?.map(d => d.split('T')[0]) || []);
+      const blockedSet = new Set(provider.blockedDates?. map((d: string) => d.split('T')[0]) || []);
+      const bookedSet = new Set(provider.bookedDates?.map((d: string) => d.split('T')[0]) || []);
 
       const isBlocked = blockedSet.has(dateStr);
-      const isBooked = bookedSet. has(dateStr);
+      const isBooked = bookedSet.has(dateStr);
       const isPast = dateStr < new Date(). toISOString(). split('T')[0];
 
       let bgClass = "bg-green-50 text-green-700 border-green-100";
@@ -248,11 +277,15 @@ export default function ProviderProfilePage() {
     return (
       <div className="p-4">
         <div className="flex items-center justify-between mb-4 bg-gray-50 p-2 rounded-xl">
-          <button onClick={() => changeMonth(-1)} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600"><ChevronLeft /></button>
+          <button onClick={() => changeMonth(-1)} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600">
+            <ChevronLeft />
+          </button>
           <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-            {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+            {currentMonth. toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
           </span>
-          <button onClick={() => changeMonth(1)} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600"><ChevronRight /></button>
+          <button onClick={() => changeMonth(1)} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600">
+            <ChevronRight />
+          </button>
         </div>
 
         <div className="grid grid-cols-7 gap-1 text-center mb-2">
@@ -278,7 +311,7 @@ export default function ProviderProfilePage() {
   const renderServiceDetailModal = () => {
     if (!selectedService || !provider) return null;
 
-    const service = selectedService.serviceId;
+    const service = selectedService. serviceId;
     const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel(service.unit as any || 'unit');
     const durationText = formatDuration(service.estimatedDuration);
 
@@ -412,7 +445,7 @@ export default function ProviderProfilePage() {
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 transition-all">
         <div className="max-w-6xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
           <Link href="/" className="p-2 -ml-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            <BackIcon />
           </Link>
           <h1 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Profil Mitra</h1>
           <div className="w-8"></div>
@@ -430,7 +463,7 @@ export default function ProviderProfilePage() {
               <div className="relative w-28 h-28 lg:w-36 lg:h-36">
                 <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
                   <Image
-                    src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider. userId.fullName}`}
+                    src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg? seed=${provider.userId.fullName}`}
                     alt={provider.userId.fullName}
                     fill
                     className="object-cover"
@@ -477,10 +510,19 @@ export default function ProviderProfilePage() {
                     <span className="text-xs font-bold">Lihat Jadwal</span>
                   </button>
 
-                  <button onClick={toggleFavorite} className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${isFavorited ? 'bg-red-50 border-red-200' : 'border-gray-200 hover:bg-gray-50'}`}>
+                  {/* TOMBOL FAVORIT - DIPERBAIKI */}
+                  <button 
+                    onClick={toggleFavorite} 
+                    className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${isFavorited ? 'bg-red-50 border-red-200' : 'border-gray-200 hover:bg-gray-50'}`}
+                  >
                     <HeartIcon solid={isFavorited} />
                   </button>
-                  <button onClick={handleShare} className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors ${isSharing ? 'scale-95' : ''}`}>
+
+                  {/* TOMBOL SHARE - DIPERBAIKI */}
+                  <button 
+                    onClick={handleShare} 
+                    className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors ${isSharing ? 'scale-95' : ''}`}
+                  >
                     <ShareIcon />
                   </button>
                 </div>
@@ -503,16 +545,16 @@ export default function ProviderProfilePage() {
                   Daftar Layanan
                 </h3>
                 <span className="text-xs text-gray-500">
-                  {provider.services.filter(s => s. isActive).length} layanan
+                  {provider.services.filter((s: ServiceItem) => s.isActive). length} layanan
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {provider.services.filter(s => s. isActive).map((item: ServiceItem) => {
+                {provider.services.filter((s: ServiceItem) => s.isActive).map((item: ServiceItem) => {
                   const service = item.serviceId;
-                  const unitDisplay = service. displayUnit || service. unitLabel || getUnitLabel(service. unit as any || 'unit');
+                  const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel(service.unit as any || 'unit');
                   const durationText = formatDuration(service.estimatedDuration);
-                  const hasDetails = (service.includes && service.includes. length > 0) || 
+                  const hasDetails = (service.includes && service.includes.length > 0) || 
                                      (service.excludes && service.excludes.length > 0) ||
                                      (service.requirements && service.requirements.length > 0);
 
@@ -558,7 +600,7 @@ export default function ProviderProfilePage() {
                             <span>{durationText}</span>
                           </div>
                         )}
-                        {service.includes && service.includes.length > 0 && (
+                        {service.includes && service.includes. length > 0 && (
                           <div className="flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full">
                             <CheckIcon />
                             <span>{service.includes.length} termasuk</span>
@@ -585,8 +627,9 @@ export default function ProviderProfilePage() {
                               Detail
                             </button>
                           )}
+                          {/* TOMBOL PILIH - DIPERBAIKI: Mengarah ke Direct Order dengan providerId */}
                           <Link
-                            href={`/checkout?type=direct&providerId=${provider._id}&serviceId=${service._id}`}
+                            href={`/checkout?type=direct&providerId=${provider._id}`}
                             className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1. 5 rounded-lg transition-colors"
                           >
                             Pilih
@@ -598,7 +641,7 @@ export default function ProviderProfilePage() {
                 })}
               </div>
 
-              {provider.services.filter(s => s.isActive).length === 0 && (
+              {provider.services.filter((s: ServiceItem) => s.isActive).length === 0 && (
                 <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
                   <p className="text-gray-500 text-sm">Mitra ini belum memiliki layanan aktif. </p>
                 </div>
@@ -676,17 +719,18 @@ export default function ProviderProfilePage() {
         <div className="flex flex-col flex-1">
           <span className="text-[10px] text-gray-500 font-bold uppercase">Harga Mulai</span>
           <span className="text-lg font-black text-red-600">
-            {provider.services.filter(s => s.isActive). length > 0
-              ? formatCurrency(Math.min(...provider. services.filter(s => s. isActive).map(s => s.price)))
+            {provider.services.filter((s: ServiceItem) => s.isActive).length > 0
+              ? formatCurrency(Math.min(...provider. services.filter((s: ServiceItem) => s.isActive).map((s: ServiceItem) => s.price)))
               : 'Hubungi CS'}
           </span>
         </div>
+        {/* TOMBOL PESAN JASA - Mengarah ke Direct Order dengan semua layanan provider */}
         <Link
           href={`/checkout?type=direct&providerId=${provider._id}`}
           className="px-6 py-3 rounded-xl bg-red-600 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-transform active:scale-95 flex items-center gap-2"
         >
           Pesan Jasa
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+          <ArrowRightIcon />
         </Link>
       </div>
 
@@ -699,7 +743,7 @@ function ProviderLoading() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
-        <span className="text-sm font-medium text-gray-500 animate-pulse">Memuat Profil Mitra... </span>
+        <span className="text-sm font-medium text-gray-500 animate-pulse">Memuat Profil Mitra...</span>
       </div>
     </div>
   );
@@ -709,10 +753,10 @@ function ProviderNotFound() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 p-4 text-center">
       <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-2">
-        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        <CloseIcon />
       </div>
       <h2 className="text-xl font-bold text-gray-900">Mitra Tidak Ditemukan</h2>
-      <p className="text-sm text-gray-500">Mitra yang Anda cari tidak tersedia atau sudah tidak aktif. </p>
+      <p className="text-sm text-gray-500">Mitra yang Anda cari tidak tersedia atau sudah tidak aktif.</p>
       <Link href="/" className="px-6 py-2. 5 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors">
         Kembali ke Beranda
       </Link>
