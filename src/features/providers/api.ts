@@ -9,6 +9,7 @@ export interface FetchProvidersParams {
   category?: string;
   search?: string;
   sortBy?: 'distance' | 'price_asc' | 'price_desc' | 'rating';
+  limit?: number; // [BARU] Tambahkan ini
 }
 
 export const fetchProviders = async (params: FetchProvidersParams) => {

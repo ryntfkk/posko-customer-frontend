@@ -1,4 +1,4 @@
-// src/app/page.tsx
+// src/app/(customer)/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -9,9 +9,7 @@ import { useRouter } from 'next/navigation';
 import { fetchProfile, switchRole, registerPartner } from '@/features/auth/api';
 import { User } from '@/features/auth/types';
 import { fetchServices } from '@/features/services/api';
-import { fetchProviders } from '@/features/providers/api'; 
 import { Service } from '@/features/services/types';
-import { Provider } from '@/features/providers/types'; 
 import { useCart } from '@/features/cart/useCart';
 
 // --- KOMPONEN MODULAR ---
@@ -22,9 +20,7 @@ import ChatWidget from '@/components/ChatWidget';
 
 // --- ICONS ---
 const SearchIcon = ({ className }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
-const HomeIcon = ({ active }: { active?: boolean }) => <svg className="w-6 h-6" fill={active ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9M9 20l-2-7m6 7l2-7M9 5l3-3m6 3l-3-3" /></svg>;
 const OrderIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>;
-const ChatIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 const UserIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -42,9 +38,7 @@ export default function HomePage() {
   
   // Data State
   const [services, setServices] = useState<Service[]>([]);
-  const [providers, setProviders] = useState<Provider[]>([]); 
   const [isLoadingServices, setIsLoadingServices] = useState(true);
-  const [isLoadingProviders, setIsLoadingProviders] = useState(true);
   
   // Helpers
   const profileName = userProfile?.fullName || 'User Posko';
@@ -56,32 +50,24 @@ export default function HomePage() {
 
   // Fetching Data: Services (Independent Effect)
   useEffect(() => {
-    setIsLoadingServices(true);
+    // FIX: Removed unnecessary setIsLoadingServices(true) since initial state is true
     fetchServices()
       .then(res => setServices(res.data || []))
       .catch(err => console.error("Gagal memuat layanan:", err))
       .finally(() => setIsLoadingServices(false));
   }, []);
 
-  // Fetching Data: Providers (Independent Effect)
-  useEffect(() => {
-    setIsLoadingProviders(true);
-    fetchProviders({})
-      .then(res => setProviders(Array.isArray(res.data) ? res.data : []))
-      .catch(err => {
-        console.error("Gagal memuat mitra:", err);
-        setProviders([]);
-      })
-      .finally(() => setIsLoadingProviders(false));
-  }, []);
-
   // Fetching Data: User Profile (Independent Effect)
   useEffect(() => {
     const token = localStorage.getItem('posko_token');
-    setIsLoggedIn(!!token);
+    
+    // FIX: Only set login state if it differs to avoid redundant updates
+    if (!!token !== isLoggedIn) {
+      setIsLoggedIn(!!token);
+    }
     
     if (token) {
-      setIsLoadingProfile(true);
+      // FIX: Removed unnecessary setIsLoadingProfile(true) since initial state is true
       fetchProfile()
         .then(res => setUserProfile(res.data.profile))
         .catch(() => { 
@@ -92,21 +78,19 @@ export default function HomePage() {
     } else {
       setIsLoadingProfile(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // [FIX] Normalize category untuk konsistensi dengan backend
   const groupServicesToCategories = (services: Service[]) => {
     const categoriesMap = new Map();
     services.forEach(service => {
-        // Normalize: lowercase + trim
         const normalizedCategory = service.category.trim().toLowerCase();
         const categoryKey = normalizedCategory;
         
         if (!categoriesMap.has(categoryKey)) {
             categoriesMap.set(categoryKey, {
-                // Kirim dalam bentuk lowercase untuk konsistensi
-                name: service.category, // Display name (original)
-                slug: normalizedCategory.replace(/\s+/g, '-'), // slug lowercase
+                name: service.category, 
+                slug: normalizedCategory.replace(/\s+/g, '-'), 
                 iconUrl: service.iconUrl, 
             });
         }
@@ -146,8 +130,10 @@ export default function HomePage() {
             await switchRole(userProfile.activeRole === 'provider' ? 'customer' : 'provider');
         }
         window.location.reload();
-    } catch (error: any) {
-        alert(error.response?.data?.message || "Gagal mengubah mode");
+    } catch (error) {
+        // FIX: Type assertion for error
+        const err = error as { response?: { data?: { message?: string } } };
+        alert(err.response?.data?.message || "Gagal mengubah mode");
         setSwitching(false);
     }
   };
@@ -159,7 +145,6 @@ export default function HomePage() {
   return (
     <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100">
       
-      {/* HEADER (Mobile & Desktop) */}
       {/* Mobile Header */}
       <div className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -168,7 +153,17 @@ export default function HomePage() {
           </div>
           <div>
             {isLoggedIn ?  (
-               <Link href="/profile"><div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden"><img src={profileAvatar} alt="Avatar" className="w-full h-full object-cover"/></div></Link>
+               <Link href="/profile">
+                 <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
+                   {/* FIX: Use Next Image instead of img */}
+                   <Image 
+                     src={profileAvatar} 
+                     alt="Avatar" 
+                     fill 
+                     className="object-cover"
+                   />
+                 </div>
+               </Link>
             ) : (
               <Link href="/login" className="text-[11px] font-bold text-white bg-gray-900 px-4 py-2 rounded-full shadow-md">Masuk</Link>
             )}
@@ -201,7 +196,15 @@ export default function HomePage() {
                  <div className="relative">
                     <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
                         <div className="text-right hidden xl:block"><p className="text-xs font-bold text-gray-900">Halo, {isLoadingProfile ? 'Memuat...' : profileName}</p><p className="text-[10px] text-gray-500 truncate max-w-[120px]">{profileEmail}</p></div>
-                        <div className="w-9 h-9 bg-gray-100 rounded-full overflow-hidden border border-gray-200"><img src={profileAvatar} alt="Profile" className="w-full h-full object-cover" /></div>
+                        <div className="w-9 h-9 bg-gray-100 rounded-full overflow-hidden border border-gray-200 relative">
+                          {/* FIX: Use Next Image */}
+                          <Image 
+                            src={profileAvatar} 
+                            alt="Profile" 
+                            fill
+                            className="object-cover" 
+                          />
+                        </div>
                         <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isProfileOpen ?  'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     {/* DROPDOWN DESKTOP */}
@@ -210,7 +213,15 @@ export default function HomePage() {
                             <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
                             <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fadeIn">
                                 <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0"><img src={profileAvatar} alt="Avatar" className="w-full h-full object-cover"/></div>
+                                    <div className="w-10 h-10 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 relative">
+                                      {/* FIX: Use Next Image */}
+                                      <Image 
+                                        src={profileAvatar} 
+                                        alt="Avatar" 
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    </div>
                                     <div className="min-w-0"><p className="text-sm font-bold text-gray-900 truncate">{isLoadingProfile ? '...' : profileName}</p><p className="text-[11px] text-gray-500 truncate">{profileEmail}</p><span className="inline-block mt-1 px-2 py-0.5 bg-red-50 text-red-600 text-[9px] font-bold rounded-full border border-red-100">{profileBadge}</span></div>
                                 </div>
                                 <div className="p-2 space-y-1">
@@ -242,7 +253,7 @@ export default function HomePage() {
           </div>
       </header>
 
-      {/* HERO SECTION & SERVICE CATEGORIES & TECHNICIAN SECTION */}
+      {/* HERO SECTION */}
       <section className="lg:hidden px-4 pt-6 pb-2">
         <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">Cari jasa apa <br/><span className="text-red-600 relative">sekarang?  <svg className="absolute w-full h-2 -bottom-1 left-0" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0,5 Q25,0 50,5 T100,5" stroke="currentColor" strokeWidth="2" fill="none" vectorEffect="non-scaling-stroke"/></svg></span></h2>
         <p className="text-xs text-gray-500 mb-6 max-w-[280px]">Hubungkan dengan ratusan teknisi terverifikasi di sekitar Anda.</p>
@@ -285,9 +296,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* [FIX] MOBILE BOTTOM NAV - Hapus yang ini karena sudah dihandle di layout */}
-      {/* Navbar di homepage tidak perlu ditampilkan, karena layout akan handle */}
-
       {/* FLOATING CART */}
       {totalItems > 0 && (
           <Link href={checkoutUrl} className="fixed bottom-24 left-4 lg:bottom-8 lg:left-8 z-50 flex items-center gap-2 px-4 py-3 bg-red-600 text-white rounded-full shadow-xl shadow-red-300 hover:shadow-2xl hover:shadow-red-400 hover:scale-105 transition-all duration-300 animate-bounce-slow">
@@ -308,10 +316,4 @@ function PromoCardMobile({ color, title, subtitle, btn }: { color: 'red'|'dark',
       <button className={`w-fit text-[10px] font-bold px-3 py-1.5 rounded-full ${color === 'red' ? 'bg-white text-red-600' : 'bg-white/10 border border-white/20'}`}>{btn}</button>
     </div>
   )
-}
-
-function NavItem({ icon, active = false }: { icon: React.ReactNode; active?: boolean }) {
-  return (
-    <button className={`flex flex-col items-center justify-center gap-1 w-12 ${active ? 'text-red-600' : 'text-gray-400'} transition-colors`}><div className="relative">{icon}{active && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full animate-pulse"></span>}</div></button>
-  );
 }

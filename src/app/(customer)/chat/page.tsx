@@ -1,7 +1,7 @@
-// src/app/chat/page.tsx
+// src/app/(customer)/chat/page.tsx
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { io, Socket } from 'socket.io-client';
@@ -9,8 +9,7 @@ import api from '@/lib/axios';
 import { fetchProfile } from '@/features/auth/api';
 import { fetchMyOrders } from '@/features/orders/api';
 import { User } from '@/features/auth/types';
-import { Order } from '@/features/orders/types';
-// [BARU] Import Provider Navbar
+import { Order, PopulatedProvider, PopulatedUser } from '@/features/orders/types'; // Import types
 import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
@@ -36,7 +35,8 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const myId = user ? ((user as any)._id || user.userId) : null;
+  // ✅ FIX 1: Remove unneeded 'any' casting. User interface has _id.
+  const myId = user ? user._id : null;
   const isProvider = user?.activeRole === 'provider';
 
   const getSenderId = (sender: string | { _id: string }) => {
@@ -102,10 +102,11 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeRoom?.messages]);
 
-  const getOpponent = (room: ChatRoom) => {
-    if (!myId) return null;
+  // ✅ FIX 4: Wrap getOpponent in useCallback to be used in useMemo dependency
+  const getOpponent = useCallback((room: ChatRoom | null) => {
+    if (!room || !myId) return null;
     return room.participants.find(p => p._id !== myId) || room.participants[0];
-  };
+  }, [myId]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,6 +123,7 @@ export default function ChatPage() {
     } catch (error) { console.error(error); }
   };
 
+  // ✅ FIX 4: Add getOpponent to dependency array
   const relatedOrder = useMemo(() => {
     if (!activeRoom || !user || activeOrders.length === 0) return null;
     const opponent = getOpponent(activeRoom);
@@ -129,16 +131,26 @@ export default function ChatPage() {
 
     return activeOrders.find(order => {
         if (isProvider) {
-            // @ts-ignore
-            const custId = order.userId?._id || order.userId; 
+            // ✅ FIX 2: Type safe access instead of @ts-ignore
+            const uId = order.userId;
+            const custId = (typeof uId === 'string' ? uId : (uId as PopulatedUser)._id);
             return custId === opponent._id;
         } else {
-            // @ts-ignore
-            const provUser = order.providerId?.userId?._id || order.providerId?.userId;
-            return provUser === opponent._id;
+            // ✅ FIX 3: Type safe access instead of @ts-ignore
+            const pId = order.providerId;
+            let provUserId = '';
+            
+            if (pId && typeof pId === 'object' && 'userId' in pId) {
+                // It is PopulatedProvider
+                const u = (pId as PopulatedProvider).userId;
+                // userId in PopulatedProvider is { _id: string ... } based on types.ts
+                provUserId = u._id;
+            }
+            
+            return provUserId === opponent._id;
         }
     });
-  }, [activeRoom, activeOrders, isProvider, user]);
+  }, [activeRoom, activeOrders, isProvider, user, getOpponent]);
 
   const handleSnippetClick = () => {
     if (!relatedOrder) return;
@@ -278,7 +290,6 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* [FIX] TAMPILKAN NAVBAR PROVIDER JIKA ROLE PROVIDER & TIDAK LAGI BUKA ROOM CHAT */}
       {isProvider && !activeRoom && (
         <div className="lg:hidden">
             <ProviderBottomNav />

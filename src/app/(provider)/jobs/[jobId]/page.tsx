@@ -1,7 +1,7 @@
-// src/app/provider/jobs/[orderId]/page.tsx
+// src/app/(provider)/jobs/[jobId]/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -10,7 +10,7 @@ import { fetchOrderById, updateOrderStatus } from '@/features/orders/api';
 import { Order, PopulatedUser } from '@/features/orders/types';
 
 export default function ProviderJobDetail() {
-  const { orderId } = useParams();
+  const { jobId: orderId } = useParams(); // Pastikan nama param sesuai folder [jobId] atau [orderId]
   const router = useRouter();
   
   const [order, setOrder] = useState<Order | null>(null);
@@ -18,7 +18,9 @@ export default function ProviderJobDetail() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
-  const loadOrder = async () => {
+  // ✅ FIX 1: Bungkus loadOrder dengan useCallback agar stabil sebagai dependency
+  const loadOrder = useCallback(async () => {
+    if (!orderId) return;
     try {
       const res = await fetchOrderById(orderId as string);
       setOrder(res.data);
@@ -28,13 +30,12 @@ export default function ProviderJobDetail() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [orderId, router]);
 
+  // ✅ FIX 2: Masukkan loadOrder ke dependency array
   useEffect(() => {
-    if (orderId) {
-      loadOrder();
-    }
-  }, [orderId]);
+    loadOrder();
+  }, [loadOrder]);
 
   const handleUpdateStatus = async (newStatus: string) => {
     const actionName = newStatus === 'completed' ? 'Menyelesaikan Pekerjaan' : newStatus.replace(/_/g, ' ');
@@ -44,8 +45,10 @@ export default function ProviderJobDetail() {
     try {
       await updateOrderStatus(orderId as string, newStatus);
       await loadOrder(); 
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Gagal update status');
+    } catch (error) {
+      // ✅ FIX 3: Ganti 'any' dengan type assertion
+      const err = error as { response?: { data?: { message?: string } } };
+      alert(err.response?.data?.message || 'Gagal update status');
     } finally {
       setIsUpdating(false);
     }
@@ -148,7 +151,7 @@ export default function ProviderJobDetail() {
     return null;
   };
 
-  // [FIX] Akses data dari Order, bukan dari User
+  // Akses data dari Order
   const customer = order.userId as PopulatedUser;
   const orderAddress = order.shippingAddress;
   const orderLocation = order.location;
@@ -216,7 +219,6 @@ export default function ProviderJobDetail() {
             </button>
           </div>
 
-          {/* [FIX] Alamat dari Order, bukan dari User */}
           <div className="mt-5 bg-gray-50 p-4 rounded-xl border border-gray-200 relative overflow-hidden">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500"></div>
             <p className="text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Lokasi Pengerjaan</p>
@@ -227,7 +229,6 @@ export default function ProviderJobDetail() {
               {orderAddress?.city || ''}
             </p>
             
-            {/* Tombol Buka Maps menggunakan koordinat dari Order */}
             {orderLocation?.coordinates && orderLocation.coordinates[0] !== 0 && (
               <a 
                 href={`https://www.google.com/maps/dir/? api=1&destination=${orderLocation.coordinates[1]},${orderLocation.coordinates[0]}`}

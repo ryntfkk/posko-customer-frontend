@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import Image from 'next/image';
 import api from '@/lib/axios';
+// [FIX 1] Import User type to avoid 'any'
+import { User } from '@/features/auth/types';
 
 // --- ICONS ---
 const CloseIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>;
@@ -32,30 +34,32 @@ interface ChatRoom {
   updatedAt: string;
 }
 
-export default function ChatWidget({ user }: { user: any }) {
+// [FIX 1] Use User type instead of any
+export default function ChatWidget({ user }: { user: User }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isUnread, setIsUnread] = useState(false);
   
+  // [FIX 2] Use useRef for socket to avoid setState in useEffect causing cascading renders
+  const socketRef = useRef<Socket | null>(null);
+  
+  const [isUnread, setIsUnread] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL?. replace('/api', '') || 'http://localhost:4000';
+  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000';
 
   const myId = user?._id || user?.userId;
 
   useEffect(() => {
     const token = localStorage.getItem('posko_token');
-    if (! token) return;
+    if (!token) return;
 
     api.get('/chat').then(res => setRooms(res.data.data)).catch(console.error);
 
-    // ✅ FIX: Tambahkan path dan transport options yang lebih baik
     const newSocket = io(SOCKET_URL, { 
       auth: { token },
-      path: '/socket.io',  // This is the Socket.io handshake path, NOT namespace
+      path: '/socket.io',
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -90,28 +94,33 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC
         if (current && current._id === data.roomId) {
           return { ...current, messages: [...current.messages, data.message] };
         }
-        if (! current || current._id !== data.roomId) setIsUnread(true);
+        if (!current || current._id !== data.roomId) setIsUnread(true);
         return current;
       });
     });
 
-    setSocket(newSocket);
+    // [FIX 2] Store socket in ref instead of state
+    socketRef.current = newSocket;
+
     return () => { 
       console.log('🔌 Disconnecting socket...');
       newSocket.disconnect(); 
+      socketRef.current = null;
     };
   }, [SOCKET_URL]);
 
   useEffect(() => {
     if (isOpen && activeRoom) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        setIsUnread(false);
+        // [FIX 3] Removed setIsUnread(false) from here to avoid cascading updates.
+        // It is now handled in the toggle handler.
     }
   }, [activeRoom?.messages, isOpen, activeRoom]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (! newMessage.trim() || !activeRoom || !socket) return;
+    const socket = socketRef.current;
+    if (!newMessage.trim() || !activeRoom || !socket) return;
 
     socket.emit('send_message', {
       roomId: activeRoom._id,
@@ -124,7 +133,7 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC
     try {
         const res = await api.get(`/chat/${room._id}`);
         setActiveRoom(res.data.data);
-        socket?.emit('join_chat', room._id);
+        socketRef.current?.emit('join_chat', room._id);
     } catch (error) {
         console.error(error);
     }
@@ -146,7 +155,11 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC
             }`}
         >
             <div 
-                onClick={() => setIsOpen(! isOpen)}
+                onClick={() => {
+                    setIsOpen(!isOpen);
+                    // [FIX 3] Handle unread clearing here
+                    if (!isOpen) setIsUnread(false);
+                }}
                 className={`h-12 px-4 flex items-center justify-between cursor-pointer shrink-0 ${
                     isOpen ? 'bg-red-600 border-b border-red-700' : 'bg-white hover:bg-gray-50'
                 }`}
@@ -181,7 +194,7 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isOpen ? 'bg-white/20 border-white/30 text-white' : 'bg-red-600 border-transparent text-white'}`}>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                                 </div>
-                                {isUnread && ! isOpen && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
+                                {isUnread && !isOpen && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
                             </div>
                             <span className={`font-bold text-sm ${isOpen ? 'text-white' : 'text-gray-800'}`}>
                                 Pesan
@@ -197,7 +210,7 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC
 
             {isOpen && (
                 <div className="flex-1 bg-gray-50 overflow-y-auto custom-scrollbar relative flex flex-col">
-                    {! activeRoom ? (
+                    {!activeRoom ? (
                         <div className="divide-y divide-gray-100 bg-white min-h-full">
                             {rooms.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6 text-center opacity-60">

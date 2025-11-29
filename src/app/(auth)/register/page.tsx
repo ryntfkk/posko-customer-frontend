@@ -413,7 +413,9 @@ export default function RegisterPage() {
       router.push('/');
       router.refresh();
       
-    } catch (err: any) {
+    } catch (error) {
+      // ✅ FIX 3: Mengganti 'any' dengan type assertion
+      const err = error as { response?: { data?: { message?: string } } };
       const errorMessage = err.response?.data?.message || 'Gagal mendaftar.Silakan coba lagi.';
       setErrorMsg(errorMessage);
     } finally {

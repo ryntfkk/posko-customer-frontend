@@ -4,7 +4,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { fetchProviders } from '@/features/providers/api';
+// [UPDATE] Import FetchProvidersParams
+import { fetchProviders, FetchProvidersParams } from '@/features/providers/api';
 import { Provider } from '@/features/providers/types';
 
 interface TechnicianSectionProps {
@@ -22,11 +23,14 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
     const loadProviders = async () => {
       try {
         setIsLoading(true);
-        const params: any = { limit: 8 };
+        // [UPDATE] Ganti 'any' dengan tipe yang eksplisit
+        const params: FetchProvidersParams = { limit: 8 };
+        
         if (userLocation) {
           params.lat = userLocation.lat;
           params.lng = userLocation.lng;
         }
+        
         const res = await fetchProviders(params);
         setProviders(res.data || []);
       } catch (error) {
@@ -103,12 +107,12 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              {/* Rating Badge - FIX: Add optional chaining and default value */}
+              {/* Rating Badge */}
               <div className="absolute bottom-2 left-2 z-20">
                 <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded-lg shadow-sm border border-white/50">
                   <span className="text-[10px] text-yellow-500">★</span>
                   <span className="text-[10px] font-bold text-gray-900">
-                    {(prov.rating ??  0).toFixed(1)}
+                    {(prov.rating ?? 0).toFixed(1)}
                   </span>
                 </div>
               </div>

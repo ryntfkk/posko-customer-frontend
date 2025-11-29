@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { fetchMyOrders } from '@/features/orders/api';
 import { Order } from '@/features/orders/types';
+import { User } from '@/features/auth/types'; // Import tipe User
 
 export default function ProviderJobsPage() {
   const [jobs, setJobs] = useState<Order[]>([]);
@@ -67,41 +68,48 @@ export default function ProviderJobsPage() {
             <Link href="/dashboard" className="mt-4 inline-block text-red-600 font-bold text-sm hover:underline">Ke Dashboard</Link>
           </div>
         ) : (
-          jobs.map((job) => (
-            // ✅ PERBAIKAN: Ganti /provider/jobs/ menjadi /jobs/
-            <Link href={`/jobs/${job._id}`} key={job._id} className="block bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:border-red-200 hover:shadow-md transition-all relative overflow-hidden">
-              <div className="flex justify-between items-start mb-3">
-                <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${getStatusColor(job.status)}`}>
-                  {getStatusLabel(job.status)}
-                </span>
-                <span className="text-xs text-gray-400">{new Date(job.createdAt).toLocaleDateString('id-ID')}</span>
-              </div>
+          jobs.map((job) => {
+            // ✅ FIX: Type assertion untuk menghindari @ts-ignore
+            const customer = (typeof job.userId === 'object' ? job.userId : {}) as User;
+            
+            return (
+              <Link href={`/jobs/${job._id}`} key={job._id} className="block bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:border-red-200 hover:shadow-md transition-all relative overflow-hidden">
+                <div className="flex justify-between items-start mb-3">
+                  <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border ${getStatusColor(job.status)}`}>
+                    {getStatusLabel(job.status)}
+                  </span>
+                  <span className="text-xs text-gray-400">{new Date(job.createdAt).toLocaleDateString('id-ID')}</span>
+                </div>
 
-              <div className="flex items-center gap-4 mb-3">
-                <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0">
-                  {/* @ts-ignore */}
-                  <Image src={job.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${job.userId?.fullName}`} width={48} height={48} alt="Cust" className="object-cover" />
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0">
+                    <Image 
+                      src={customer.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${customer.fullName || 'user'}`} 
+                      width={48} 
+                      height={48} 
+                      alt="Cust" 
+                      className="object-cover" 
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-gray-900 truncate">{customer.fullName || 'Pelanggan'}</h3>
+                    <p className="text-xs text-gray-500 truncate">{customer.address?.city || 'Alamat tidak tersedia'}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  {/* @ts-ignore */}
-                  <h3 className="font-bold text-gray-900 truncate">{job.userId?.fullName || 'Pelanggan'}</h3>
-                  {/* @ts-ignore */}
-                  <p className="text-xs text-gray-500 truncate">{job.userId?.address?.city || 'Alamat tidak tersedia'}</p>
-                </div>
-              </div>
 
-              <div className="pt-3 border-t border-gray-50 flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-400 uppercase tracking-wide">Layanan</span>
-                  <span className="text-sm font-medium text-gray-800 line-clamp-1">{job.items[0]?.name} {job.items.length > 1 && `+${job.items.length - 1}`}</span>
+                <div className="pt-3 border-t border-gray-50 flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">Layanan</span>
+                    <span className="text-sm font-medium text-gray-800 line-clamp-1">{job.items[0]?.name} {job.items.length > 1 && `+${job.items.length - 1}`}</span>
+                  </div>
+                  <div className="flex flex-col text-right">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">Pendapatan</span>
+                    <span className="text-sm font-black text-green-600">Rp {new Intl.NumberFormat('id-ID').format(job.totalAmount)}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col text-right">
-                  <span className="text-[10px] text-gray-400 uppercase tracking-wide">Pendapatan</span>
-                  <span className="text-sm font-black text-green-600">Rp {new Intl.NumberFormat('id-ID').format(job.totalAmount)}</span>
-                </div>
-              </div>
-            </Link>
-          ))
+              </Link>
+            );
+          })
         )}
       </main>
     </div>
