@@ -43,7 +43,7 @@ export default function ChatWidget({ user }: { user: any }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // ✅ FIX: Perbaiki URL Socket.io dengan path yang benar
-  const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'https://posko-backend.vercel.app';
+  const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
   const myId = user?._id || user?.userId;
 
