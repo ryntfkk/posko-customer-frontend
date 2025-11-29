@@ -8,7 +8,7 @@ export interface ProviderServiceDetail {
   iconUrl: string;
   basePrice: number;
   
-  // [FIX] Properti tambahan agar sesuai dengan penggunaan di Checkout
+  // Properti tambahan agar sesuai dengan penggunaan di Checkout & Detail
   description?: string;
   shortDescription?: string;
   unit?: ServiceUnit;
@@ -17,6 +17,7 @@ export interface ProviderServiceDetail {
   estimatedDuration?: number;
   includes?: string[];
   excludes?: string[];
+  requirements?: string[];
   isPromo?: boolean;
   promoPrice?: number;
   discountPercent?: number;
@@ -34,6 +35,7 @@ export interface ProviderUser {
   fullName: string;
   profilePictureUrl: string;
   bio: string;
+  phoneNumber?: string;
   address?: {
     city?: string;
     district?: string;
@@ -56,6 +58,12 @@ export interface Provider {
   // Sistem Kalender
   blockedDates: string[]; // Tanggal yang diliburkan manual (ISO String)
   bookedDates?: string[]; // Tanggal yang penuh karena ada order (dari Backend)
+  
+  // [BARU] Portfolio/Dokumentasi
+  portfolioImages?: string[]; // URL gambar hasil kerja
+  
+  // [BARU] Statistik
+  totalCompletedOrders?: number;
 }
 
 export interface ProviderListResponse {

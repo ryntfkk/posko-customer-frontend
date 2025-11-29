@@ -12,9 +12,9 @@ import { Provider } from '@/features/providers/types';
 import { User } from '@/features/auth/types';
 import { getUnitLabel } from '@/features/services/types';
 
-// --- MOCK DATA (Hanya untuk Portofolio) ---
-const MOCK_PORTFOLIO_IMAGES = [
-  "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop",
+// --- MOCK DATA FALLBACK (Hanya digunakan jika data asli kosong) ---
+const FALLBACK_PORTFOLIO_IMAGES = [
+  "https://images.unsplash. com/photo-1621905251189-08b45d6a269e?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1581094794329-cd8119608f84?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=500&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=500&auto=format&fit=crop",
@@ -25,10 +25,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math. PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+  const a = Math.sin(dLat / 2) * Math. sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math. cos(lat2 * (Math.PI / 180)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math. atan2(Math. sqrt(a), Math.sqrt(1 - a));
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const d = R * c;
   return d < 1 ? `${(d * 1000).toFixed(0)} m` : `${d.toFixed(1)} km`;
 }
@@ -50,10 +50,10 @@ function formatDuration(minutes?: number): string {
   return `${hours}j ${remainMins}m`;
 }
 
-// --- ICONS (DIPERBAIKI - Path SVG Lengkap) ---
+// --- ICONS ---
 const ShareIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8. 684 13.342C8.886 12.938 9 12.482 9 12c0-. 482-. 114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6. 632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2. 684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5. 368-2.684z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8. 684 13.342C8.886 12.938 9 12. 482 9 12c0-. 482-. 114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6. 632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5. 368-2.684z" />
   </svg>
 );
 
@@ -64,7 +64,7 @@ const HeartIcon = ({ solid }: { solid: boolean }) => (
     stroke="currentColor" 
     viewBox="0 0 24 24"
   >
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6. 318a4.5 4.5 0 000 6.364L12 20.364l7.682-7. 682a4.5 4.5 0 00-6.364-6. 364L12 7.636l-1.318-1. 318a4.5 4.5 0 00-6.364 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4. 318 6.318a4.5 4.5 0 000 6. 364L12 20.364l7. 682-7.682a4.5 4.5 0 00-6. 364-6.364L12 7. 636l-1. 318-1.318a4.5 4.5 0 00-6. 364 0z" />
   </svg>
 );
 
@@ -81,13 +81,13 @@ const ClockIcon = () => (
 );
 
 const CheckIcon = () => (
-  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
   </svg>
 );
 
 const XIcon = () => (
-  <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
   </svg>
 );
@@ -122,6 +122,24 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
+const ServiceIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+  </svg>
+);
+
+const GalleryIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4. 586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1. 586a2 2 0 012. 828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+
+const ZoomIcon = () => (
+  <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+  </svg>
+);
+
 // Interface untuk service item
 interface ServiceItem {
   serviceId: {
@@ -147,6 +165,9 @@ interface ServiceItem {
   isActive: boolean;
 }
 
+// Tab type
+type TabType = 'services' | 'documentation';
+
 export default function ProviderProfilePage() {
   const params = useParams();
   const providerId = Array.isArray(params.providerId) ?  params.providerId[0] : params. providerId;
@@ -168,13 +189,19 @@ export default function ProviderProfilePage() {
   // Service Detail Modal State
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
 
+  // Tab State untuk section Layanan & Dokumentasi
+  const [activeTab, setActiveTab] = useState<TabType>('services');
+
+  // Image Lightbox State
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
   useEffect(() => {
     if (! providerId) return;
     const loadData = async () => {
       try {
         setIsLoading(true);
         const providerRes = await fetchProviderById(providerId);
-        setProvider(providerRes. data);
+        setProvider(providerRes.data);
 
         const token = localStorage.getItem('posko_token');
         if (token) {
@@ -245,7 +272,7 @@ export default function ProviderProfilePage() {
       const offsetDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
       const dateStr = offsetDate. toISOString().split('T')[0];
 
-      const blockedSet = new Set(provider.blockedDates?. map((d: string) => d.split('T')[0]) || []);
+      const blockedSet = new Set(provider.blockedDates?. map((d: string) => d. split('T')[0]) || []);
       const bookedSet = new Set(provider.bookedDates?.map((d: string) => d.split('T')[0]) || []);
 
       const isBlocked = blockedSet.has(dateStr);
@@ -281,7 +308,7 @@ export default function ProviderProfilePage() {
             <ChevronLeft />
           </button>
           <span className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-            {currentMonth. toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+            {currentMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
           </span>
           <button onClick={() => changeMonth(1)} className="p-2 bg-white rounded-lg shadow-sm hover:bg-gray-100 text-gray-600">
             <ChevronRight />
@@ -435,8 +462,201 @@ export default function ProviderProfilePage() {
     );
   };
 
+  // --- RENDER SERVICES CONTENT ---
+  const renderServicesContent = () => {
+    if (!provider) return null;
+    
+    const activeServices = provider.services. filter((s: ServiceItem) => s.isActive);
+    
+    if (activeServices.length === 0) {
+      return (
+        <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ServiceIcon />
+          </div>
+          <p className="text-gray-500 text-sm">Mitra ini belum memiliki layanan aktif. </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {activeServices.map((item: ServiceItem) => {
+          const service = item.serviceId;
+          const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel(service.unit as any || 'unit');
+          const durationText = formatDuration(service.estimatedDuration);
+          const hasDetails = (service.includes && service.includes.length > 0) || 
+                             (service.excludes && service.excludes.length > 0) ||
+                             (service.requirements && service.requirements.length > 0);
+
+          return (
+            <div
+              key={service._id}
+              className="relative flex flex-col p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-red-200 hover:shadow-md transition-all group"
+            >
+              {/* Badge Promo */}
+              {service.isPromo && service.discountPercent && service.discountPercent > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md z-10">
+                  -{service.discountPercent}%
+                </div>
+              )}
+
+              {/* Header: Icon + Name */}
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 shrink-0 group-hover:bg-red-50 group-hover:border-red-100 transition-colors">
+                  <img src={service.iconUrl || '/file. svg'} alt="Icon" className="w-7 h-7 object-contain opacity-70" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-gray-900 text-sm group-hover:text-red-600 transition-colors leading-tight">
+                    {service.name}
+                  </h4>
+                  <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wide">
+                    {service.category}
+                  </p>
+                </div>
+              </div>
+
+              {/* Short Description */}
+              {service.shortDescription && (
+                <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
+                  {service.shortDescription}
+                </p>
+              )}
+
+              {/* Info Badges */}
+              <div className="flex items-center gap-2 flex-wrap mb-3">
+                {durationText && (
+                  <div className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+                    <ClockIcon />
+                    <span>{durationText}</span>
+                  </div>
+                )}
+                {service.includes && service. includes.length > 0 && (
+                  <div className="flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                    <CheckIcon />
+                    <span>{service.includes.length} termasuk</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Price & Actions */}
+              <div className="flex items-end justify-between mt-auto pt-3 border-t border-gray-50">
+                <div>
+                  <p className="font-black text-gray-900 text-lg leading-none">
+                    {formatCurrency(item.price)}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {unitDisplay}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasDetails && (
+                    <button
+                      onClick={() => setSelectedService(item)}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      Detail
+                    </button>
+                  )}
+                  <Link
+                    href={`/checkout?type=direct&providerId=${provider._id}`}
+                    className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1. 5 rounded-lg transition-colors"
+                  >
+                    Pilih
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // --- RENDER DOCUMENTATION CONTENT ---
+  const renderDocumentationContent = () => {
+    if (! provider) return null;
+    
+    // Gunakan data asli jika ada, fallback ke dummy jika kosong
+    const portfolioImages = provider.portfolioImages && provider.portfolioImages.length > 0 
+      ? provider.portfolioImages 
+      : FALLBACK_PORTFOLIO_IMAGES;
+
+    const isUsingFallback = !provider. portfolioImages || provider.portfolioImages. length === 0;
+
+    return (
+      <div className="space-y-4">
+        {isUsingFallback && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-700">
+            <p className="font-medium">📸 Dokumentasi Contoh</p>
+            <p className="text-yellow-600">Mitra ini belum mengunggah dokumentasi hasil kerja.</p>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {portfolioImages.map((img, idx) => (
+            <div 
+              key={idx} 
+              className="relative aspect-square rounded-2xl overflow-hidden group cursor-pointer border border-gray-100 shadow-sm hover:shadow-lg transition-all"
+              onClick={() => setLightboxImage(img)}
+            >
+              <Image src={img} alt={`Portfolio ${idx + 1}`} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 rounded-full p-2">
+                  <ZoomIcon />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {portfolioImages.length === 0 && ! isUsingFallback && (
+          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <GalleryIcon />
+            </div>
+            <p className="text-gray-500 text-sm">Belum ada dokumentasi. </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // --- RENDER IMAGE LIGHTBOX ---
+  const renderLightbox = () => {
+    if (!lightboxImage) return null;
+
+    return (
+      <div 
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+        onClick={() => setLightboxImage(null)}
+      >
+        <button 
+          className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors"
+          onClick={() => setLightboxImage(null)}
+        >
+          <CloseIcon />
+        </button>
+        <div className="relative w-full max-w-4xl max-h-[90vh] aspect-auto">
+          <Image 
+            src={lightboxImage} 
+            alt="Portfolio Detail" 
+            fill 
+            className="object-contain"
+            onClick={(e) => e. stopPropagation()}
+          />
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) return <ProviderLoading />;
   if (! provider) return <ProviderNotFound />;
+
+  // Data dinamis dari API
+  const activeServicesCount = provider.services. filter((s: ServiceItem) => s.isActive).length;
+  const totalOrders = provider.totalCompletedOrders || 0;
+  const portfolioCount = provider.portfolioImages?.length || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12 font-sans">
@@ -463,8 +683,8 @@ export default function ProviderProfilePage() {
               <div className="relative w-28 h-28 lg:w-36 lg:h-36">
                 <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
                   <Image
-                    src={provider.userId.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg? seed=${provider.userId.fullName}`}
-                    alt={provider.userId.fullName}
+                    src={provider.userId. profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider. userId.fullName}`}
+                    alt={provider. userId.fullName}
                     fill
                     className="object-cover"
                   />
@@ -479,7 +699,7 @@ export default function ProviderProfilePage() {
                   {provider.userId.fullName}
                   <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full align-middle border border-blue-200">Terverifikasi ✓</span>
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">{provider.userId.address?. city || 'Lokasi tidak tersedia'} • {distance}</p>
+                <p className="text-sm text-gray-500 mt-1">{provider.userId. address?. city || 'Lokasi tidak tersedia'} • {distance}</p>
               </div>
 
               <p className="text-gray-600 text-sm leading-relaxed max-w-2xl mx-auto md:mx-0 bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -496,7 +716,9 @@ export default function ProviderProfilePage() {
                     </div>
                   </div>
                   <div className="flex flex-col items-start pl-4">
-                    <span className="text-sm font-black text-gray-900 leading-none">50+</span>
+                    <span className="text-sm font-black text-gray-900 leading-none">
+                      {totalOrders > 0 ? (totalOrders > 99 ? '99+' : totalOrders) : '0'}
+                    </span>
                     <span className="text-[9px] text-gray-400 font-bold uppercase">Pesanan</span>
                   </div>
                 </div>
@@ -510,7 +732,6 @@ export default function ProviderProfilePage() {
                     <span className="text-xs font-bold">Lihat Jadwal</span>
                   </button>
 
-                  {/* TOMBOL FAVORIT - DIPERBAIKI */}
                   <button 
                     onClick={toggleFavorite} 
                     className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border transition-all duration-200 ${isFavorited ? 'bg-red-50 border-red-200' : 'border-gray-200 hover:bg-gray-50'}`}
@@ -518,7 +739,6 @@ export default function ProviderProfilePage() {
                     <HeartIcon solid={isFavorited} />
                   </button>
 
-                  {/* TOMBOL SHARE - DIPERBAIKI */}
                   <button 
                     onClick={handleShare} 
                     className={`flex-none flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors ${isSharing ? 'scale-95' : ''}`}
@@ -534,145 +754,61 @@ export default function ProviderProfilePage() {
         {/* LAYOUT GRID UTAMA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
-          {/* KOLOM KIRI (Services & Docs) */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* 2. SERVICES RATECARD */}
-            <section>
-              <div className="flex items-center justify-between mb-4 px-1">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span className="w-1.5 h-6 bg-blue-600 rounded-full block"></span>
-                  Daftar Layanan
-                </h3>
-                <span className="text-xs text-gray-500">
-                  {provider.services.filter((s: ServiceItem) => s.isActive). length} layanan
-                </span>
+          {/* KOLOM KIRI (Tab Section: Services & Docs) */}
+          <div className="lg:col-span-2 space-y-4">
+            
+            {/* TAB NAVIGATION */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-1. 5">
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setActiveTab('services')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                    activeTab === 'services'
+                      ? 'bg-red-600 text-white shadow-md'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <ServiceIcon />
+                  <span>Daftar Layanan</span>
+                  <span className={`text-[10px] px-1. 5 py-0.5 rounded-full ${
+                    activeTab === 'services' ?  'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {activeServicesCount}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('documentation')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                    activeTab === 'documentation'
+                      ? 'bg-red-600 text-white shadow-md'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <GalleryIcon />
+                  <span>Dokumentasi</span>
+                  {portfolioCount > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0. 5 rounded-full ${
+                      activeTab === 'documentation' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      {portfolioCount}
+                    </span>
+                  )}
+                </button>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {provider.services.filter((s: ServiceItem) => s.isActive).map((item: ServiceItem) => {
-                  const service = item.serviceId;
-                  const unitDisplay = service.displayUnit || service.unitLabel || getUnitLabel(service.unit as any || 'unit');
-                  const durationText = formatDuration(service.estimatedDuration);
-                  const hasDetails = (service.includes && service.includes.length > 0) || 
-                                     (service.excludes && service.excludes.length > 0) ||
-                                     (service.requirements && service.requirements.length > 0);
-
-                  return (
-                    <div
-                      key={service._id}
-                      className="relative flex flex-col p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-red-200 hover:shadow-md transition-all group"
-                    >
-                      {/* Badge Promo */}
-                      {service.isPromo && service.discountPercent && service.discountPercent > 0 && (
-                        <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md z-10">
-                          -{service.discountPercent}%
-                        </div>
-                      )}
-
-                      {/* Header: Icon + Name */}
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 shrink-0 group-hover:bg-red-50 group-hover:border-red-100 transition-colors">
-                          <img src={service.iconUrl || '/file. svg'} alt="Icon" className="w-7 h-7 object-contain opacity-70" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-gray-900 text-sm group-hover:text-red-600 transition-colors leading-tight">
-                            {service.name}
-                          </h4>
-                          <p className="text-[10px] text-gray-500 uppercase font-semibold tracking-wide">
-                            {service.category}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Short Description */}
-                      {service.shortDescription && (
-                        <p className="text-xs text-gray-500 mb-3 line-clamp-2 leading-relaxed">
-                          {service. shortDescription}
-                        </p>
-                      )}
-
-                      {/* Info Badges */}
-                      <div className="flex items-center gap-2 flex-wrap mb-3">
-                        {durationText && (
-                          <div className="flex items-center gap-1 text-[10px] text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
-                            <ClockIcon />
-                            <span>{durationText}</span>
-                          </div>
-                        )}
-                        {service.includes && service.includes. length > 0 && (
-                          <div className="flex items-center gap-1 text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                            <CheckIcon />
-                            <span>{service.includes.length} termasuk</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Price & Actions */}
-                      <div className="flex items-end justify-between mt-auto pt-3 border-t border-gray-50">
-                        <div>
-                          <p className="font-black text-gray-900 text-lg leading-none">
-                            {formatCurrency(item.price)}
-                          </p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">
-                            {unitDisplay}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {hasDetails && (
-                            <button
-                              onClick={() => setSelectedService(item)}
-                              className="text-[10px] font-bold text-blue-600 hover:text-blue-700 hover:underline"
-                            >
-                              Detail
-                            </button>
-                          )}
-                          {/* TOMBOL PILIH - DIPERBAIKI: Mengarah ke Direct Order dengan providerId */}
-                          <Link
-                            href={`/checkout?type=direct&providerId=${provider._id}`}
-                            className="text-[10px] font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1. 5 rounded-lg transition-colors"
-                          >
-                            Pilih
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {provider.services.filter((s: ServiceItem) => s.isActive).length === 0 && (
-                <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
-                  <p className="text-gray-500 text-sm">Mitra ini belum memiliki layanan aktif. </p>
-                </div>
-              )}
-            </section>
-
-            {/* 3. DOCUMENTATION SECTION */}
-            <section>
-              <div className="flex items-center justify-between mb-4 px-1">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <span className="w-1.5 h-6 bg-red-600 rounded-full block"></span>
-                  Dokumentasi
-                </h3>
-                <span className="text-xs text-gray-500 cursor-pointer hover:text-red-600">Lihat Semua</span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {MOCK_PORTFOLIO_IMAGES.map((img, idx) => (
-                  <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden group cursor-zoom-in border border-gray-100 shadow-sm">
-                    <Image src={img} alt={`Portfolio ${idx + 1}`} fill className="object-cover" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors"></div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            {/* TAB CONTENT */}
+            <div className="min-h-[200px]">
+              {activeTab === 'services' && renderServicesContent()}
+              {activeTab === 'documentation' && renderDocumentationContent()}
+            </div>
           </div>
 
           {/* KOLOM KANAN (Info Tambahan) */}
           <div className="space-y-6">
             <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-blue-800 text-xs leading-relaxed">
               <p className="font-bold mb-1">✨ Jaminan Posko</p>
-              <p>Layanan dari mitra ini dilindungi garansi layanan 7 hari dan asuransi pengerjaan. Uang Anda aman hingga pekerjaan selesai.</p>
+              <p>Layanan dari mitra ini dilindungi garansi layanan 7 hari dan asuransi pengerjaan.  Uang Anda aman hingga pekerjaan selesai.</p>
             </div>
 
             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 text-gray-600 text-xs leading-relaxed">
@@ -682,7 +818,7 @@ export default function ProviderProfilePage() {
 
             <div className="bg-green-50 p-4 rounded-2xl border border-green-100 text-green-800 text-xs leading-relaxed">
               <p className="font-bold mb-1">📞 Butuh Bantuan? </p>
-              <p>Hubungi CS Posko jika ada kendala dalam pemesanan.  Kami siap membantu 24/7.</p>
+              <p>Hubungi CS Posko jika ada kendala dalam pemesanan.  Kami siap membantu 24/7. </p>
             </div>
           </div>
         </div>
@@ -714,17 +850,19 @@ export default function ProviderProfilePage() {
       {/* MODAL SERVICE DETAIL */}
       {renderServiceDetailModal()}
 
+      {/* IMAGE LIGHTBOX */}
+      {renderLightbox()}
+
       {/* STICKY BOTTOM CTA (Mobile Only) */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 lg:hidden z-40 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         <div className="flex flex-col flex-1">
           <span className="text-[10px] text-gray-500 font-bold uppercase">Harga Mulai</span>
           <span className="text-lg font-black text-red-600">
-            {provider.services.filter((s: ServiceItem) => s.isActive).length > 0
-              ? formatCurrency(Math.min(...provider. services.filter((s: ServiceItem) => s.isActive).map((s: ServiceItem) => s.price)))
+            {provider. services.filter((s: ServiceItem) => s.isActive).length > 0
+              ? formatCurrency(Math.min(...provider. services.filter((s: ServiceItem) => s.isActive). map((s: ServiceItem) => s.price)))
               : 'Hubungi CS'}
           </span>
         </div>
-        {/* TOMBOL PESAN JASA - Mengarah ke Direct Order dengan semua layanan provider */}
         <Link
           href={`/checkout?type=direct&providerId=${provider._id}`}
           className="px-6 py-3 rounded-xl bg-red-600 text-white text-sm font-bold shadow-lg shadow-red-200 hover:bg-red-700 transition-transform active:scale-95 flex items-center gap-2"
@@ -743,7 +881,7 @@ function ProviderLoading() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
-        <span className="text-sm font-medium text-gray-500 animate-pulse">Memuat Profil Mitra...</span>
+        <span className="text-sm font-medium text-gray-500 animate-pulse">Memuat Profil Mitra... </span>
       </div>
     </div>
   );
