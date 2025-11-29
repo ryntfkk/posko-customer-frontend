@@ -1,4 +1,5 @@
 // src/features/providers/types.ts
+import { ServiceUnit } from "../services/types";
 
 export interface ProviderServiceDetail {
   _id: string;
@@ -6,6 +7,19 @@ export interface ProviderServiceDetail {
   category: string;
   iconUrl: string;
   basePrice: number;
+  
+  // [FIX] Properti tambahan agar sesuai dengan penggunaan di Checkout
+  description?: string;
+  shortDescription?: string;
+  unit?: ServiceUnit;
+  unitLabel?: string;
+  displayUnit?: string;
+  estimatedDuration?: number;
+  includes?: string[];
+  excludes?: string[];
+  isPromo?: boolean;
+  promoPrice?: number;
+  discountPercent?: number;
 }
 
 export interface ProviderServiceItem {
@@ -39,7 +53,7 @@ export interface Provider {
   isOnline: boolean;
   createdAt: string;
   
-  // [UPDATE] Sistem Kalender
+  // Sistem Kalender
   blockedDates: string[]; // Tanggal yang diliburkan manual (ISO String)
   bookedDates?: string[]; // Tanggal yang penuh karena ada order (dari Backend)
 }
