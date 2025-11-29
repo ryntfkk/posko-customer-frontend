@@ -7,8 +7,8 @@ import Image from 'next/image';
 import api from '@/lib/axios';
 
 // --- ICONS ---
-const CloseIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>; // Chevron Down
-const OpenIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>; // Chevron Up
+const CloseIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>;
+const OpenIcon = () => <svg className="w-5 h-5 text-white hover:text-gray-200 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>;
 const SendIcon = () => <svg className="w-5 h-5 text-white translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>;
 const BackIcon = () => <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
 
@@ -41,18 +41,35 @@ export default function ChatWidget({ user }: { user: any }) {
   const [isUnread, setIsUnread] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const SOCKET_URL = 'https://posko-backend.vercel.app/api';
+  
+  // ✅ FIX: Perbaiki URL Socket.io dengan path yang benar
+  const SOCKET_URL = process.env. NEXT_PUBLIC_API_URL || 'https://posko-backend.vercel.app';
 
-  // --- [FIX 1] Ambil ID yang benar (User ID dari DB biasanya _id) ---
   const myId = user?._id || user?.userId;
 
   useEffect(() => {
     const token = localStorage.getItem('posko_token');
-    if (!token) return;
+    if (! token) return;
 
-    api.get('/chat').then(res => setRooms(res.data.data)).catch(console.error);
+    api.get('/chat'). then(res => setRooms(res.data. data)). catch(console.error);
 
-    const newSocket = io(SOCKET_URL, { auth: { token } });
+    // ✅ FIX: Tambahkan path dan transport options yang lebih baik
+    const newSocket = io(SOCKET_URL, { 
+      auth: { token },
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
+    });
+
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected:', newSocket.id);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('❌ Socket connection error:', error);
+    });
 
     newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
       setRooms(prev => {
@@ -65,7 +82,7 @@ export default function ChatWidget({ user }: { user: any }) {
             updatedAt: new Date().toISOString()
         };
         const newRooms = [...prev];
-        newRooms.splice(roomIndex, 1);
+        newRooms. splice(roomIndex, 1);
         newRooms.unshift(updatedRoom);
         return newRooms;
       });
@@ -74,14 +91,16 @@ export default function ChatWidget({ user }: { user: any }) {
         if (current && current._id === data.roomId) {
           return { ...current, messages: [...current.messages, data.message] };
         }
-        // Jika chat tertutup atau room lain aktif, tandai unread (opsional visual)
-        if (!current || current._id !== data.roomId) setIsUnread(true);
+        if (! current || current._id !== data.roomId) setIsUnread(true);
         return current;
       });
     });
 
     setSocket(newSocket);
-    return () => { newSocket.disconnect(); };
+    return () => { 
+      console.log('🔌 Disconnecting socket...');
+      newSocket. disconnect(); 
+    };
   }, [SOCKET_URL]);
 
   useEffect(() => {
@@ -89,11 +108,11 @@ export default function ChatWidget({ user }: { user: any }) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
         setIsUnread(false);
     }
-  }, [activeRoom?.messages, isOpen, activeRoom]);
+  }, [activeRoom?. messages, isOpen, activeRoom]);
 
   const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !activeRoom || !socket) return;
+    e. preventDefault();
+    if (! newMessage.trim() || !activeRoom || !socket) return;
 
     socket.emit('send_message', {
       roomId: activeRoom._id,
@@ -104,7 +123,6 @@ export default function ChatWidget({ user }: { user: any }) {
 
   const openRoom = async (room: ChatRoom) => {
     try {
-        // [FIX 2] Selalu fetch detail agar data sender lengkap (bukan string ID saja)
         const res = await api.get(`/chat/${room._id}`);
         setActiveRoom(res.data.data);
         socket?.emit('join_chat', room._id);
@@ -121,31 +139,21 @@ export default function ChatWidget({ user }: { user: any }) {
     return typeof sender === 'object' ? sender._id : sender;
   };
 
-  // ==================================================================================
-  // TAMPILAN FLOATING DOCKED (ALA FACEBOOK/LINKEDIN)
-  // ==================================================================================
-  
   return (
-    // Container utama fix di kanan bawah
     <div className="fixed bottom-0 right-4 z-50 flex flex-col items-end font-sans">
-        
-        {/* WINDOW CHAT (Kotak) */}
         <div 
             className={`bg-white border border-gray-300 rounded-t-lg shadow-2xl flex flex-col transition-all duration-300 ease-in-out overflow-hidden w-[320px] md:w-[360px] ${
-                isOpen ? 'h-[500px]' : 'h-[48px]' // Tinggi berubah saat open/closed
+                isOpen ? 'h-[500px]' : 'h-[48px]'
             }`}
         >
-            {/* 1. HEADER (Selalu Tampil) - Berfungsi sebagai toggle */}
             <div 
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => setIsOpen(! isOpen)}
                 className={`h-12 px-4 flex items-center justify-between cursor-pointer shrink-0 ${
                     isOpen ? 'bg-red-600 border-b border-red-700' : 'bg-white hover:bg-gray-50'
                 }`}
             >
-                {/* Kiri: Status / Judul */}
                 <div className="flex items-center gap-2 overflow-hidden">
-                    {isOpen && activeRoom ? (
-                        // Header saat chat room terbuka
+                    {isOpen && activeRoom ?  (
                         <>
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setActiveRoom(null); }} 
@@ -159,23 +167,22 @@ export default function ChatWidget({ user }: { user: any }) {
                                     alt="User" width={32} height={32} 
                                     className="rounded-full bg-white border border-white/30 object-cover"
                                 />
-                                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 border-2 border-red-600 rounded-full"></span>
+                                <span className="absolute bottom-0 right-0 w-2. 5 h-2.5 bg-green-400 border-2 border-red-600 rounded-full"></span>
                             </div>
                             <div className="flex flex-col text-white">
                                 <span className="font-bold text-sm leading-tight truncate max-w-[140px]">
-                                    {getOpponent(activeRoom)?.fullName}
+                                    {getOpponent(activeRoom)?. fullName}
                                 </span>
                                 <span className="text-[10px] text-red-100 opacity-90">Active now</span>
                             </div>
                         </>
                     ) : (
-                        // Header Default (List atau Tertutup)
                         <div className="flex items-center gap-2">
                             <div className="relative">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${isOpen ? 'bg-white/20 border-white/30 text-white' : 'bg-red-600 border-transparent text-white'}`}>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h. 01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
                                 </div>
-                                {isUnread && !isOpen && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
+                                {isUnread && ! isOpen && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>}
                             </div>
                             <span className={`font-bold text-sm ${isOpen ? 'text-white' : 'text-gray-800'}`}>
                                 Pesan
@@ -184,21 +191,18 @@ export default function ChatWidget({ user }: { user: any }) {
                     )}
                 </div>
 
-                {/* Kanan: Ikon Toggle */}
                 <div className={`${isOpen ? 'text-white' : 'text-gray-500'}`}>
-                    {isOpen ? <CloseIcon /> : <OpenIcon />}
+                    {isOpen ?  <CloseIcon /> : <OpenIcon />}
                 </div>
             </div>
 
-            {/* 2. CONTENT AREA (Hanya tampil saat Open) */}
             {isOpen && (
                 <div className="flex-1 bg-gray-50 overflow-y-auto custom-scrollbar relative flex flex-col">
-                    {!activeRoom ? (
-                        // --- LIST ROOM ---
+                    {! activeRoom ? (
                         <div className="divide-y divide-gray-100 bg-white min-h-full">
                             {rooms.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6 text-center opacity-60">
-                                    <p className="text-sm">Belum ada pesan.</p>
+                                    <p className="text-sm">Belum ada pesan. </p>
                                 </div>
                             ) : (
                                 rooms.map(room => {
@@ -221,11 +225,10 @@ export default function ChatWidget({ user }: { user: any }) {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-baseline mb-0.5">
                                                     <h4 className="text-sm font-bold text-gray-900 truncate group-hover:text-red-600">{opponent?.fullName}</h4>
-                                                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{lastMsg ? new Date(lastMsg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false}) : ''}</span>
+                                                    <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{lastMsg ?  new Date(lastMsg.sentAt). toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false}) : ''}</span>
                                                 </div>
                                                 <p className="text-xs text-gray-500 truncate font-medium">
                                                     {lastMsg ? (
-                                                        // [FIX LOGIKA SENDER LIST]
                                                         getSenderId(lastMsg.sender) === myId 
                                                         ? `Anda: ${lastMsg.content}` 
                                                         : lastMsg.content
@@ -238,11 +241,9 @@ export default function ChatWidget({ user }: { user: any }) {
                             )}
                         </div>
                     ) : (
-                        // --- ROOM CHAT BUBBLES ---
                         <div className="flex-1 p-3 space-y-3 overflow-y-auto custom-scrollbar bg-[#f0f2f5]">
-                            {activeRoom.messages.map((msg, idx) => {
-                                // [FIX 3] Logika isMe menggunakan myId (yang sudah menghandle _id/userId)
-                                const senderId = getSenderId(msg.sender);
+                            {activeRoom. messages.map((msg, idx) => {
+                                const senderId = getSenderId(msg. sender);
                                 const isMe = senderId === myId;
 
                                 return (
@@ -254,7 +255,7 @@ export default function ChatWidget({ user }: { user: any }) {
                                         }`}>
                                             {msg.content}
                                             <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-red-100' : 'text-gray-400'}`}>
-                                                {new Date(msg.sentAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false})}
+                                                {new Date(msg.sentAt). toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit', hour12: false})}
                                             </div>
                                         </div>
                                     </div>
@@ -266,14 +267,13 @@ export default function ChatWidget({ user }: { user: any }) {
                 </div>
             )}
 
-            {/* 3. INPUT FOOTER (Hanya saat Open & di Room) */}
             {isOpen && activeRoom && (
                 <div className="p-3 bg-white border-t border-gray-200 shrink-0">
                     <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                         <input 
                             type="text" 
                             value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
+                            onChange={(e) => setNewMessage(e.target. value)}
                             placeholder="Tulis pesan..." 
                             className="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:bg-white transition-all outline-none placeholder-gray-500 text-gray-900"
                             autoFocus

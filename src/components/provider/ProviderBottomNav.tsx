@@ -1,21 +1,13 @@
-// src/components/provider/ProviderBottomNav.tsx
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { fetchProfile } from '@/features/auth/api';
 
-interface NavItem {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-}
-
-// Icon Components
 const DashboardIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9M9 20l-2-7m6 7l2-7M9 5l3-3m6 3l-3-3" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
   </svg>
 );
 
@@ -27,7 +19,7 @@ const JobsIcon = () => (
 
 const MessagesIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h. 01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-. 949L3 20l1. 395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
   </svg>
 );
 
@@ -37,17 +29,24 @@ const AccountIcon = () => (
   </svg>
 );
 
+interface NavItem {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+}
+
 export default function ProviderBottomNav() {
   const pathname = usePathname();
   const [isProviderMode, setIsProviderMode] = useState<boolean | null>(null);
 
+  // Cek role user untuk memastikan navbar yang benar ditampilkan
   useEffect(() => {
     const checkUserMode = async () => {
       try {
         const token = localStorage.getItem('posko_token');
         if (token) {
           const res = await fetchProfile();
-          setIsProviderMode(res.data.profile?.activeRole === 'provider');
+          setIsProviderMode(res.data.profile?. activeRole === 'provider');
         } else {
           setIsProviderMode(false);
         }
@@ -58,14 +57,23 @@ export default function ProviderBottomNav() {
     checkUserMode();
   }, []);
 
-  // [FIX] Jangan render saat loading atau bukan provider
-  if (isProviderMode === null || !isProviderMode) {
+  // Jangan render saat masih loading
+  if (isProviderMode === null) {
     return null;
   }
 
-  // [FIX] Deteksi halaman yang HARUSNYA menggunakan Customer Nav (seperti /services atau halaman public provider)
-  // Jika user provider sedang browsing halaman services, sembunyikan provider nav agar tidak overlap
-  if (pathname && (pathname.startsWith('/services') || pathname.match(/^\/provider\/[a-f0-9]+$/i))) {
+  // Jangan render jika user bukan provider mode
+  if (!isProviderMode) {
+    return null;
+  }
+
+  // Deteksi halaman profil publik provider (yang dilihat customer)
+  if (pathname && pathname.match(/^\/provider\/[a-f0-9]+$/i)) {
+    return null;
+  }
+
+  // PENTING: Jangan render di halaman services/[category]
+  if (pathname && pathname.match(/^\/services\/. +$/)) {
     return null;
   }
 
@@ -93,11 +101,11 @@ export default function ProviderBottomNav() {
             href={item.href} 
             className="flex flex-col items-center gap-1 w-16"
           >
-            <div className={`${isActive(item.href) ? 'text-red-600' : 'text-gray-400'}`}>
-              {item.icon}
+            <div className={`${isActive(item.href) ?  'text-red-600' : 'text-gray-400'}`}>
+              {item. icon}
             </div>
             <span className={`text-[10px] font-bold ${isActive(item.href) ? 'text-red-600' : 'text-gray-400'}`}>
-              {item.label}
+              {item. label}
             </span>
           </Link>
         ))}

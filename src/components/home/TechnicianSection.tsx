@@ -25,7 +25,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
         const params: any = { limit: 8 };
         if (userLocation) {
           params.lat = userLocation.lat;
-          params. lng = userLocation. lng;
+          params.lng = userLocation.lng;
         }
         const res = await fetchProviders(params);
         setProviders(res.data || []);

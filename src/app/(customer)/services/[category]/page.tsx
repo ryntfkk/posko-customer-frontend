@@ -1,4 +1,4 @@
-// src/app/(customer)/services/[category]/page.tsx
+// src/app/(customer)/services/[category]/page. tsx
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,10 +21,11 @@ function useDebounce<T>(value: T, delay: number): T {
 
 // Interface untuk Service Item di dalam Provider
 interface ProviderServiceItem {
-  serviceId: {
+  serviceId?: {
     _id: string;
     name: string;
     category: string;
+    iconUrl?: string;
   };
   price: number;
   isActive: boolean;
@@ -47,16 +48,19 @@ export default function ServiceCategoryPage() {
   // Debounce search term
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  // [FIX] Ambil parameter kategori dengan aman
+  // [FIX] Ambil parameter kategori dengan aman dan normalize ke lowercase
   const rawCategory = Array.isArray(params.category) ? params.category[0] : params.category;
-  const categoryParam = decodeURIComponent(rawCategory || '');
+  // Decode dan normalize: lowercase untuk konsistensi dengan backend
+  const categoryParam = decodeURIComponent(rawCategory || ''). toLowerCase(). trim();
   
-  // Konversi slug ke nama kategori yang readable untuk judul
+  // Konversi slug ke nama kategori yang readable untuk judul (capitalize first letter of each word)
   const categoryDisplayName = useMemo(() => {
     if (!categoryParam) return '';
     return categoryParam
       .replace(/-/g, ' ')
-      .replace(/\b\w/g, char => char.toUpperCase());
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }, [categoryParam]);
 
   // Load User Profile (optional - untuk lokasi)
@@ -69,7 +73,7 @@ export default function ServiceCategoryPage() {
           setUserProfile(res.data.profile);
         }
       } catch (error) {
-        console.error("Gagal memuat profil user:", error);
+        console. error("Gagal memuat profil user:", error);
       }
     };
     loadUserProfile();
@@ -84,7 +88,7 @@ export default function ServiceCategoryPage() {
         let lng: number | undefined;
 
         // Gunakan lokasi user jika tersedia
-        if (userProfile?.location?.coordinates) {
+        if (userProfile?. location?. coordinates) {
           [lng, lat] = userProfile.location.coordinates;
         }
 
@@ -93,7 +97,7 @@ export default function ServiceCategoryPage() {
         const response = await fetchProviders({
           lat,
           lng,
-          category: categoryParam, // Kirim raw slug, backend harus handle case-insensitive
+          category: categoryParam, // [FIX] Kirim lowercase normalized
           search: debouncedSearch,
           sortBy: sortBy
         });
@@ -124,13 +128,13 @@ export default function ServiceCategoryPage() {
   };
 
   const getStartingPriceLabel = (provider: Provider) => {
-    if (!provider.services || provider.services.length === 0) return 'Hubungi CS';
+    if (! provider.services || provider.services.length === 0) return 'Hubungi CS';
     const activeServices = provider.services.filter((s: ProviderServiceItem) => s.isActive);
     if (activeServices.length === 0) return 'Bervariasi';
     
     const prices = activeServices.map((s: ProviderServiceItem) => s.price);
     const minPrice = Math.min(...prices);
-    return `Rp ${new Intl.NumberFormat('id-ID').format(minPrice)}`;
+    return `Rp ${new Intl.NumberFormat('id-ID'). format(minPrice)}`;
   };
 
   const getRatingLabel = (provider: Provider) => {
@@ -141,7 +145,7 @@ export default function ServiceCategoryPage() {
   };
 
   const getLocationLabel = (provider: Provider) => {
-    const addr = provider.userId?.address;
+    const addr = provider.userId?. address;
     if (!addr) return 'Lokasi Mitra';
     if (addr.district) return `Kec. ${addr.district}`;
     if (addr.city) return addr.city;
@@ -170,80 +174,82 @@ export default function ServiceCategoryPage() {
         
         {/* PROMO BANNER */}
         <section className="bg-gradient-to-r from-red-600 via-red-500 to-orange-500 rounded-2xl p-5 lg:p-8 mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden shadow-lg shadow-red-100">
-          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
           <div className="relative z-10">
-            <h2 className="text-white text-lg lg:text-2xl font-bold mb-1">
-              Butuh Cepat? Gunakan Pesan Cepat! ⚡
-            </h2>
-            <p className="text-white/90 text-xs lg:text-sm max-w-xl leading-relaxed">
-              Pilih mitra di bawah atau biarkan sistem mencarikan yang terdekat.
-            </p>
+            <h2 className="text-2xl lg:text-3xl font-black text-white mb-2">Promo Layanan {categoryDisplayName}!</h2>
+            <p className="text-sm text-white/90 font-medium">Dapatkan diskon hingga <span className="font-bold text-lg">30%</span> untuk pengguna baru</p>
           </div>
-          <button 
-            onClick={handleBasicOrder} 
-            className="relative z-10 self-start lg:self-auto px-5 py-2.5 lg:px-6 lg:py-3 bg-white text-red-600 text-xs lg:text-sm font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-transform flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            Pesan Cepat (Basic)
+          <button onClick={handleBasicOrder} className="relative z-10 bg-white text-red-600 font-bold px-6 py-3 rounded-xl hover:bg-red-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-sm lg:text-base">
+            Pesan Sekarang →
           </button>
         </section>
 
-        {/* FILTER & SEARCH BAR */}
-        <div className="sticky top-[65px] lg:top-[80px] z-20 bg-gray-50/95 backdrop-blur py-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:bg-transparent transition-all">
-          <div className="flex gap-2 lg:gap-4 items-center">
-            {/* Search Input */}
-            <div className="flex-1 relative">
-              <input 
-                type="text" 
-                placeholder="Cari nama mitra atau layanan..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
-              />
-              <svg className="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            </div>
-
-            {/* Desktop Sort */}
-            <div className="hidden lg:block relative">
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="appearance-none bg-white border border-gray-200 text-gray-700 py-2.5 pl-4 pr-10 rounded-xl text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                <option value="distance">📍 Terdekat</option>
-                <option value="rating">⭐ Rating Tertinggi</option>
-                <option value="price_asc">Rp Termurah</option>
-                <option value="price_desc">Rp Termahal</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-              </div>
-            </div>
-
-            {/* Mobile Filter Button */}
-            <button 
-              onClick={() => setShowFilterMobile(!showFilterMobile)}
-              className="lg:hidden p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm"
-            >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-            </button>
+        {/* FILTER & SORT */}
+        <div className="flex flex-col lg:flex-row gap-3 mb-6">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input 
+              type="text" 
+              placeholder="Cari nama mitra atau lokasi..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2. 5 lg:py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition-all"
+            />
           </div>
 
-          {/* Mobile Sort Options */}
+          {/* Sort - Desktop */}
+          <div className="hidden lg:flex gap-2">
+            {[
+              { value: 'distance', icon: '📍', label: 'Terdekat' },
+              { value: 'price_asc', icon: '💰', label: 'Termurah' },
+              { value: 'rating', icon: '⭐', label: 'Rating' },
+            ].map((opt) => (
+              <button 
+                key={opt.value}
+                onClick={() => setSortBy(opt.value as typeof sortBy)}
+                className={`px-4 py-2. 5 rounded-xl text-sm font-bold border transition-all ${
+                  sortBy === opt.value 
+                    ? 'bg-red-600 text-white border-red-600 shadow-md' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600'
+                }`}
+              >
+                <span>{opt.icon}</span> {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort - Mobile */}
+          <button 
+            onClick={() => setShowFilterMobile(!showFilterMobile)} 
+            className="lg:hidden bg-white border border-gray-200 px-4 py-2.5 rounded-xl text-sm font-bold text-gray-700 flex items-center justify-between hover:border-red-300 transition-colors"
+          >
+            <span>🎚️ Filter & Urutkan</span>
+            <svg className={`w-4 h-4 transition-transform ${showFilterMobile ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {/* Mobile Filter Dropdown */}
           {showFilterMobile && (
-            <div className="lg:hidden flex gap-2 mt-3 overflow-x-auto pb-2 no-scrollbar">
+            <div className="lg:hidden flex flex-col gap-2 p-3 bg-white border border-gray-100 rounded-xl">
               {[
-                { val: 'distance', label: 'Terdekat', icon: '📍' },
-                { val: 'rating', label: 'Rating', icon: '⭐' },
-                { val: 'price_asc', label: 'Murah', icon: '↓' },
-                { val: 'price_desc', label: 'Mahal', icon: '↑' }
-              ].map(opt => (
+                { value: 'distance', icon: '📍', label: 'Terdekat' },
+                { value: 'price_asc', icon: '💰', label: 'Termurah' },
+                { value: 'rating', icon: '⭐', label: 'Rating' },
+              ].map((opt) => (
                 <button 
-                  key={opt.val}
-                  onClick={() => setSortBy(opt.val as any)}
-                  className={`text-xs font-bold py-2.5 px-3 rounded-lg flex items-center gap-2 transition-colors ${sortBy === opt.val ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-gray-100 text-gray-600 border border-gray-100'}`}
+                  key={opt.value}
+                  onClick={() => { setSortBy(opt.value as typeof sortBy); setShowFilterMobile(false); }}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-bold border transition-all text-left ${
+                    sortBy === opt. value 
+                      ? 'bg-red-600 text-white border-red-600' 
+                      : 'bg-gray-50 text-gray-600 border-gray-100 hover:bg-red-50'
+                  }`}
                 >
-                  <span>{opt.icon}</span> {opt.label}
+                  <span>{opt.icon}</span> {opt. label}
                 </button>
               ))}
             </div>
@@ -267,20 +273,20 @@ export default function ServiceCategoryPage() {
             </div>
           )}
 
-          {!isLoading && providers.length === 0 && (
+          {!isLoading && providers. length === 0 && (
             <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 border-dashed">
               <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9. 172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               </div>
               <h4 className="text-base font-bold text-gray-900">Tidak ada mitra</h4>
-              <p className="text-xs text-gray-500 mt-1">Belum ada mitra yang sesuai filter Anda di area ini.</p>
+              <p className="text-xs text-gray-500 mt-1">Belum ada mitra yang sesuai filter Anda di area ini. </p>
               <button onClick={() => { setSearchTerm(''); setSortBy('distance'); }} className="mt-4 text-xs font-bold text-red-600 hover:underline">Reset Filter</button>
             </div>
           )}
 
           {!isLoading && providers.length > 0 && (
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-6">
-              {providers.map((provider) => (
+              {providers. map((provider) => (
                 <div 
                   key={provider._id} 
                   onClick={() => handleOpenProvider(provider._id)}
@@ -289,7 +295,7 @@ export default function ServiceCategoryPage() {
                   {/* Image */}
                   <div className="relative h-28 lg:h-36 bg-gray-100 overflow-hidden">
                     <Image 
-                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId?.fullName || 'User'}`} 
+                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${provider. userId?.fullName || 'User'}`} 
                       alt={provider.userId?.fullName || 'Mitra'} 
                       fill 
                       className="object-cover group-hover:scale-110 transition-transform duration-500" 
@@ -301,7 +307,7 @@ export default function ServiceCategoryPage() {
                     
                     {provider.distance && (
                       <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] lg:text-[10px] font-medium text-gray-700">
-                        📍 {(provider.distance / 1000).toFixed(1)} km
+                        📍 {(provider.distance / 1000). toFixed(1)} km
                       </div>
                     )}
                   </div>
@@ -319,16 +325,16 @@ export default function ServiceCategoryPage() {
                     <div className="flex flex-wrap gap-1 my-1">
                       {provider.services
                         .filter(s => s.isActive)
-                        .slice(0, 2) 
+                        . slice(0, 2) 
                         .map((svc, idx) => (
-                          <span key={idx} className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 line-clamp-1">
+                          <span key={idx} className="text-[9px] lg:text-[10px] px-1. 5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 line-clamp-1">
                             {svc.serviceId?.name}
                           </span>
                         ))
                       }
-                      {provider.services.filter(s => s.isActive).length > 2 && (
+                      {provider.services. filter(s => s.isActive).length > 2 && (
                         <span className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded border border-gray-100">
-                          +{provider.services.filter(s => s.isActive).length - 2}
+                          +{provider. services.filter(s => s. isActive).length - 2}
                         </span>
                       )}
                     </div>
