@@ -4,9 +4,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image'; // Import Image component
-import api from '@/lib/axios'; // Import axios instance
-import { fetchOrderById } from '@/features/orders/api';
+import Image from 'next/image';
+import api from '@/lib/axios';
+import { fetchOrderById, updateOrderStatus } from '@/features/orders/api'; // [FIX] Import updateOrderStatus
 import { createPayment } from '@/features/payments/api';
 import { Order } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans';
@@ -24,26 +24,26 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
-  const [isChatLoading, setIsChatLoading] = useState(false); // State loading chat
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false); // [FIX] State untuk konfirmasi
 
   const isSnapLoaded = useMidtrans();
 
-  useEffect(() => {
+  const loadOrder = async () => {
     if (!orderId) return;
+    try {
+      const res = await fetchOrderById(orderId as string);
+      setOrder(res.data); 
+    } catch (error) {
+      console.error('Gagal memuat detail pesanan:', error);
+      alert('Pesanan tidak ditemukan');
+      router.push('/orders');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    const loadOrder = async () => {
-      try {
-        const res = await fetchOrderById(orderId as string);
-        setOrder(res.data); 
-      } catch (error) {
-        console.error('Gagal memuat detail pesanan:', error);
-        alert('Pesanan tidak ditemukan');
-        router.push('/orders');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
+  useEffect(() => {
     loadOrder();
   }, [orderId, router]);
 
@@ -87,11 +87,24 @@ export default function OrderDetailPage() {
     }
   };
 
-  // [BARU] Handler untuk Chat Mitra
+  // [FIX] Handler untuk konfirmasi pekerjaan selesai
+  const handleConfirmComplete = async () => {
+    if (!confirm('Apakah Anda yakin pekerjaan sudah selesai dengan baik?')) return;
+    
+    setIsConfirming(true);
+    try {
+      await updateOrderStatus(orderId as string, 'completed');
+      alert('Pesanan dikonfirmasi selesai. Terima kasih!');
+      await loadOrder(); // Refresh data order
+    } catch (error: any) {
+      console.error("Gagal konfirmasi:", error);
+      alert(error.response?.data?.message || "Gagal mengkonfirmasi pesanan.");
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
   const handleChatMitra = async () => {
-    // Pastikan order dan provider ada
-    // Note: Kita menggunakan 'any' casting sementara karena tipe Order di frontend mungkin belum update
-    // dengan struktur populate (providerId berupa object, bukan string ID).
     const providerData = (order as any)?.providerId;
     
     if (!providerData || !providerData.userId) {
@@ -101,17 +114,9 @@ export default function OrderDetailPage() {
 
     setIsChatLoading(true);
     try {
-        // 1. Request ke Backend untuk Buat/Get Room
-        // Mengirim ID User milik Mitra (bukan ID Provider)
         const targetUserId = providerData.userId._id || providerData.userId;
-        
         await api.post('/chat', { targetUserId });
-        
-        // 2. Redirect ke halaman Chat
-        // Karena /chat di mobile/desktop sudah kita siapkan untuk load list room,
-        // user akan melihat chat room teratas (yang baru saja di-update/dibuat)
         router.push('/chat');
-
     } catch (error) {
         console.error("Gagal membuka chat:", error);
         alert("Gagal menghubungkan ke chat.");
@@ -138,13 +143,13 @@ export default function OrderDetailPage() {
       accepted: 'bg-indigo-100 text-indigo-800',
       on_the_way: 'bg-orange-100 text-orange-800',
       working: 'bg-cyan-100 text-cyan-800',
+      waiting_approval: 'bg-pink-100 text-pink-800', // [FIX] Tambah status waiting_approval
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  // Helper akses data provider yang dipopulate
   const provider = (order as any).providerId;
   const providerUser = provider?.userId;
 
@@ -178,6 +183,23 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
+        {/* [FIX] Banner Menunggu Konfirmasi */}
+        {order.status === 'waiting_approval' && (
+          <div className="bg-pink-50 border border-pink-200 p-4 rounded-2xl animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-bold text-pink-800">Mitra Menunggu Konfirmasi Anda</p>
+                <p className="text-sm text-pink-600">Mitra telah menyelesaikan pekerjaan. Silakan konfirmasi jika sudah sesuai.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Provider Info (Jika sudah accepted) */}
         {provider && (
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 animate-fadeIn">
@@ -202,15 +224,14 @@ export default function OrderDetailPage() {
                 </div>
               </div>
               
-              {/* [Tombol Chat Diaktifkan] */}
               <button 
                 onClick={handleChatMitra}
                 disabled={isChatLoading}
-                className="ml-auto px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ml-auto px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-xl text-xs font-bold hover:bg-green-100 transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {isChatLoading ? (
                     <>
-                        <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                         ...
                     </>
                 ) : (
@@ -231,7 +252,6 @@ export default function OrderDetailPage() {
             {order.items.map((item: any, idx: number) => (
               <div key={idx} className="flex justify-between items-start pb-4 border-b border-gray-50 last:border-0 last:pb-0">
                 <div className="flex items-start gap-3">
-                    {/* Icon Service (jika ada) */}
                     <div className="w-10 h-10 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center shrink-0">
                         {item.serviceId?.iconUrl ? (
                             <Image src={item.serviceId.iconUrl} alt="Svc" width={20} height={20} className="object-contain opacity-70"/>
@@ -266,6 +286,7 @@ export default function OrderDetailPage() {
         {/* Actions */}
         <div className="fixed bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-200 shadow-lg md:static md:shadow-none md:border-0 md:bg-transparent md:p-0 z-20">
           <div className="max-w-3xl mx-auto">
+            {/* Tombol Bayar untuk status pending */}
             {order.status === 'pending' && (
               <button 
                 onClick={handlePayment}
@@ -286,6 +307,36 @@ export default function OrderDetailPage() {
                   </>
                 ) : (
                   'Lanjut Pembayaran'
+                )}
+              </button>
+            )}
+
+            {/* [FIX] Tombol Konfirmasi Selesai untuk status waiting_approval */}
+            {order.status === 'waiting_approval' && (
+              <button 
+                onClick={handleConfirmComplete}
+                disabled={isConfirming}
+                className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-green-200 transition-all flex justify-center items-center gap-2 ${
+                  isConfirming 
+                    ? 'bg-gray-400 cursor-not-allowed shadow-none' 
+                    : 'bg-green-600 hover:bg-green-700 hover:-translate-y-1'
+                }`}
+              >
+                {isConfirming ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Konfirmasi Pekerjaan Selesai
+                  </>
                 )}
               </button>
             )}

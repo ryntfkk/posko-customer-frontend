@@ -2,13 +2,15 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
+import { useEffect, useMemo, useState, useRef, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
 import { fetchProviderById } from '@/features/providers/api';
+import { fetchProfile } from '@/features/auth/api';
 import { Service, getUnitLabel, getQuantityLabel } from '@/features/services/types';
 import { Provider } from '@/features/providers/types';
+import { User, Address, GeoLocation } from '@/features/auth/types';
 import { getCartItemId, useCart } from '@/features/cart/useCart';
 
 const formatCurrency = (amount: number) => {
@@ -60,6 +62,15 @@ function CheckoutContent() {
   const [services, setServices] = useState<Service[]>([]);
   const [provider, setProvider] = useState<Provider | null>(null);
 
+  // [BARU] State untuk User Profile, Alamat, dan Lokasi
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<GeoLocation | null>(null);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
+  const [tempLat, setTempLat] = useState<string>('');
+  const [tempLng, setTempLng] = useState<string>('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +92,33 @@ function CheckoutContent() {
   // [FIX] Kategori efektif yang akan digunakan (dari URL atau dari deteksi provider)
   const effectiveCategory = categoryParam || detectedCategory;
 
+  // [BARU] Load User Profile & Set Default Alamat/Lokasi
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const res = await fetchProfile();
+        const profile = res.data.profile;
+        setUserProfile(profile);
+
+        // Set alamat dan lokasi default dari profile user
+        if (profile.address) {
+          setSelectedAddress(profile.address);
+        }
+        if (profile.location && profile.location.coordinates && profile.location.coordinates[0] !== 0) {
+          setSelectedLocation(profile.location);
+          setTempLat(profile.location.coordinates[1].toString());
+          setTempLng(profile.location.coordinates[0].toString());
+        }
+      } catch (error) {
+        console.error("Gagal memuat profil:", error);
+        // Tidak redirect, biarkan user tetap bisa browse
+      } finally {
+        setIsProfileLoading(false);
+      }
+    };
+    loadProfile();
+  }, []);
+
   // 1.Sinkronisasi Query Params & State
   useEffect(() => {
     if (! searchParams) return;
@@ -88,7 +126,7 @@ function CheckoutContent() {
     const typeParam = searchParams.get('type') as CheckoutType | null;
     const providerParam = searchParams.get('providerId');
 
-    setCheckoutType(typeParam === 'direct' ? 'direct' : 'basic');
+    setCheckoutType(typeParam === 'direct' ?  'direct' : 'basic');
     setSelectedProviderId(providerParam);
   }, [searchParams]);
 
@@ -115,7 +153,7 @@ function CheckoutContent() {
         }
       } catch (err) {
         console.error(err);
-        setError('Gagal memuat data layanan.Silakan coba lagi.');
+        setError('Gagal memuat data layanan. Silakan coba lagi.');
       } finally {
         setIsLoading(false);
       }
@@ -241,11 +279,51 @@ function CheckoutContent() {
     return existing?.quantity ??  0;
   };
 
+  // [BARU] Handler untuk update koordinat
+  const handleSaveLocation = useCallback(() => {
+    const lat = parseFloat(tempLat);
+    const lng = parseFloat(tempLng);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      alert('Koordinat tidak valid. Masukkan angka yang benar.');
+      return;
+    }
+
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      alert('Koordinat di luar rentang yang valid.');
+      return;
+    }
+
+    setSelectedLocation({
+      type: 'Point',
+      coordinates: [lng, lat] // GeoJSON format: [longitude, latitude]
+    });
+    setIsEditingLocation(false);
+  }, [tempLat, tempLng]);
+
+  // [BARU] Handler untuk open Google Maps picker
+  const handleOpenMapPicker = useCallback(() => {
+    const lat = selectedLocation?.coordinates[1] || -6.9175;
+    const lng = selectedLocation?.coordinates[0] || 110.4193;
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+  }, [selectedLocation]);
+
   const handleConfirmOrder = async () => {
     if (! isHydrated) return;
 
     if (activeCartItems.length === 0 || currentTotalItems <= 0) {
       alert('Pilih minimal satu layanan sebelum melanjutkan.');
+      return;
+    }
+
+    // [BARU] Validasi lokasi sebelum lanjut
+    if (! selectedLocation || selectedLocation.coordinates[0] === 0) {
+      alert('Mohon tentukan titik lokasi pengerjaan terlebih dahulu.');
+      return;
+    }
+
+    if (! selectedAddress || ! selectedAddress.city || !selectedAddress.detail) {
+      alert('Mohon lengkapi alamat pengerjaan terlebih dahulu.');
       return;
     }
 
@@ -289,7 +367,7 @@ function CheckoutContent() {
       // Gunakan detectedCategory (dari provider) atau categoryParam (dari URL awal)
       const categoryToUse = detectedCategory || categoryParam;
       if (categoryToUse) {
-        router.replace(`/checkout?type=basic&category=${encodeURIComponent(categoryToUse)}`);
+        router.replace(`/checkout? type=basic&category=${encodeURIComponent(categoryToUse)}`);
       } else {
         router.replace('/checkout? type=basic');
       }
@@ -307,7 +385,7 @@ function CheckoutContent() {
         orderType: checkoutType,
         quantity: newQuantity,
         pricePerUnit: option.price,
-        providerId: checkoutType === 'direct' ?  selectedProviderId || undefined : undefined,
+        providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
         providerName: checkoutType === 'direct' ? providerLabel : undefined,
       });
     };
@@ -414,6 +492,16 @@ function CheckoutContent() {
     );
   };
 
+  // Loading state untuk profile
+  if (isProfileLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
+        <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
+        <p className="text-sm text-gray-500">Memuat data profil...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-10 font-sans">
       {/* Header */}
@@ -428,13 +516,220 @@ function CheckoutContent() {
             <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Checkout</span>
             <h1 className="text-xl font-bold text-gray-900">{checkoutType === 'direct' ? 'Pesan Mitra' : 'Pesan Cepat'}</h1>
             <p className="text-xs text-gray-500 truncate max-w-[200px]">
-              {checkoutType === 'direct' ?  `Order ke: ${providerLabel}` : 'Sistem akan mencarikan mitra terdekat'}
+              {checkoutType === 'direct' ? `Order ke: ${providerLabel}` : 'Sistem akan mencarikan mitra terdekat'}
             </p>
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 lg:px-8 py-8 space-y-6">
+        
+        {/* [BARU] Section Lokasi & Alamat di Bagian Atas */}
+        <section className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Lokasi Pengerjaan</p>
+                <h2 className="text-base font-bold text-gray-900">Titik Koordinat & Alamat</h2>
+              </div>
+            </div>
+            <button 
+              onClick={() => router.push('/profile')}
+              className="text-xs font-bold text-red-600 hover:text-red-700 hover:underline"
+            >
+              Ubah di Profil
+            </button>
+          </div>
+
+          {/* Koordinat Display */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                </svg>
+                <span className="text-xs font-semibold text-gray-600">Titik Lokasi</span>
+              </div>
+              
+              {! isEditingLocation ?  (
+                <button 
+                  onClick={() => setIsEditingLocation(true)}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                  Edit Manual
+                </button>
+              ) : (
+                <button 
+                  onClick={() => {
+                    setIsEditingLocation(false);
+                    // Reset ke value sebelumnya
+                    if (selectedLocation) {
+                      setTempLat(selectedLocation.coordinates[1].toString());
+                      setTempLng(selectedLocation.coordinates[0].toString());
+                    }
+                  }}
+                  className="text-xs font-bold text-gray-500 hover:text-gray-700"
+                >
+                  Batal
+                </button>
+              )}
+            </div>
+
+            {! isEditingLocation ?  (
+              // Display Mode
+              <div className="space-y-2">
+                {selectedLocation && selectedLocation.coordinates[0] !== 0 ?  (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-white px-3 py-2 rounded-lg border border-gray-200">
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Latitude</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedLocation.coordinates[1].toFixed(6)}</p>
+                      </div>
+                      <div className="flex-1 bg-white px-3 py-2 rounded-lg border border-gray-200">
+                        <p className="text-[10px] text-gray-500 uppercase font-medium">Longitude</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedLocation.coordinates[0].toFixed(6)}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleOpenMapPicker}
+                      className="w-full flex items-center justify-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                      </svg>
+                      Lihat di Google Maps
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <div className="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                      </svg>
+                    </div>
+                    <p className="text-sm font-bold text-gray-900">Titik Lokasi Belum Diatur</p>
+                    <p className="text-xs text-gray-500 mt-1">Klik Edit Manual untuk memasukkan koordinat.</p>
+                    <button
+                      onClick={() => setIsEditingLocation(true)}
+                      className="mt-3 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      Atur Koordinat Sekarang
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Edit Mode
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-gray-500 uppercase font-medium">Latitude</label>
+                    <input
+                      type="text"
+                      value={tempLat}
+                      onChange={(e) => setTempLat(e.target.value)}
+                      placeholder="-6.9175"
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-gray-500 uppercase font-medium">Longitude</label>
+                    <input
+                      type="text"
+                      value={tempLng}
+                      onChange={(e) => setTempLng(e.target.value)}
+                      placeholder="110.4193"
+                      className="w-full mt-1 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-400">
+                  💡 Tip: Buka Google Maps, klik kanan pada lokasi, lalu salin koordinat.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveLocation}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Simpan Koordinat
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Gunakan Geolocation API
+                      if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                          (position) => {
+                            setTempLat(position.coords.latitude.toString());
+                            setTempLng(position.coords.longitude.toString());
+                          },
+                          (error) => {
+                            alert('Gagal mendapatkan lokasi.Pastikan izin lokasi aktif.');
+                          }
+                        );
+                      } else {
+                        alert('Browser tidak mendukung Geolocation.');
+                      }
+                    }}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    </svg>
+                    GPS
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Alamat Display */}
+          {selectedAddress && selectedAddress.city ?  (
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-gray-900 leading-snug">
+                    {userProfile?.fullName} ({selectedAddress.city})
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                    {selectedAddress.detail}
+                    {selectedAddress.village && `, Kel. ${selectedAddress.village}`}
+                    {selectedAddress.district && `, Kec.${selectedAddress.district}`}
+                  </p>
+                  {selectedAddress.postalCode && (
+                    <p className="text-xs text-gray-500 mt-1">Kode Pos: {selectedAddress.postalCode}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <div>
+                  <p className="text-sm font-bold text-yellow-800">Alamat Belum Lengkap</p>
+                  <p className="text-xs text-yellow-700 mt-1">Silakan lengkapi alamat Anda di halaman Profil.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
             <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
@@ -563,7 +858,7 @@ function CheckoutContent() {
                   ) : activeCartItems.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                       <svg className="w-10 h-10 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                       </svg>
                       <p className="text-xs">Keranjang kosong</p>
                     </div>
@@ -609,14 +904,14 @@ function CheckoutContent() {
               </div>
               <button
                 onClick={handleConfirmOrder}
-                disabled={isSubmitting || activeCartItems.length === 0}
+                disabled={isSubmitting || activeCartItems.length === 0 || ! selectedLocation || selectedLocation.coordinates[0] === 0}
                 className={`w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-white flex justify-center items-center gap-2 shadow-lg shadow-red-200 transition-all active:scale-95 ${
-                  isSubmitting || activeCartItems.length === 0
+                  isSubmitting || activeCartItems.length === 0 || !selectedLocation || selectedLocation.coordinates[0] === 0
                     ? 'bg-gray-300 cursor-not-allowed shadow-none'
                     : 'bg-red-600 hover:bg-red-700 hover:-translate-y-1'
                 }`}
               >
-                {isSubmitting ? (
+                {isSubmitting ?  (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
