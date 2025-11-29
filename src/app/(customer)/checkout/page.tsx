@@ -73,7 +73,13 @@ function CheckoutContent() {
   // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
 
+  // [FIX] State untuk menyimpan kategori yang terdeteksi dari provider
+  const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
+
   const categoryParam = searchParams?.get('category') || null;
+
+  // [FIX] Kategori efektif yang akan digunakan (dari URL atau dari deteksi provider)
+  const effectiveCategory = categoryParam || detectedCategory;
 
   // 1.Sinkronisasi Query Params & State
   useEffect(() => {
@@ -82,7 +88,7 @@ function CheckoutContent() {
     const typeParam = searchParams.get('type') as CheckoutType | null;
     const providerParam = searchParams.get('providerId');
 
-    setCheckoutType(typeParam === 'direct' ?  'direct' : 'basic');
+    setCheckoutType(typeParam === 'direct' ? 'direct' : 'basic');
     setSelectedProviderId(providerParam);
   }, [searchParams]);
 
@@ -93,15 +99,23 @@ function CheckoutContent() {
       setError(null);
       try {
         if (checkoutType === 'basic') {
-          const res = await fetchServices(categoryParam);
+          // [FIX] Gunakan effectiveCategory untuk filter layanan
+          const res = await fetchServices(effectiveCategory);
           setServices(res.data);
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
           setProvider(res.data);
+          
+          // [FIX] Deteksi kategori dari layanan provider saat mode direct
+          // Ambil kategori pertama dari layanan aktif provider
+          const activeServices = res.data.services?.filter((s: { isActive: boolean }) => s.isActive) || [];
+          if (activeServices.length > 0 && activeServices[0].serviceId?.category) {
+            setDetectedCategory(activeServices[0].serviceId.category);
+          }
         }
       } catch (err) {
         console.error(err);
-        setError('Gagal memuat data layanan. Silakan coba lagi.');
+        setError('Gagal memuat data layanan.Silakan coba lagi.');
       } finally {
         setIsLoading(false);
       }
@@ -110,7 +124,7 @@ function CheckoutContent() {
     if (checkoutType === 'basic' || (checkoutType === 'direct' && selectedProviderId)) {
       loadData();
     }
-  }, [checkoutType, selectedProviderId, categoryParam]);
+  }, [checkoutType, selectedProviderId, effectiveCategory]);
 
   // 3. Normalisasi Data untuk UI
   const availableOptions: CheckoutOption[] = useMemo(() => {
@@ -170,15 +184,19 @@ function CheckoutContent() {
 
       if (checkoutType === 'basic') {
         if (item.orderType !== 'basic') return false;
-        if (categoryParam) {
-          return (item.category ??  null) === categoryParam;
+        // [FIX] Gunakan effectiveCategory untuk filter keranjang
+        if (effectiveCategory) {
+          // Case-insensitive comparison untuk kategori
+          const itemCategory = (item.category ??  '').toLowerCase();
+          const filterCategory = effectiveCategory.toLowerCase();
+          return itemCategory === filterCategory;
         }
         return true;
       } else {
         return item.orderType === 'direct' && item.providerId === selectedProviderId;
       }
     });
-  }, [cart, checkoutType, selectedProviderId, categoryParam]);
+  }, [cart, checkoutType, selectedProviderId, effectiveCategory]);
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -237,8 +255,9 @@ function CheckoutContent() {
         type: checkoutType,
       });
 
-      if (checkoutType === 'basic' && categoryParam) {
-        queryParams.append('category', categoryParam);
+      // [FIX] Gunakan effectiveCategory untuk URL summary
+      if (checkoutType === 'basic' && effectiveCategory) {
+        queryParams.append('category', effectiveCategory);
       }
 
       if (checkoutType === 'direct' && selectedProviderId) {
@@ -265,7 +284,15 @@ function CheckoutContent() {
     setCheckoutType(targetMode);
     if (targetMode === 'basic') {
       setSelectedProviderId(null);
-      router.replace('/checkout? type=basic');
+      
+      // [FIX] Sertakan kategori saat switch ke basic mode
+      // Gunakan detectedCategory (dari provider) atau categoryParam (dari URL awal)
+      const categoryToUse = detectedCategory || categoryParam;
+      if (categoryToUse) {
+        router.replace(`/checkout?type=basic&category=${encodeURIComponent(categoryToUse)}`);
+      } else {
+        router.replace('/checkout? type=basic');
+      }
     }
   };
 
@@ -280,7 +307,7 @@ function CheckoutContent() {
         orderType: checkoutType,
         quantity: newQuantity,
         pricePerUnit: option.price,
-        providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
+        providerId: checkoutType === 'direct' ?  selectedProviderId || undefined : undefined,
         providerName: checkoutType === 'direct' ? providerLabel : undefined,
       });
     };
@@ -369,7 +396,7 @@ function CheckoutContent() {
             disabled={checkoutType === 'direct' && ! provider}
             className={`w-10 h-10 rounded-lg font-bold flex items-center justify-center text-lg ${
               checkoutType === 'direct' && !provider
-                ?  'bg-gray-200 text-gray-400 cursor-not-allowed'
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : 'bg-red-600 text-white hover:bg-red-700'
             }`}
           >
@@ -401,7 +428,7 @@ function CheckoutContent() {
             <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Checkout</span>
             <h1 className="text-xl font-bold text-gray-900">{checkoutType === 'direct' ? 'Pesan Mitra' : 'Pesan Cepat'}</h1>
             <p className="text-xs text-gray-500 truncate max-w-[200px]">
-              {checkoutType === 'direct' ? `Order ke: ${providerLabel}` : 'Sistem akan mencarikan mitra terdekat'}
+              {checkoutType === 'direct' ?  `Order ke: ${providerLabel}` : 'Sistem akan mencarikan mitra terdekat'}
             </p>
           </div>
         </div>
@@ -441,6 +468,12 @@ function CheckoutContent() {
                       </>
                     )}
                   </p>
+                  {/* [FIX] Tampilkan badge kategori jika ada */}
+                  {effectiveCategory && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Kategori: <span className="font-semibold text-gray-700 capitalize">{effectiveCategory}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex bg-gray-100 p-1 rounded-xl">
@@ -583,7 +616,7 @@ function CheckoutContent() {
                     : 'bg-red-600 hover:bg-red-700 hover:-translate-y-1'
                 }`}
               >
-                {isSubmitting ?  (
+                {isSubmitting ? (
                   <>
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -638,7 +671,7 @@ function CheckoutContent() {
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Harga</p>
                   <div className="flex items-end gap-2">
-                    {selectedDetail.isPromo && selectedDetail.promoPrice ? (
+                    {selectedDetail.isPromo && selectedDetail.promoPrice ?  (
                       <>
                         <span className="text-2xl font-black text-red-600">{formatCurrency(selectedDetail.promoPrice)}</span>
                         <span className="text-sm text-gray-400 line-through">{formatCurrency(selectedDetail.price)}</span>

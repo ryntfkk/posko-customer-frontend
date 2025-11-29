@@ -42,8 +42,7 @@ export default function ChatWidget({ user }: { user: any }) {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // ✅ FIX: Perbaiki URL Socket.io dengan path yang benar
-  const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL?. replace('/api', '') || 'http://localhost:4000';
 
   const myId = user?._id || user?.userId;
 
@@ -56,7 +55,7 @@ export default function ChatWidget({ user }: { user: any }) {
     // ✅ FIX: Tambahkan path dan transport options yang lebih baik
     const newSocket = io(SOCKET_URL, { 
       auth: { token },
-      path: '/socket.io',
+      path: '/socket.io',  // This is the Socket.io handshake path, NOT namespace
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
