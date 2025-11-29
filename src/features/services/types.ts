@@ -1,15 +1,53 @@
-export type ServiceUnit = 'unit' | 'jam' | 'hari' | 'meter' | 'kg' | 'paket' | 'orang' | 'ruangan' | 'kendaraan';
+export type ServiceUnit = 'unit' | 'jam' | 'hari' | 'meter' | 'kg' | 'paket' | 'orang' | 'ruangan' | 'kendaraan' | 'sesi';
 
 export interface Service {
   _id: string;
   name: string;
+  slug?: string;
   category: string;
-  iconUrl: string;
-  basePrice: number;
-  unit: ServiceUnit;        // ✅ [BARU]
-  unitLabel?: string;       // ✅ [BARU] Label kustom (opsional)
-  displayUnit: string;      // ✅ [BARU] Virtual dari backend
+  shortDescription?: string;
   description: string;
+  
+  // Harga & Satuan
+  basePrice: number;
+  maxPrice?: number;
+  unit: ServiceUnit;
+  unitLabel?: string;
+  displayUnit?: string;      // Virtual dari backend
+  priceDisplay?: string;     // Virtual dari backend
+  displayPrice?: number;     // Virtual dari backend
+  priceNote?: string;
+  
+  // Promo
+  isPromo?: boolean;
+  promoPrice?: number;
+  promoEndDate?: string;
+  promoLabel?: string;
+  discountPercent?: number;  // Virtual
+  
+  // Durasi & Kuantitas
+  estimatedDuration?: number;
+  durationDisplay?: string;  // Virtual
+  minQuantity?: number;
+  maxQuantity?: number;
+  
+  // Detail Layanan
+  includes?: string[];
+  excludes?: string[];
+  requirements?: string[];
+  
+  // Media
+  iconUrl: string;
+  thumbnailUrl?: string;
+  images?: string[];
+  
+  // Statistik
+  totalOrders?: number;
+  averageRating?: number;
+  reviewCount?: number;
+  
+  // Config
+  isFeatured?: boolean;
   isActive: boolean;
 }
 
@@ -18,7 +56,7 @@ export interface ServiceResponse {
   data: Service[];
 }
 
-// Helper function untuk mendapatkan label satuan
+// Helper functions
 export function getUnitLabel(unit: ServiceUnit, customLabel?: string): string {
   if (customLabel) return customLabel;
   
@@ -31,13 +69,13 @@ export function getUnitLabel(unit: ServiceUnit, customLabel?: string): string {
     'paket': 'per paket',
     'orang': 'per orang',
     'ruangan': 'per ruangan',
-    'kendaraan': 'per kendaraan'
+    'kendaraan': 'per kendaraan',
+    'sesi': 'per sesi'
   };
   
   return labels[unit] || 'per unit';
 }
 
-// Helper untuk mendapatkan label quantity
 export function getQuantityLabel(unit: ServiceUnit): string {
   const labels: Record<ServiceUnit, string> = {
     'unit': 'Unit',
@@ -48,7 +86,8 @@ export function getQuantityLabel(unit: ServiceUnit): string {
     'paket': 'Paket',
     'orang': 'Orang',
     'ruangan': 'Ruangan',
-    'kendaraan': 'Kendaraan'
+    'kendaraan': 'Kendaraan',
+    'sesi': 'Sesi'
   };
   
   return labels[unit] || 'Unit';
