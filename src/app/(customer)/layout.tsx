@@ -3,6 +3,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { fetchProfile } from '@/features/auth/api';
 
 // Icon Components
 const HomeIcon = ({ active }: { active: boolean }) => (
@@ -19,7 +21,7 @@ const SearchIcon = ({ active }: { active: boolean }) => (
 
 const OrderIcon = ({ active }: { active: boolean }) => (
   <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h. 01M9 16h.01" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
   </svg>
 );
 
@@ -32,12 +34,43 @@ const UserIcon = ({ active }: { active: boolean }) => (
 // Mobile Bottom Navigation Only
 function BottomNav() {
   const pathname = usePathname();
+  const [isProviderMode, setIsProviderMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const checkUserMode = async () => {
+      try {
+        const token = localStorage.getItem('posko_token');
+        if (token) {
+          const res = await fetchProfile();
+          // Cek apakah user sedang dalam mode provider
+          setIsProviderMode(res.data.profile?. activeRole === 'provider');
+        }
+      } catch (error) {
+        // Jika error (misal token expired), anggap sebagai customer
+        setIsProviderMode(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkUserMode();
+  }, []);
   
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true;
     if (path !== '/' && pathname. startsWith(path)) return true;
     return false;
   };
+
+  // PERBAIKAN UTAMA: Jika user dalam mode provider, JANGAN render BottomNav customer
+  // Biarkan ProviderHome yang menangani navbar-nya sendiri
+  if (isLoading) {
+    return null; // Jangan render apapun saat loading
+  }
+
+  if (isProviderMode) {
+    return null; // Jangan render BottomNav customer jika mode provider
+  }
 
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-5 pt-2 px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
@@ -54,12 +87,12 @@ function BottomNav() {
         
         <Link href="/orders" className="flex flex-col items-center gap-1 w-16">
           <OrderIcon active={isActive('/orders')} />
-          <span className={`text-[10px] font-bold ${isActive('/orders') ? 'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
+          <span className={`text-[10px] font-bold ${isActive('/orders') ?  'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
         </Link>
 
         <Link href="/profile" className="flex flex-col items-center gap-1 w-16">
           <UserIcon active={isActive('/profile')} />
-          <span className={`text-[10px] font-bold ${isActive('/profile') ? 'text-red-600' : 'text-gray-400'}`}>Akun</span>
+          <span className={`text-[10px] font-bold ${isActive('/profile') ?  'text-red-600' : 'text-gray-400'}`}>Akun</span>
         </Link>
       </div>
     </div>
@@ -77,7 +110,7 @@ export default function CustomerLayout({
       <main className="min-h-screen pb-24 lg:pb-0">
         {children}
       </main>
-      {/* BOTTOM NAV HANYA UNTUK MOBILE */}
+      {/* BOTTOM NAV HANYA UNTUK MOBILE - Sekarang dengan pengecekan mode */}
       <BottomNav />
     </>
   );

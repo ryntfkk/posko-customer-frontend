@@ -64,6 +64,10 @@ export interface Provider {
   
   // [BARU] Statistik
   totalCompletedOrders?: number;
+  
+  // [PERBAIKAN] Jarak dari user (dihitung oleh backend via geo-spatial query)
+  // Property ini hanya ada ketika parameter lat/lng dikirim ke API
+  distance?: number; // Dalam meter
 }
 
 export interface ProviderListResponse {
