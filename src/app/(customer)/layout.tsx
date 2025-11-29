@@ -8,7 +8,7 @@ import { fetchProfile } from '@/features/auth/api';
 
 // Icon Components
 const HomeIcon = ({ active }: { active: boolean }) => (
-  <svg className={`w-6 h-6 ${active ?  'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-3m0 0l7-4 7 4M5 9v10a1 1 0 001 1h12a1 1 0 001-1V9M9 20l-2-7m6 7l2-7M9 5l3-3m6 3l-3-3" />
   </svg>
 );
@@ -26,7 +26,7 @@ const ChatIcon = ({ active }: { active: boolean }) => (
 );
 
 const UserIcon = ({ active }: { active: boolean }) => (
-  <svg className={`w-6 h-6 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg className={`w-6 h-6 ${active ?  'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
   </svg>
 );
@@ -59,22 +59,23 @@ function BottomNav() {
     return false;
   };
 
+  // Masih loading, jangan tampilkan apapun
   if (isProviderMode === null) return null;
 
+  // Jika mode provider, sembunyikan navbar customer
   if (isProviderMode) {
     return null;
   }
 
-  if (pathname === '/') {
-    return null;
-  }
+  // [FIX] Hapus kondisi yang menyembunyikan navbar di homepage
+  // Navbar harus tampil di semua halaman customer termasuk home
 
   return (
     <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-5 pt-2 px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
       <div className="flex justify-between items-center">
         <Link href="/" className="flex flex-col items-center gap-1 w-16">
           <HomeIcon active={isActive('/')} />
-          <span className={`text-[10px] font-bold ${isActive('/') ?  'text-red-600' : 'text-gray-400'}`}>Home</span>
+          <span className={`text-[10px] font-bold ${isActive('/') ? 'text-red-600' : 'text-gray-400'}`}>Home</span>
         </Link>
         
         <Link href="/orders" className="flex flex-col items-center gap-1 w-16">
