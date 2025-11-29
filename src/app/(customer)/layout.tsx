@@ -34,8 +34,7 @@ const UserIcon = ({ active }: { active: boolean }) => (
 // Mobile Bottom Navigation Only
 function BottomNav() {
   const pathname = usePathname();
-  const [isProviderMode, setIsProviderMode] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isProviderMode, setIsProviderMode] = useState<boolean | null>(null);
   
   useEffect(() => {
     const checkUserMode = async () => {
@@ -45,12 +44,11 @@ function BottomNav() {
           const res = await fetchProfile();
           // Cek apakah user sedang dalam mode provider
           setIsProviderMode(res.data.profile?.activeRole === 'provider');
+        } else {
+          setIsProviderMode(false);
         }
       } catch (error) {
-        // Jika error (misal token expired), anggap sebagai customer
         setIsProviderMode(false);
-      } finally {
-        setIsLoading(false);
       }
     };
     checkUserMode();
@@ -62,19 +60,23 @@ function BottomNav() {
     return false;
   };
 
-  // [FIX] Jika sedang loading, jangan render apapun untuk menghindari flash
-  if (isLoading) {
-    return null;
-  }
+  // [FIX] Loading state handled
+  if (isProviderMode === null) return null;
 
-  // [FIX] Jika user dalam mode provider, jangan render BottomNav customer
-  // ProviderHome yang akan menangani navbar-nya sendiri
+  // [FIX] Jika user mode provider, TAPI sedang berada di halaman services (Customer Flow),
+  // kita tetap ingin menampilkan customer nav, ATAU membiarkannya null jika ProviderBottomNav di-disable juga.
+  // Namun, logikanya jika di /services, kita anggap flow customer.
   if (isProviderMode) {
+    // KECUALI jika di halaman services, kita mungkin ingin menampilkan Nav Customer agar dia bisa kembali?
+    // Tapi untuk konsistensi, jika mode provider, customer nav MATI.
+    // ProviderBottomNav saya ubah di langkah sebelumnya untuk MATI di /services.
+    // Jadi di sini kita harus MENGHIDUPKAN customer nav jika di /services, walau mode provider?
+    // TIDAK, lebih baik user switch role dulu.
+    // TAPI, jika user memaksa masuk /services, setidaknya jangan overlap.
     return null;
   }
 
-  // [FIX] Jika pathname adalah '/', halaman home handle sendiri bottom nav-nya
-  // Ini untuk menghindari double rendering
+  // [FIX] Homepage menghandle nav-nya sendiri
   if (pathname === '/') {
     return null;
   }
@@ -113,11 +115,9 @@ export default function CustomerLayout({
 }) {
   return (
     <>
-      {/* TIDAK ADA NAVBAR DESKTOP - Sudah dihandle oleh masing-masing page */}
       <main className="min-h-screen pb-24 lg:pb-0">
         {children}
       </main>
-      {/* BOTTOM NAV HANYA UNTUK MOBILE - Sekarang dengan pengecekan mode */}
       <BottomNav />
     </>
   );

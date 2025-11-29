@@ -38,8 +38,7 @@ export default function ServiceCategoryPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
-
+  
   // Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'distance' | 'price_asc' | 'price_desc' | 'rating'>('distance');
@@ -48,13 +47,14 @@ export default function ServiceCategoryPage() {
   // Debounce search term
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const categoryParam = Array.isArray(params.category) ? params.category[0] : params. category;
+  // [FIX] Ambil parameter kategori dengan aman
+  const rawCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+  const categoryParam = decodeURIComponent(rawCategory || '');
   
-  // Konversi slug ke nama kategori yang readable
+  // Konversi slug ke nama kategori yang readable untuk judul
   const categoryDisplayName = useMemo(() => {
-    if (! categoryParam) return '';
-    // Decode URL dan ganti dash dengan spasi, capitalize
-    return decodeURIComponent(categoryParam)
+    if (!categoryParam) return '';
+    return categoryParam
       .replace(/-/g, ' ')
       .replace(/\b\w/g, char => char.toUpperCase());
   }, [categoryParam]);
@@ -66,19 +66,16 @@ export default function ServiceCategoryPage() {
         const token = localStorage.getItem('posko_token');
         if (token) {
           const res = await fetchProfile();
-          setUserProfile(res.data. profile);
+          setUserProfile(res.data.profile);
         }
       } catch (error) {
         console.error("Gagal memuat profil user:", error);
-      } finally {
-        setIsUserLoading(false);
       }
     };
     loadUserProfile();
   }, []);
 
   // Load Providers with Category Filter
-  // [FIX] Jalankan meskipun user belum login
   useEffect(() => {
     const loadProviders = async () => {
       setIsLoading(true);
@@ -87,20 +84,22 @@ export default function ServiceCategoryPage() {
         let lng: number | undefined;
 
         // Gunakan lokasi user jika tersedia
-        if (userProfile?. location?. coordinates) {
-          [lng, lat] = userProfile.location.coordinates; // GeoJSON format [lng, lat]
+        if (userProfile?.location?.coordinates) {
+          [lng, lat] = userProfile.location.coordinates;
         }
 
-        // Kirim category parameter dengan format yang benar
+        console.log("Fetching providers for category:", categoryParam);
+
         const response = await fetchProviders({
           lat,
           lng,
-          category: categoryParam, // Kirim slug kategori langsung
+          category: categoryParam, // Kirim raw slug, backend harus handle case-insensitive
           search: debouncedSearch,
           sortBy: sortBy
         });
 
-        setProviders(Array.isArray(response. data) ? response. data : []);
+        console.log("Providers found:", response.data);
+        setProviders(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error("Gagal memuat data provider:", error);
         setProviders([]);
@@ -109,51 +108,48 @@ export default function ServiceCategoryPage() {
       }
     };
 
-    // [FIX] Jalankan segera setelah isUserLoading selesai
-    // Tidak perlu menunggu userProfile ada, karena lokasi optional
-    if (! isUserLoading) {
-      loadProviders();
-    }
-  }, [categoryParam, debouncedSearch, sortBy, userProfile, isUserLoading]);
+    // Jalankan fetch setiap kali filter berubah
+    loadProviders();
+  }, [categoryParam, debouncedSearch, sortBy, userProfile]);
 
   // --- LOGIKA DISPLAY HELPER ---
   
   const handleBasicOrder = () => {
     const categoryQuery = categoryParam || 'ac';
-    router. push(`/checkout?type=basic&category=${encodeURIComponent(categoryQuery)}`);
+    router.push(`/checkout?type=basic&category=${encodeURIComponent(categoryQuery)}`);
   };
 
   const handleOpenProvider = (providerId: string) => {
-    router. push(`/provider/${providerId}`);
+    router.push(`/provider/${providerId}`);
   };
 
   const getStartingPriceLabel = (provider: Provider) => {
-    if (! provider.services || provider.services.length === 0) return 'Hubungi CS';
+    if (!provider.services || provider.services.length === 0) return 'Hubungi CS';
     const activeServices = provider.services.filter((s: ProviderServiceItem) => s.isActive);
     if (activeServices.length === 0) return 'Bervariasi';
     
     const prices = activeServices.map((s: ProviderServiceItem) => s.price);
     const minPrice = Math.min(...prices);
-    return `Rp ${new Intl.NumberFormat('id-ID'). format(minPrice)}`;
+    return `Rp ${new Intl.NumberFormat('id-ID').format(minPrice)}`;
   };
 
   const getRatingLabel = (provider: Provider) => {
     if (provider.rating && provider.rating > 0) {
-      return provider.rating. toFixed(1);
+      return provider.rating.toFixed(1);
     }
     return 'Baru';
   };
 
   const getLocationLabel = (provider: Provider) => {
     const addr = provider.userId?.address;
-    if (! addr) return 'Lokasi Mitra';
-    if (addr.district) return `Kec.  ${addr.district}`;
+    if (!addr) return 'Lokasi Mitra';
+    if (addr.district) return `Kec. ${addr.district}`;
     if (addr.city) return addr.city;
     return 'Lokasi Mitra';
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-16 font-sans">
+    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-16 font-sans">
       
       {/* HEADER */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
@@ -177,15 +173,15 @@ export default function ServiceCategoryPage() {
           <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
           <div className="relative z-10">
             <h2 className="text-white text-lg lg:text-2xl font-bold mb-1">
-              Butuh Cepat? Gunakan Pesan Cepat!  ⚡
+              Butuh Cepat? Gunakan Pesan Cepat! ⚡
             </h2>
             <p className="text-white/90 text-xs lg:text-sm max-w-xl leading-relaxed">
-              Pilih mitra di bawah atau biarkan sistem mencarikan yang terdekat. 
+              Pilih mitra di bawah atau biarkan sistem mencarikan yang terdekat.
             </p>
           </div>
           <button 
             onClick={handleBasicOrder} 
-            className="relative z-10 self-start lg:self-auto px-5 py-2. 5 lg:px-6 lg:py-3 bg-white text-red-600 text-xs lg:text-sm font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-transform flex items-center gap-2"
+            className="relative z-10 self-start lg:self-auto px-5 py-2.5 lg:px-6 lg:py-3 bg-white text-red-600 text-xs lg:text-sm font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-transform flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             Pesan Cepat (Basic)
@@ -202,7 +198,7 @@ export default function ServiceCategoryPage() {
                 placeholder="Cari nama mitra atau layanan..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2. 5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
+                className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent shadow-sm"
               />
               <svg className="w-4 h-4 absolute left-3 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
@@ -212,7 +208,7 @@ export default function ServiceCategoryPage() {
               <select 
                 value={sortBy} 
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="appearance-none bg-white border border-gray-200 text-gray-700 py-2. 5 pl-4 pr-10 rounded-xl text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="appearance-none bg-white border border-gray-200 text-gray-700 py-2.5 pl-4 pr-10 rounded-xl text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="distance">📍 Terdekat</option>
                 <option value="rating">⭐ Rating Tertinggi</option>
@@ -227,9 +223,9 @@ export default function ServiceCategoryPage() {
             {/* Mobile Filter Button */}
             <button 
               onClick={() => setShowFilterMobile(!showFilterMobile)}
-              className="lg:hidden p-2. 5 bg-white border border-gray-200 rounded-xl shadow-sm"
+              className="lg:hidden p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm"
             >
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2. 586a1 1 0 01-.293.707l-6.414 6. 414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
             </button>
           </div>
 
@@ -245,7 +241,7 @@ export default function ServiceCategoryPage() {
                 <button 
                   key={opt.val}
                   onClick={() => setSortBy(opt.val as any)}
-                  className={`text-xs font-bold py-2. 5 px-3 rounded-lg flex items-center gap-2 transition-colors ${sortBy === opt.val ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-gray-100 text-gray-600 border border-gray-100'}`}
+                  className={`text-xs font-bold py-2.5 px-3 rounded-lg flex items-center gap-2 transition-colors ${sortBy === opt.val ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-gray-100 text-gray-600 border border-gray-100'}`}
                 >
                   <span>{opt.icon}</span> {opt.label}
                 </button>
@@ -274,15 +270,15 @@ export default function ServiceCategoryPage() {
           {!isLoading && providers.length === 0 && (
             <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 border-dashed">
               <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9. 172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               </div>
               <h4 className="text-base font-bold text-gray-900">Tidak ada mitra</h4>
-              <p className="text-xs text-gray-500 mt-1">Belum ada mitra yang sesuai filter Anda di area ini. </p>
+              <p className="text-xs text-gray-500 mt-1">Belum ada mitra yang sesuai filter Anda di area ini.</p>
               <button onClick={() => { setSearchTerm(''); setSortBy('distance'); }} className="mt-4 text-xs font-bold text-red-600 hover:underline">Reset Filter</button>
             </div>
           )}
 
-          {! isLoading && providers.length > 0 && (
+          {!isLoading && providers.length > 0 && (
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-6">
               {providers.map((provider) => (
                 <div 
@@ -293,18 +289,18 @@ export default function ServiceCategoryPage() {
                   {/* Image */}
                   <div className="relative h-28 lg:h-36 bg-gray-100 overflow-hidden">
                     <Image 
-                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7. x/avataaars/svg?seed=${provider.userId?.fullName || 'User'}`} 
+                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId?.fullName || 'User'}`} 
                       alt={provider.userId?.fullName || 'Mitra'} 
                       fill 
                       className="object-cover group-hover:scale-110 transition-transform duration-500" 
                     />
                     
-                    <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-1. 5 py-0.5 rounded text-[9px] lg:text-[10px] font-bold text-white border border-white/10">
+                    <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1 bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] lg:text-[10px] font-bold text-white border border-white/10">
                       ⭐ {getRatingLabel(provider)}
                     </div>
                     
                     {provider.distance && (
-                      <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-0. 5 rounded text-[9px] lg:text-[10px] font-medium text-gray-700">
+                      <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] lg:text-[10px] font-medium text-gray-700">
                         📍 {(provider.distance / 1000).toFixed(1)} km
                       </div>
                     )}
@@ -323,16 +319,16 @@ export default function ServiceCategoryPage() {
                     <div className="flex flex-wrap gap-1 my-1">
                       {provider.services
                         .filter(s => s.isActive)
-                        . slice(0, 2) 
+                        .slice(0, 2) 
                         .map((svc, idx) => (
                           <span key={idx} className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 line-clamp-1">
-                            {svc.serviceId?. name}
+                            {svc.serviceId?.name}
                           </span>
                         ))
                       }
-                      {provider.services. filter(s => s.isActive).length > 2 && (
+                      {provider.services.filter(s => s.isActive).length > 2 && (
                         <span className="text-[9px] lg:text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded border border-gray-100">
-                          +{provider.services.filter(s => s. isActive).length - 2}
+                          +{provider.services.filter(s => s.isActive).length - 2}
                         </span>
                       )}
                     </div>
@@ -342,7 +338,7 @@ export default function ServiceCategoryPage() {
                         <p className="text-[9px] lg:text-[10px] text-gray-400">Mulai dari</p>
                         <p className="text-xs lg:text-sm font-bold text-red-600">{getStartingPriceLabel(provider)}</p>
                       </div>
-                      <button className="bg-red-50 text-red-600 p-1. 5 lg:p-2 rounded-lg text-[10px] lg:text-xs font-bold hover:bg-red-100 transition-colors">
+                      <button className="bg-red-50 text-red-600 p-1.5 lg:p-2 rounded-lg text-[10px] lg:text-xs font-bold hover:bg-red-100 transition-colors">
                         Lihat →
                       </button>
                     </div>

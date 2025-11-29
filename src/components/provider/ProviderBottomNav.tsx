@@ -27,7 +27,7 @@ const JobsIcon = () => (
 
 const MessagesIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h. 01M21 12c0 4.418-4.03 8-9 8a9. 863 9.863 0 01-4.255-. 949L3 20l1. 395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
   </svg>
 );
 
@@ -41,7 +41,6 @@ export default function ProviderBottomNav() {
   const pathname = usePathname();
   const [isProviderMode, setIsProviderMode] = useState<boolean | null>(null);
 
-  // [FIX] Cek role user untuk memastikan navbar yang benar ditampilkan
   useEffect(() => {
     const checkUserMode = async () => {
       try {
@@ -59,19 +58,14 @@ export default function ProviderBottomNav() {
     checkUserMode();
   }, []);
 
-  // [FIX] Jangan render saat masih loading
-  if (isProviderMode === null) {
+  // [FIX] Jangan render saat loading atau bukan provider
+  if (isProviderMode === null || !isProviderMode) {
     return null;
   }
 
-  // [FIX] Jangan render jika user bukan provider mode
-  if (! isProviderMode) {
-    return null;
-  }
-
-  // [FIX] Deteksi halaman profil publik provider (yang dilihat customer)
-  // Jangan render provider nav di halaman /provider/[id]
-  if (pathname && pathname.match(/^\/provider\/[a-f0-9]+$/i)) {
+  // [FIX] Deteksi halaman yang HARUSNYA menggunakan Customer Nav (seperti /services atau halaman public provider)
+  // Jika user provider sedang browsing halaman services, sembunyikan provider nav agar tidak overlap
+  if (pathname && (pathname.startsWith('/services') || pathname.match(/^\/provider\/[a-f0-9]+$/i))) {
     return null;
   }
 
@@ -99,7 +93,7 @@ export default function ProviderBottomNav() {
             href={item.href} 
             className="flex flex-col items-center gap-1 w-16"
           >
-            <div className={`${isActive(item.href) ?  'text-red-600' : 'text-gray-400'}`}>
+            <div className={`${isActive(item.href) ? 'text-red-600' : 'text-gray-400'}`}>
               {item.icon}
             </div>
             <span className={`text-[10px] font-bold ${isActive(item.href) ? 'text-red-600' : 'text-gray-400'}`}>
