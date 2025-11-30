@@ -47,6 +47,13 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+// --- DATA MOCKUP VOUCHER ---
+const AVAILABLE_VOUCHERS = [
+  { code: 'POSKO10', discount: 10000, description: 'Diskon Rp 10.000 untuk pengguna baru' },
+  { code: 'HEMAT50', discount: 50000, description: 'Potongan spesial akhir bulan' },
+  { code: 'ONGKIR0', discount: 5000, description: 'Potongan biaya platform' },
+];
+
 function OrderSummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams(); 
@@ -60,10 +67,13 @@ function OrderSummaryContent() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   // State Form/Input
-  const [promoCode, setPromoCode] = useState('');
-  const [promoMessage, setPromoMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
+  
+  // State Promo (Modal & Code)
+  const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: number} | null>(null);
   
   // Alamat & Lokasi
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
@@ -76,6 +86,7 @@ function OrderSummaryContent() {
     phone: '',
     alternatePhone: ''
   });
+  const [showAlternatePhone, setShowAlternatePhone] = useState(false); // Toggle no hp cadangan
   
   // Order Note
   const [orderNote, setOrderNote] = useState('');
@@ -183,6 +194,23 @@ function OrderSummaryContent() {
     });
   }, []);
 
+  // Handler Promo
+  const handleApplyPromo = (code: string) => {
+    const voucher = AVAILABLE_VOUCHERS.find(v => v.code === code.toUpperCase());
+    if (voucher) {
+        setAppliedPromo({ code: voucher.code, discount: voucher.discount });
+        setIsPromoModalOpen(false);
+        setPromoCodeInput('');
+        alert(`Selamat! Promo ${voucher.code} berhasil digunakan.`);
+    } else {
+        alert('Kode promo tidak valid atau kadaluarsa.');
+    }
+  };
+
+  const handleRemovePromo = () => {
+      setAppliedPromo(null);
+  };
+
   // Submit Order
   const handlePlaceOrderAndPay = async () => {
     if (!scheduledAt) {
@@ -210,10 +238,13 @@ function OrderSummaryContent() {
     try {
       const mainItem = activeCartItems[0];
       
+      // Hitung total setelah diskon (untuk dikirim ke backend, pastikan backend validasi ulang)
+      const finalAmount = Math.max(0, currentTotalAmount - (appliedPromo?.discount || 0));
+
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
-        totalAmount: currentTotalAmount,
+        totalAmount: finalAmount, 
         scheduledAt: new Date(scheduledAt).toISOString(),
         shippingAddress: selectedAddress,
         location: orderLocation, 
@@ -227,7 +258,7 @@ function OrderSummaryContent() {
         customerContact: {
           name: customerContact.name.trim() || userProfile?.fullName || '',
           phone: customerContact.phone.trim(),
-          alternatePhone: customerContact.alternatePhone?.trim() || ''
+          alternatePhone: showAlternatePhone ? (customerContact.alternatePhone?.trim() || '') : ''
         },
         orderNote: orderNote.trim(),
         propertyDetails: propertyDetails,
@@ -282,16 +313,6 @@ function OrderSummaryContent() {
     }
   };
 
-  const handleApplyPromo = () => {
-    if (promoCode.toUpperCase() === 'POSKO10') {
-      setPromoMessage('✅ Promo POSKO10 berhasil diterapkan!  (Mock)');
-    } else if (promoCode) {
-      setPromoMessage('❌ Kode promo tidak valid.');
-    } else {
-      setPromoMessage(null);
-    }
-  };
-
   if (isProfileLoading || !isHydrated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
@@ -316,7 +337,7 @@ function OrderSummaryContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
+    <div className="min-h-screen bg-gray-50 pb-20 font-sans relative">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center gap-3 md:gap-4">
@@ -366,7 +387,6 @@ function OrderSummaryContent() {
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           
           {/* Kiri: Form Input */}
-          {/* FIX: min-w-0 ditambahkan di sini untuk mencegah overflow di Safari */}
           <div className="md:col-span-2 space-y-4 md:space-y-6 min-w-0">
             
             {/* KONTAK CUSTOMER */}
@@ -383,38 +403,54 @@ function OrderSummaryContent() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Penerima</label>
-                  <input 
-                    type="text"
-                    value={customerContact.name}
-                    onChange={(e) => setCustomerContact(prev => ({...prev, name: e.target.value}))}
-                    placeholder="Nama penerima"
-                    // FIX: min-w-0 dan appearance-none ditambahkan
-                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Penerima</label>
+                    <input 
+                      type="text"
+                      value={customerContact.name}
+                      onChange={(e) => setCustomerContact(prev => ({...prev, name: e.target.value}))}
+                      placeholder="Nama penerima"
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">No.HP Utama <span className="text-red-500">*</span></label>
+                    <input 
+                      type="tel"
+                      value={customerContact.phone}
+                      onChange={(e) => setCustomerContact(prev => ({...prev, phone: e.target.value}))}
+                      placeholder="08xx-xxxx-xxxx"
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">No.HP Utama <span className="text-red-500">*</span></label>
-                  <input 
-                    type="tel"
-                    value={customerContact.phone}
-                    onChange={(e) => setCustomerContact(prev => ({...prev, phone: e.target.value}))}
-                    placeholder="08xx-xxxx-xxxx"
-                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                  />
+
+                {/* Toggle Nomor Cadangan */}
+                <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <input 
+                            type="checkbox"
+                            checked={showAlternatePhone}
+                            onChange={(e) => setShowAlternatePhone(e.target.checked)}
+                            className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-xs font-medium text-gray-700">Tambah nomor darurat / cadangan</span>
+                    </label>
+
+                    {showAlternatePhone && (
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                             <input 
+                                type="tel"
+                                value={customerContact.alternatePhone}
+                                onChange={(e) => setCustomerContact(prev => ({...prev, alternatePhone: e.target.value}))}
+                                placeholder="Nomor HP Alternatif"
+                                className="w-full md:w-1/2 min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                            />
+                        </div>
+                    )}
                 </div>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">No.HP Cadangan (opsional)</label>
-                <input 
-                  type="tel"
-                  value={customerContact.alternatePhone}
-                  onChange={(e) => setCustomerContact(prev => ({...prev, alternatePhone: e.target.value}))}
-                  placeholder="Nomor alternatif"
-                  className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                />
               </div>
             </div>
 
@@ -433,7 +469,6 @@ function OrderSummaryContent() {
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
                     min={new Date().toISOString().slice(0, 16)}
-                    // FIX: min-w-0 dan appearance-none SANGAT PENTING untuk datetime-local di Safari
                     className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   />
                 </div>
@@ -503,7 +538,6 @@ function OrderSummaryContent() {
                         </div>
                     </div>
 
-                    {/* Map langsung dirender */}
                     <div className="mt-2">
                         <p className="text-xs text-gray-500 mb-2">Geser pin merah untuk memastikan titik lokasi akurat.</p>
                         <LocationPicker 
@@ -521,14 +555,15 @@ function OrderSummaryContent() {
               )}
             </div>
 
-            {/* DETAIL PROPERTI */}
+            {/* DETAIL PROPERTI (Layout Baru) */}
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div>
                 <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Properti</p>
                 <h2 className="text-base md:text-lg font-bold text-gray-900">Detail Lokasi</h2>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="space-y-4">
+                {/* Baris 1: Tipe Properti */}
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Tipe Properti</label>
                   <select 
@@ -545,108 +580,90 @@ function OrderSummaryContent() {
                     <option value="lainnya">Lainnya</option>
                   </select>
                 </div>
+
+                {/* Baris 2: Lantai - Parkir - Lift */}
+                <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+                    <div className="w-full md:w-32">
+                        <label className="text-xs font-medium text-gray-600 mb-1 block">Lantai</label>
+                        <input 
+                            type="number"
+                            min="0"
+                            value={propertyDetails.floor ??  ''}
+                            onChange={(e) => setPropertyDetails(prev => ({...prev, floor: e.target.value ?  parseInt(e.target.value) : null}))}
+                            placeholder="Lt. ke"
+                            className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                        />
+                    </div>
+                    
+                    <div className="flex gap-4 md:pb-3">
+                        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg border border-transparent hover:border-gray-200 transition-all">
+                            <input 
+                                type="checkbox"
+                                checked={propertyDetails.hasParking}
+                                onChange={(e) => setPropertyDetails(prev => ({...prev, hasParking: e.target.checked}))}
+                                className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-xs font-medium text-gray-700">Ada parkir</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded-lg border border-transparent hover:border-gray-200 transition-all">
+                            <input 
+                                type="checkbox"
+                                checked={propertyDetails.hasElevator}
+                                onChange={(e) => setPropertyDetails(prev => ({...prev, hasElevator: e.target.checked}))}
+                                className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-xs font-medium text-gray-700">Ada lift</span>
+                        </label>
+                    </div>
+                </div>
+                
+                {/* Baris 3: Catatan Akses */}
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Lantai</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Catatan Akses</label>
                   <input 
-                    type="number"
-                    min="0"
-                    value={propertyDetails.floor ??  ''}
-                    onChange={(e) => setPropertyDetails(prev => ({...prev, floor: e.target.value ?  parseInt(e.target.value) : null}))}
-                    placeholder="Contoh: 1"
+                    type="text"
+                    value={propertyDetails.accessNote}
+                    onChange={(e) => setPropertyDetails(prev => ({...prev, accessNote: e.target.value}))}
+                    placeholder="Contoh: Pagar hitam, masuk lewat samping..."
                     className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   />
                 </div>
               </div>
-              
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={propertyDetails.hasParking}
-                    onChange={(e) => setPropertyDetails(prev => ({...prev, hasParking: e.target.checked}))}
-                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-xs md:text-sm text-gray-700">Ada parkir</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={propertyDetails.hasElevator}
-                    onChange={(e) => setPropertyDetails(prev => ({...prev, hasElevator: e.target.checked}))}
-                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-xs md:text-sm text-gray-700">Ada lift</span>
-                </label>
-              </div>
-              
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Catatan Akses</label>
-                <input 
-                  type="text"
-                  value={propertyDetails.accessNote}
-                  onChange={(e) => setPropertyDetails(prev => ({...prev, accessNote: e.target.value}))}
-                  placeholder="Pagar warna hitam, masuk dari samping..."
-                  className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                />
-              </div>
             </div>
 
-            {/* CATATAN ORDER */}
-            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-              <div>
-                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Catatan</p>
-                <h2 className="text-base md:text-lg font-bold text-gray-900">Instruksi Khusus</h2>
-              </div>
-              <textarea 
-                value={orderNote}
-                onChange={(e) => setOrderNote(e.target.value.slice(0, 500))}
-                placeholder="Pesan tambahan untuk mitra..."
-                rows={3}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
-              />
+            {/* DOKUMENTASI & CATATAN (DIGABUNG) */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+               {/* Bagian Catatan */}
+               <div className="space-y-3">
+                    <div>
+                        <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Tambahan</p>
+                        <h2 className="text-base md:text-lg font-bold text-gray-900">Catatan Order</h2>
+                    </div>
+                    <textarea 
+                        value={orderNote}
+                        onChange={(e) => setOrderNote(e.target.value.slice(0, 500))}
+                        placeholder="Tulis pesan tambahan atau instruksi khusus untuk mitra..."
+                        rows={2}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
+                    />
+               </div>
+
+               <div className="border-t border-gray-100"></div>
+
+               {/* Bagian Foto */}
+               <div className="space-y-3">
+                   <div>
+                        <h3 className="text-sm md:text-base font-bold text-gray-900">Lampiran Foto</h3>
+                        <p className="text-xs text-gray-500 mt-1">Tambahkan foto kondisi awal (maks. 5 foto)</p>
+                   </div>
+                   <AttachmentUploader 
+                        attachments={attachments}
+                        onAdd={handleAddAttachment}
+                        onRemove={handleRemoveAttachment}
+                    />
+               </div>
             </div>
 
-            {/* UPLOAD FOTO */}
-            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-              <div>
-                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Dokumentasi</p>
-                <h2 className="text-base md:text-lg font-bold text-gray-900">Lampiran Foto</h2>
-                <p className="text-xs text-gray-500 mt-1">Tambahkan foto kondisi awal (maks. 5 foto)</p>
-              </div>
-              
-              {/* Gunakan komponen Upload baru */}
-              <AttachmentUploader 
-                attachments={attachments}
-                onAdd={handleAddAttachment}
-                onRemove={handleRemoveAttachment}
-              />
-            </div>
-
-            {/* Promo */}
-            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-              <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Voucher</p>
-              <h2 className="text-base md:text-lg font-bold text-gray-900">Kode Promo</h2>
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  placeholder="Masukkan kode promo..."
-                  className="flex-1 min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                />
-                <button 
-                  onClick={handleApplyPromo}
-                  className="px-6 py-2 md:py-3 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition-colors"
-                >
-                  Terapkan
-                </button>
-              </div>
-              {promoMessage && (
-                <p className={`text-xs md:text-sm font-medium ${promoMessage.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
-                  {promoMessage}
-                </p>
-              )}
-            </div>
           </div>
 
           {/* Kanan: Ringkasan Pembayaran */}
@@ -663,18 +680,41 @@ function OrderSummaryContent() {
                   <span className="text-gray-600">Biaya Platform</span>
                   <span className="font-semibold text-green-600">Gratis</span>
                 </div>
-                {promoMessage?.startsWith('✅') && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Diskon Promo</span>
-                    <span className="font-semibold">-Rp 10.000</span>
-                  </div>
+                
+                {/* PROMO CODE DISPLAY */}
+                {appliedPromo ? (
+                   <div className="flex justify-between items-center text-green-600 bg-green-50 p-2 rounded-lg border border-green-100">
+                     <div className="flex flex-col">
+                        <span className="font-bold text-xs">Voucher: {appliedPromo.code}</span>
+                        <span className="text-[10px] text-green-700">Berhasil diterapkan</span>
+                     </div>
+                     <div className="flex items-center gap-2">
+                         <span className="font-semibold text-sm">-{formatCurrency(appliedPromo.discount)}</span>
+                         <button onClick={handleRemovePromo} className="text-red-500 hover:text-red-700">
+                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                         </button>
+                     </div>
+                   </div>
+                ) : (
+                    <div className="pt-2">
+                        <button 
+                            onClick={() => setIsPromoModalOpen(true)}
+                            className="text-red-600 text-xs md:text-sm font-semibold hover:underline flex items-center gap-1"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
+                            Makin hemat dengan promo?
+                        </button>
+                    </div>
                 )}
+
               </div>
               
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-900 font-bold text-sm md:text-base">Total Pembayaran</span>
-                  <span className="text-xl md:text-2xl font-black text-red-600">{formatCurrency(currentTotalAmount)}</span>
+                  <span className="text-xl md:text-2xl font-black text-red-600">
+                      {formatCurrency(Math.max(0, currentTotalAmount - (appliedPromo?.discount || 0)))}
+                  </span>
                 </div>
               </div>
 
@@ -713,6 +753,59 @@ function OrderSummaryContent() {
           </div>
         </section>
       </main>
+
+      {/* MODAL PROMO */}
+      {isPromoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                    <h3 className="font-bold text-lg text-gray-900">Pakai Promo</h3>
+                    <button onClick={() => setIsPromoModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                
+                <div className="p-4 space-y-4">
+                    {/* Input Code */}
+                    <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            value={promoCodeInput}
+                            onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                            placeholder="Masukkan kode voucher"
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none uppercase"
+                        />
+                        <button 
+                            onClick={() => handleApplyPromo(promoCodeInput)}
+                            disabled={!promoCodeInput}
+                            className="px-4 py-2 bg-gray-900 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-gray-800 transition-colors"
+                        >
+                            Pakai
+                        </button>
+                    </div>
+                    
+                    {/* List Voucher */}
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Voucher Tersedia</p>
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            {AVAILABLE_VOUCHERS.map((voucher) => (
+                                <div key={voucher.code} className="border border-gray-200 rounded-xl p-3 flex justify-between items-center hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer" onClick={() => handleApplyPromo(voucher.code)}>
+                                    <div>
+                                        <p className="font-bold text-gray-900">{voucher.code}</p>
+                                        <p className="text-xs text-gray-500">{voucher.description}</p>
+                                    </div>
+                                    <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
+                                        Hemat {formatCurrency(voucher.discount)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -731,3 +824,4 @@ export default function OrderSummaryPage() {
     </Suspense>
   );
 }
+
