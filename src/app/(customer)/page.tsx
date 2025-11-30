@@ -104,11 +104,11 @@ export default function HomePage() {
     if (cart.length > 0) {
         const firstItem = cart[0];
         if (firstItem.orderType === 'direct' && firstItem.providerId) {
-            return `/checkout? type=direct&providerId=${firstItem.providerId}`;
+            return `/checkout?type=direct&providerId=${firstItem.providerId}`;
         }
         return `/checkout?type=basic`;
     }
-    return '/checkout? type=basic';
+    return '/checkout?type=basic';
   }, [cart]);
 
   const handleLogout = () => {

@@ -23,7 +23,11 @@ export default function ProviderHeroSection({
   onShare,
   onOpenCalendar,
 }: ProviderHeroSectionProps) {
-  const totalOrders = provider.totalCompletedOrders ??  0;
+  const totalOrders = provider.totalCompletedOrders ?? 0;
+  
+  // Asumsi: Pastikan tipe data 'Provider' Anda memiliki properti 'totalFavorites'
+  // Jika nama di database berbeda (misal: favoritesCount), silakan sesuaikan di sini.
+  const totalFavorites = (provider as any).totalFavorites ?? 0; 
 
   return (
     <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 relative overflow-hidden group">
@@ -33,7 +37,8 @@ export default function ProviderHeroSection({
         {/* Profile Picture */}
         <div className="flex justify-center md:justify-start shrink-0">
           <div className="relative w-28 h-28 lg:w-36 lg:h-36">
-            <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100">
+            {/* Class rounded-full & overflow-hidden memastikan foto benar-benar bulat */}
+            <div className="w-full h-full rounded-full border-4 border-white shadow-lg overflow-hidden bg-gray-100 relative">
               <Image
                 src={
                   provider.userId?.profilePictureUrl ||
@@ -70,8 +75,10 @@ export default function ProviderHeroSection({
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-            {/* Stats */}
+            {/* Stats Block */}
             <div className="flex items-center gap-4 divide-x divide-gray-200 bg-white border border-gray-200 px-4 py-2 rounded-xl shadow-sm w-full sm:w-auto justify-center sm:justify-start">
+              
+              {/* Rating */}
               <div className="flex items-center gap-1.5 pr-2">
                 <span className="text-yellow-500 text-lg">★</span>
                 <div className="flex flex-col items-start">
@@ -81,12 +88,23 @@ export default function ProviderHeroSection({
                   <span className="text-[9px] text-gray-400 font-bold uppercase">Rating</span>
                 </div>
               </div>
+
+              {/* Pesanan */}
               <div className="flex flex-col items-start pl-4">
                 <span className="text-sm font-black text-gray-900 leading-none">
                   {totalOrders > 0 ? (totalOrders > 99 ? '99+' : totalOrders) : '0'}
                 </span>
                 <span className="text-[9px] text-gray-400 font-bold uppercase">Pesanan</span>
               </div>
+
+              {/* BARU: Jumlah Favorit */}
+              <div className="flex flex-col items-start pl-4">
+                <span className="text-sm font-black text-gray-900 leading-none">
+                  {totalFavorites > 0 ? (totalFavorites > 999 ? '999+' : totalFavorites) : '0'}
+                </span>
+                <span className="text-[9px] text-gray-400 font-bold uppercase">Favorit</span>
+              </div>
+
             </div>
 
             {/* Actions */}
