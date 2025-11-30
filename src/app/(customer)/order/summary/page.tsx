@@ -4,7 +4,7 @@
 import { useMemo, useState, Suspense, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+import dynamic from 'next/dynamic'; 
 
 import { useCart } from '@/features/cart/useCart';
 import { createOrder } from '@/features/orders/api';
@@ -13,6 +13,18 @@ import { CreateOrderPayload, CustomerContact, PropertyDetails, ScheduledTimeSlot
 import useMidtrans from '@/hooks/useMidtrans'; 
 import { fetchProfile } from '@/features/auth/api';
 import { User, Address, GeoLocation } from '@/features/auth/types';
+
+// Import komponen lokal
+import { AttachmentUploader } from '@/components/OrderComponents'; 
+
+// Import Dynamic untuk Map
+const LocationPicker = dynamic(
+  () => import('@/components/OrderComponents').then((mod) => mod.LocationPicker),
+  { 
+    ssr: false, 
+    loading: () => <div className="w-full h-[300px] bg-gray-200 animate-pulse rounded-xl flex items-center justify-center text-gray-500 text-sm">Memuat Peta...</div>
+  }
+);
 
 declare global {
   interface Window {
@@ -55,19 +67,20 @@ function OrderSummaryContent() {
   
   // Alamat & Lokasi
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
-  const [selectedLocation, setSelectedLocation] = useState<GeoLocation | undefined>(undefined);
+  // Lokasi yang akan dikirim ke API
+  const [orderLocation, setOrderLocation] = useState<GeoLocation | undefined>(undefined);
   
-  // [BARU] Customer Contact (CRITICAL)
+  // Customer Contact
   const [customerContact, setCustomerContact] = useState<CustomerContact>({
     name: '',
     phone: '',
     alternatePhone: ''
   });
   
-  // [BARU] Order Note (HIGH)
+  // Order Note
   const [orderNote, setOrderNote] = useState('');
   
-  // [BARU] Property Details (MEDIUM)
+  // Property Details
   const [propertyDetails, setPropertyDetails] = useState<PropertyDetails>({
     type: '',
     floor: null,
@@ -76,17 +89,18 @@ function OrderSummaryContent() {
     accessNote: ''
   });
   
-  // [BARU] Time Slot (MEDIUM)
+  // Time Slot
   const [timeSlot, setTimeSlot] = useState<ScheduledTimeSlot>({
     preferredStart: '',
     preferredEnd: '',
     isFlexible: true
   });
   
-  // [BARU] Attachments (HIGH)
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [attachmentUrl, setAttachmentUrl] = useState('');
-  const [attachmentDesc, setAttachmentDesc] = useState('');
+  // Attachments 
+  interface UIAttachment extends Attachment {
+    file?: File;
+  }
+  const [attachments, setAttachments] = useState<UIAttachment[]>([]);
 
   // Load User Profile
   useEffect(() => {
@@ -100,10 +114,10 @@ function OrderSummaryContent() {
           setSelectedAddress(profile.address);
         }
         if (profile.location && profile.location.coordinates && profile.location.coordinates[0] !== 0) {
-          setSelectedLocation(profile.location);
+          setOrderLocation(profile.location);
         }
         
-        // [BARU] Pre-fill customer contact dari profile
+        // Pre-fill customer contact dari profile
         setCustomerContact({
           name: profile.fullName || '',
           phone: profile.phoneNumber || '',
@@ -144,31 +158,29 @@ function OrderSummaryContent() {
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
-  // [BARU] Handler untuk add attachment
-  const handleAddAttachment = useCallback(() => {
-    if (! attachmentUrl.trim()) {
-      alert('Masukkan URL gambar terlebih dahulu');
-      return;
-    }
-    
-    if (attachments.length >= 5) {
-      alert('Maksimal 5 lampiran');
-      return;
-    }
+  // Handler add attachment pakai File
+  const handleAddAttachment = useCallback((file: File, desc: string) => {
+    const previewUrl = URL.createObjectURL(file);
     
     setAttachments(prev => [...prev, {
-      url: attachmentUrl.trim(),
+      url: previewUrl, 
       type: 'photo',
-      description: attachmentDesc.trim()
+      description: desc.trim(),
+      file: file 
     }]);
-    
-    setAttachmentUrl('');
-    setAttachmentDesc('');
-  }, [attachmentUrl, attachmentDesc, attachments.length]);
+  }, []);
 
-  // [BARU] Handler untuk remove attachment
+  // Handler remove attachment
   const handleRemoveAttachment = useCallback((index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Handler update lokasi dari Map
+  const handleLocationChange = useCallback((lat: number, lng: number) => {
+    setOrderLocation({
+        type: 'Point',
+        coordinates: [lng, lat] // GeoJSON format: [lng, lat]
+    });
   }, []);
 
   // Submit Order
@@ -178,12 +190,11 @@ function OrderSummaryContent() {
       return;
     }
     
-    if (!selectedAddress || !selectedLocation || selectedLocation.coordinates[0] === 0) {
+    if (!selectedAddress || !orderLocation || orderLocation.coordinates[0] === 0) {
       alert("Mohon lengkapi alamat dan titik lokasi Anda.");
       return;
     }
     
-    // [BARU] Validasi Customer Contact (CRITICAL)
     if (!customerContact.phone.trim()) {
       alert("Mohon isi nomor HP yang bisa dihubungi.");
       return;
@@ -199,14 +210,13 @@ function OrderSummaryContent() {
     try {
       const mainItem = activeCartItems[0];
       
-      // [UPDATE] Payload dengan field baru
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
         providerId: mainItem.orderType === 'direct' ? mainItem.providerId : null,
         totalAmount: currentTotalAmount,
         scheduledAt: new Date(scheduledAt).toISOString(),
         shippingAddress: selectedAddress,
-        location: selectedLocation,
+        location: orderLocation, 
         items: activeCartItems.map(item => ({
           serviceId: item.serviceId,
           name: item.serviceName,
@@ -214,7 +224,6 @@ function OrderSummaryContent() {
           price: item.pricePerUnit,
           note: '' 
         })),
-        // [BARU] Field tambahan
         customerContact: {
           name: customerContact.name.trim() || userProfile?.fullName || '',
           phone: customerContact.phone.trim(),
@@ -223,19 +232,21 @@ function OrderSummaryContent() {
         orderNote: orderNote.trim(),
         propertyDetails: propertyDetails,
         scheduledTimeSlot: timeSlot,
-        attachments: attachments
+        attachments: attachments.map(att => ({
+            url: att.url,
+            type: att.type,
+            description: att.description
+        }))
       };
 
       console.log("1.Membuat Order...", orderPayload);
       const orderRes = await createOrder(orderPayload);
       const orderId = orderRes.data._id;
       const orderNumber = orderRes.data.orderNumber;
-      console.log(`   ✅ Order Terbentuk: ${orderNumber} (ID: ${orderId})`);
-
+      
       console.log("2. Meminta Token Pembayaran...");
       const paymentRes = await createPayment(orderId);
       const snapToken = paymentRes.data.snapToken;
-      console.log("   ✅ Token Diterima!");
 
       console.log("3.Membuka Snap Midtrans...");
       if (window.snap) {
@@ -271,7 +282,6 @@ function OrderSummaryContent() {
     }
   };
 
-  // Promo Code
   const handleApplyPromo = () => {
     if (promoCode.toUpperCase() === 'POSKO10') {
       setPromoMessage('✅ Promo POSKO10 berhasil diterapkan!  (Mock)');
@@ -282,20 +292,11 @@ function OrderSummaryContent() {
     }
   };
 
-  if (isProfileLoading) {
+  if (isProfileLoading || !isHydrated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
         <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
         <p className="text-sm text-gray-500">Memuat data...</p>
-      </div>
-    );
-  }
-
-  if (! isHydrated) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
-        <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
-        <p className="text-sm text-gray-500">Memuat keranjang...</p>
       </div>
     );
   }
@@ -307,90 +308,91 @@ function OrderSummaryContent() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
-        <p className="text-sm text-gray-500 mb-6">Anda belum memilih layanan apapun.</p>
-        <Link href="/checkout" className="px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
-          Kembali ke Daftar Layanan
+        <Link href="/checkout" className="inline-block mt-4 px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
+          Kembali ke Layanan
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10 font-sans">
+    <div className="min-h-screen bg-gray-50 pb-20 font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 lg:px-8 py-4 flex items-center gap-4">
-          <button onClick={() => router.back()} className="text-gray-600 hover:text-red-600">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center gap-3 md:gap-4">
+          <button onClick={() => router.back()} className="text-gray-600 hover:text-red-600 p-1">
+            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Langkah Terakhir</span>
-            <h1 className="text-xl font-bold text-gray-900">Ringkasan Pesanan</h1>
+            <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wide text-gray-400 block">Langkah Terakhir</span>
+            <h1 className="text-lg md:text-xl font-bold text-gray-900">Ringkasan Pesanan</h1>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 lg:px-8 py-8 space-y-6">
+      <main className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-4 md:space-y-6">
         
         {/* Detail Item Pesanan */}
-        <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <section className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Item Pesanan</p>
-              <h2 className="text-lg font-bold text-gray-900">Layanan yang dipesan</h2>
+              <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Item Pesanan</p>
+              <h2 className="text-base md:text-lg font-bold text-gray-900">Layanan yang dipesan</h2>
             </div>
-            <button onClick={() => router.back()} className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline">
+            <button onClick={() => router.back()} className="text-xs md:text-sm font-bold text-red-600 hover:text-red-700 hover:underline">
               Ubah
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {activeCartItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-4 py-3 border-b border-gray-50 last:border-b-0">
+              <div key={item.id} className="flex items-start justify-between gap-3 py-3 border-b border-gray-50 last:border-b-0">
                 <div className="flex-1">
-                  <h3 className="font-bold text-gray-900">{item.serviceName}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <h3 className="text-sm md:text-base font-bold text-gray-900 line-clamp-2">{item.serviceName}</h3>
+                  <p className="text-[10px] md:text-xs text-gray-500 mt-0.5">
                     {item.orderType === 'direct' ? `Mitra: ${item.providerName}` : 'Cari Otomatis'}
                   </p>
                   <p className="text-xs text-gray-600 font-medium mt-1">{item.quantity} x {formatCurrency(item.pricePerUnit)}</p>
                 </div>
-                <p className="text-sm font-bold text-gray-900 whitespace-nowrap">{formatCurrency(item.totalPrice)}</p>
+                <p className="text-sm md:text-base font-bold text-gray-900 whitespace-nowrap">{formatCurrency(item.totalPrice)}</p>
               </div>
             ))}
           </div>
         </section>
 
         {/* Informasi & Pembayaran */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           
           {/* Kiri: Form Input */}
-          <div className="md:col-span-2 space-y-6">
+          {/* FIX: min-w-0 ditambahkan di sini untuk mencegah overflow di Safari */}
+          <div className="md:col-span-2 space-y-4 md:space-y-6 min-w-0">
             
-            {/* [BARU] KONTAK CUSTOMER (CRITICAL) */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+            {/* KONTAK CUSTOMER */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-red-50 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-red-50 rounded-full flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                   </svg>
                 </div>
                 <div>
-                  <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Kontak</p>
-                  <h2 className="text-lg font-bold text-gray-900">Informasi Kontak <span className="text-red-500">*</span></h2>
+                  <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Kontak</p>
+                  <h2 className="text-base md:text-lg font-bold text-gray-900">Info Kontak <span className="text-red-500">*</span></h2>
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Nama Penerima</label>
                   <input 
                     type="text"
                     value={customerContact.name}
                     onChange={(e) => setCustomerContact(prev => ({...prev, name: e.target.value}))}
-                    placeholder="Nama yang menerima kunjungan"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    placeholder="Nama penerima"
+                    // FIX: min-w-0 dan appearance-none ditambahkan
+                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   />
                 </div>
                 <div>
@@ -400,7 +402,7 @@ function OrderSummaryContent() {
                     value={customerContact.phone}
                     onChange={(e) => setCustomerContact(prev => ({...prev, phone: e.target.value}))}
                     placeholder="08xx-xxxx-xxxx"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -410,93 +412,106 @@ function OrderSummaryContent() {
                   type="tel"
                   value={customerContact.alternatePhone}
                   onChange={(e) => setCustomerContact(prev => ({...prev, alternatePhone: e.target.value}))}
-                  placeholder="Nomor alternatif jika tidak bisa dihubungi"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                  placeholder="Nomor alternatif"
+                  className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                 />
               </div>
             </div>
 
-            {/* INPUT JADWAL KUNJUNGAN */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+            {/* JADWAL KUNJUNGAN */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div>
-                <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Jadwal</p>
-                <h2 className="text-lg font-bold text-gray-900">Kapan kami harus datang?</h2>
+                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Jadwal</p>
+                <h2 className="text-base md:text-lg font-bold text-gray-900">Waktu Kedatangan</h2>
               </div>
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Tanggal & Waktu Kedatangan <span className="text-red-500">*</span></label>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Tanggal & Waktu <span className="text-red-500">*</span></label>
                   <input 
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(e) => setScheduledAt(e.target.value)}
                     min={new Date().toISOString().slice(0, 16)}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    // FIX: min-w-0 dan appearance-none SANGAT PENTING untuk datetime-local di Safari
+                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   />
                 </div>
                 
-                {/* [BARU] TIME SLOT PREFERENCE (MEDIUM) */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Mulai Preferensi</label>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Mulai (Pref)</label>
                     <input 
                       type="time"
                       value={timeSlot.preferredStart}
                       onChange={(e) => setTimeSlot(prev => ({...prev, preferredStart: e.target.value}))}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Selesai Preferensi</label>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">Jam Selesai (Pref)</label>
                     <input 
                       type="time"
                       value={timeSlot.preferredEnd}
                       onChange={(e) => setTimeSlot(prev => ({...prev, preferredEnd: e.target.value}))}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                      className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                     />
                   </div>
                 </div>
                 
-                <label className="flex items-center gap-3 cursor-pointer">
+                <label className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors">
                   <input 
                     type="checkbox"
                     checked={timeSlot.isFlexible}
                     onChange={(e) => setTimeSlot(prev => ({...prev, isFlexible: e.target.checked}))}
-                    className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                   />
-                  <span className="text-sm text-gray-700">Waktu fleksibel (boleh datang di luar rentang jam di atas)</span>
+                  <span className="text-xs md:text-sm text-gray-700">Waktu fleksibel</span>
                 </label>
               </div>
-              
-              <p className="text-xs text-gray-400">* Pilih tanggal dan jam kunjungan yang Anda inginkan.</p>
             </div>
 
-            {/* Alamat */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+            {/* ALAMAT & MAPS INTEGRATION */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Lokasi</p>
-                  <h2 className="text-lg font-bold text-gray-900">Alamat Pelayanan</h2>
+                  <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Lokasi</p>
+                  <h2 className="text-base md:text-lg font-bold text-gray-900">Alamat Pelayanan</h2>
                 </div>
                 <button 
                    onClick={() => router.push('/profile')}
-                   className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
+                   className="text-xs md:text-sm font-bold text-red-600 hover:text-red-700 hover:underline"
                 >
-                    Ubah
+                    Ganti Alamat
                 </button>
               </div>
               
-              {selectedAddress && selectedLocation ?  (
-                 <div className="text-sm text-gray-700 space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <p className="font-bold text-gray-900 leading-snug">
-                        {userProfile?.fullName} ({selectedAddress.city})
-                    </p>
-                    <p className="text-gray-700 leading-snug">
-                        {selectedAddress.detail}, Kel. {selectedAddress.village}, Kec.{selectedAddress.district}
-                    </p>
-                    <p className="text-gray-500 text-xs mt-2">
-                        Koordinat: {selectedLocation.coordinates[1].toFixed(5)}, {selectedLocation.coordinates[0].toFixed(5)}
-                    </p>
+              {selectedAddress && orderLocation ?  (
+                 <div className="space-y-4">
+                    <div className="text-sm text-gray-700 space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <p className="font-bold text-gray-900 leading-snug text-sm md:text-base">
+                            {userProfile?.fullName} ({selectedAddress.city})
+                        </p>
+                        <p className="text-gray-600 text-xs md:text-sm leading-relaxed">
+                            {selectedAddress.detail}, Kel. {selectedAddress.village}, Kec.{selectedAddress.district}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
+                             <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium">Titik Peta</span>
+                             <p className="text-gray-500 text-[10px]">
+                                {orderLocation.coordinates[1].toFixed(5)}, {orderLocation.coordinates[0].toFixed(5)}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Map langsung dirender */}
+                    <div className="mt-2">
+                        <p className="text-xs text-gray-500 mb-2">Geser pin merah untuk memastikan titik lokasi akurat.</p>
+                        <LocationPicker 
+                            initialLat={orderLocation.coordinates[1]} 
+                            initialLng={orderLocation.coordinates[0]}
+                            onLocationChange={handleLocationChange}
+                        />
+                    </div>
                 </div>
               ) : (
                 <div className="text-sm text-gray-700 space-y-1 bg-yellow-50 p-4 rounded-xl border border-yellow-200">
@@ -506,20 +521,20 @@ function OrderSummaryContent() {
               )}
             </div>
 
-            {/* [BARU] DETAIL PROPERTI (MEDIUM) */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+            {/* DETAIL PROPERTI */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div>
-                <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Detail Lokasi</p>
-                <h2 className="text-lg font-bold text-gray-900">Informasi Properti</h2>
+                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Properti</p>
+                <h2 className="text-base md:text-lg font-bold text-gray-900">Detail Lokasi</h2>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 <div>
                   <label className="text-xs font-medium text-gray-600 mb-1 block">Tipe Properti</label>
                   <select 
                     value={propertyDetails.type}
                     onChange={(e) => setPropertyDetails(prev => ({...prev, type: e.target.value as PropertyDetails['type']}))}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    className="w-full px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   >
                     <option value="">Pilih tipe...</option>
                     <option value="rumah">Rumah</option>
@@ -531,14 +546,14 @@ function OrderSummaryContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1 block">Lantai (jika apartemen/gedung)</label>
+                  <label className="text-xs font-medium text-gray-600 mb-1 block">Lantai</label>
                   <input 
                     type="number"
                     min="0"
                     value={propertyDetails.floor ??  ''}
                     onChange={(e) => setPropertyDetails(prev => ({...prev, floor: e.target.value ?  parseInt(e.target.value) : null}))}
-                    placeholder="Contoh: 5"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                    placeholder="Contoh: 1"
+                    className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -549,141 +564,85 @@ function OrderSummaryContent() {
                     type="checkbox"
                     checked={propertyDetails.hasParking}
                     onChange={(e) => setPropertyDetails(prev => ({...prev, hasParking: e.target.checked}))}
-                    className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                   />
-                  <span className="text-sm text-gray-700">Ada tempat parkir</span>
+                  <span className="text-xs md:text-sm text-gray-700">Ada parkir</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input 
                     type="checkbox"
                     checked={propertyDetails.hasElevator}
                     onChange={(e) => setPropertyDetails(prev => ({...prev, hasElevator: e.target.checked}))}
-                    className="w-5 h-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
                   />
-                  <span className="text-sm text-gray-700">Ada lift/elevator</span>
+                  <span className="text-xs md:text-sm text-gray-700">Ada lift</span>
                 </label>
               </div>
               
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">Catatan Akses Khusus</label>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">Catatan Akses</label>
                 <input 
                   type="text"
                   value={propertyDetails.accessNote}
                   onChange={(e) => setPropertyDetails(prev => ({...prev, accessNote: e.target.value}))}
-                  placeholder="Contoh: Masuk dari pintu samping, warna hijau"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                  placeholder="Pagar warna hitam, masuk dari samping..."
+                  className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                 />
               </div>
             </div>
 
-            {/* [BARU] CATATAN ORDER (HIGH) */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+            {/* CATATAN ORDER */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
               <div>
-                <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Catatan</p>
-                <h2 className="text-lg font-bold text-gray-900">Instruksi Khusus untuk Mitra</h2>
+                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Catatan</p>
+                <h2 className="text-base md:text-lg font-bold text-gray-900">Instruksi Khusus</h2>
               </div>
               <textarea 
                 value={orderNote}
                 onChange={(e) => setOrderNote(e.target.value.slice(0, 500))}
-                placeholder="Contoh: Hubungi via WhatsApp sebelum datang, parkir di basement lantai 2, dll."
+                placeholder="Pesan tambahan untuk mitra..."
                 rows={3}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all resize-none"
               />
-              <p className="text-xs text-gray-400 text-right">{orderNote.length}/500 karakter</p>
             </div>
 
-            {/* [BARU] LAMPIRAN/FOTO (HIGH) */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+            {/* UPLOAD FOTO */}
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <div>
-                <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Dokumentasi</p>
-                <h2 className="text-lg font-bold text-gray-900">Lampiran Foto/Gambar</h2>
-                <p className="text-xs text-gray-500 mt-1">Tambahkan foto kondisi awal untuk referensi mitra (maks. 5 foto)</p>
+                <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Dokumentasi</p>
+                <h2 className="text-base md:text-lg font-bold text-gray-900">Lampiran Foto</h2>
+                <p className="text-xs text-gray-500 mt-1">Tambahkan foto kondisi awal (maks. 5 foto)</p>
               </div>
               
-              {/* Input URL gambar */}
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <input 
-                    type="url"
-                    value={attachmentUrl}
-                    onChange={(e) => setAttachmentUrl(e.target.value)}
-                    placeholder="Masukkan URL gambar..."
-                    className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                  />
-                  <button 
-                    type="button"
-                    onClick={handleAddAttachment}
-                    disabled={attachments.length >= 5}
-                    className="px-4 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Tambah
-                  </button>
-                </div>
-                <input 
-                  type="text"
-                  value={attachmentDesc}
-                  onChange={(e) => setAttachmentDesc(e.target.value)}
-                  placeholder="Deskripsi gambar (opsional)..."
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                />
-              </div>
-              
-              {/* Daftar lampiran */}
-              {attachments.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {attachments.map((att, index) => (
-                    <div key={index} className="relative group">
-                      <div className="aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
-                        <Image 
-                          src={att.url} 
-                          alt={att.description || `Lampiran ${index + 1}`}
-                          width={200}
-                          height={200}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/placeholder-image.png';
-                          }}
-                        />
-                      </div>
-                      {att.description && (
-                        <p className="text-xs text-gray-500 mt-1 truncate">{att.description}</p>
-                      )}
-                      <button 
-                        type="button"
-                        onClick={() => handleRemoveAttachment(index)}
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Gunakan komponen Upload baru */}
+              <AttachmentUploader 
+                attachments={attachments}
+                onAdd={handleAddAttachment}
+                onRemove={handleRemoveAttachment}
+              />
             </div>
 
             {/* Promo */}
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-              <p className="text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Voucher</p>
-              <h2 className="text-lg font-bold text-gray-900">Kode Promo</h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+              <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Voucher</p>
+              <h2 className="text-base md:text-lg font-bold text-gray-900">Kode Promo</h2>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <input
                   type="text"
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                   placeholder="Masukkan kode promo..."
-                  className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
+                  className="flex-1 min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                 />
                 <button 
                   onClick={handleApplyPromo}
-                  className="px-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors"
+                  className="px-6 py-2 md:py-3 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition-colors"
                 >
                   Terapkan
                 </button>
               </div>
               {promoMessage && (
-                <p className={`text-sm font-medium ${promoMessage.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text-xs md:text-sm font-medium ${promoMessage.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
                   {promoMessage}
                 </p>
               )}
@@ -692,10 +651,10 @@ function OrderSummaryContent() {
 
           {/* Kanan: Ringkasan Pembayaran */}
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 sticky top-24">
-              <h2 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Ringkasan Pembayaran</h2>
+            <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 sticky top-24">
+              <h2 className="text-base md:text-lg font-bold text-gray-900 border-b border-gray-100 pb-3">Ringkasan Pembayaran</h2>
               
-              <div className="space-y-3 text-sm">
+              <div className="space-y-3 text-xs md:text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal Layanan</span>
                   <span className="font-semibold text-gray-900">{formatCurrency(currentTotalAmount)}</span>
@@ -714,8 +673,8 @@ function OrderSummaryContent() {
               
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-900 font-bold">Total Pembayaran</span>
-                  <span className="text-2xl font-black text-red-600">{formatCurrency(currentTotalAmount)}</span>
+                  <span className="text-gray-900 font-bold text-sm md:text-base">Total Pembayaran</span>
+                  <span className="text-xl md:text-2xl font-black text-red-600">{formatCurrency(currentTotalAmount)}</span>
                 </div>
               </div>
 
@@ -723,7 +682,7 @@ function OrderSummaryContent() {
               <button 
                 onClick={handlePlaceOrderAndPay}
                 disabled={isProcessing || !selectedAddress || ! scheduledAt || !customerContact.phone.trim()}
-                className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${
+                className={`w-full py-3 md:py-4 rounded-xl font-bold text-white text-sm md:text-base shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${
                   isProcessing || ! selectedAddress || !scheduledAt || !customerContact.phone.trim()
                     ? 'bg-gray-400 cursor-not-allowed shadow-none' 
                     : 'bg-red-600 hover:bg-red-700 shadow-red-200 hover:-translate-y-1'
@@ -731,7 +690,7 @@ function OrderSummaryContent() {
               >
                 {isProcessing ?  (
                   <>
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-4 w-4 md:h-5 md:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -739,7 +698,7 @@ function OrderSummaryContent() {
                   </>
                 ) : (
                   <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 md:w-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                     Bayar Sekarang
@@ -747,7 +706,7 @@ function OrderSummaryContent() {
                 )}
               </button>
 
-              <p className="text-xs text-gray-500 text-center">
+              <p className="text-[10px] md:text-xs text-gray-500 text-center">
                 Dengan melanjutkan, Anda menyetujui Syarat & Ketentuan Posko.
               </p>
             </div>
@@ -758,7 +717,6 @@ function OrderSummaryContent() {
   );
 }
 
-// Wrapper untuk Suspense
 export default function OrderSummaryPage() {
   return (
     <Suspense fallback={
