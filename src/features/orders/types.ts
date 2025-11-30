@@ -1,6 +1,7 @@
 // src/features/orders/types.ts
 import { Address } from "../auth/types";
 
+// ============ ORDER ITEM PAYLOAD ============
 export interface OrderItemPayload {
   serviceId: string;
   name: string;
@@ -9,6 +10,38 @@ export interface OrderItemPayload {
   note?: string;
 }
 
+// ============ [BARU] CUSTOMER CONTACT (CRITICAL) ============
+export interface CustomerContact {
+  name: string;          // Nama penerima (bisa beda dengan user)
+  phone: string;         // Nomor HP utama
+  alternatePhone?: string; // Nomor cadangan
+}
+
+// ============ [BARU] PROPERTY DETAILS (MEDIUM) ============
+export interface PropertyDetails {
+  type: 'rumah' | 'apartemen' | 'kantor' | 'ruko' | 'kendaraan' | 'lainnya' | '';
+  floor?: number | null;     // Lantai berapa (apartemen/gedung)
+  hasParking: boolean;       // Ada tempat parkir? 
+  hasElevator: boolean;      // Ada lift?
+  accessNote?: string;       // Catatan akses khusus
+}
+
+// ============ [BARU] SCHEDULED TIME SLOT (MEDIUM) ============
+export interface ScheduledTimeSlot {
+  preferredStart: string;  // "09:00"
+  preferredEnd: string;    // "12:00"
+  isFlexible: boolean;     // Boleh datang di luar slot? 
+}
+
+// ============ [BARU] ATTACHMENT (HIGH) ============
+export interface Attachment {
+  url: string;
+  type: 'photo' | 'video';
+  description?: string;
+  uploadedAt?: string;
+}
+
+// ============ CREATE ORDER PAYLOAD (UPDATED) ============
 export interface CreateOrderPayload {
   orderType: 'direct' | 'basic';
   providerId?: string | null;
@@ -20,9 +53,15 @@ export interface CreateOrderPayload {
     type: 'Point', 
     coordinates: number[];
   };
+  // [BARU] Field tambahan
+  customerContact: CustomerContact;
+  orderNote?: string;
+  propertyDetails?: PropertyDetails;
+  scheduledTimeSlot?: ScheduledTimeSlot;
+  attachments?: Attachment[];
 }
 
-// [FIX] Tambahkan type yang lebih lengkap untuk Order Item yang dipopulate
+// ============ POPULATED ORDER ITEM ============
 export interface PopulatedOrderItem {
   serviceId: {
     _id: string;
@@ -36,7 +75,7 @@ export interface PopulatedOrderItem {
   note?: string;
 }
 
-// [FIX] Tambahkan type untuk Provider yang dipopulate
+// ============ POPULATED PROVIDER ============
 export interface PopulatedProvider {
   _id: string;
   userId: {
@@ -49,7 +88,7 @@ export interface PopulatedProvider {
   isOnline?: boolean;
 }
 
-// [FIX] Tambahkan type untuk User yang dipopulate
+// ============ POPULATED USER ============
 export interface PopulatedUser {
   _id: string;
   fullName: string;
@@ -57,7 +96,7 @@ export interface PopulatedUser {
   profilePictureUrl?: string;
 }
 
-// [FIX] Type Order yang lebih lengkap
+// ============ ORDER STATUS ============
 export type OrderStatus = 
   | 'pending' 
   | 'paid' 
@@ -70,8 +109,10 @@ export type OrderStatus =
   | 'cancelled' 
   | 'failed';
 
+// ============ ORDER INTERFACE (FULL) ============
 export interface Order {
   _id: string;
+  orderNumber: string; // [BARU] Human-readable order number
   userId: string | PopulatedUser;
   providerId?: string | PopulatedProvider | null;
   items: PopulatedOrderItem[];
@@ -80,12 +121,19 @@ export interface Order {
   orderType: 'direct' | 'basic';
   scheduledAt?: string;
   
-  // [FIX] Tambahkan field yang disimpan di Order
+  // Address & Location
   shippingAddress?: Address;
   location?: {
     type: 'Point';
     coordinates: number[];
   };
+  
+  // [BARU] Field tambahan
+  customerContact?: CustomerContact;
+  orderNote?: string;
+  propertyDetails?: PropertyDetails;
+  scheduledTimeSlot?: ScheduledTimeSlot;
+  attachments?: Attachment[];
   
   createdAt: string;
   updatedAt: string;
