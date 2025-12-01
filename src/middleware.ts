@@ -1,4 +1,3 @@
-// src/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtDecode } from 'jwt-decode';
@@ -22,13 +21,13 @@ const PUBLIC_ROUTES = [
   '/services',
 ];
 
-// Routes yang memerlukan login (User Customer)
+// Routes yang memerlukan login
 const PROTECTED_ROUTES = ['/orders', '/checkout', '/chat', '/profile'];
 
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   if (pathname.startsWith('/services/')) return true;
-  if (pathname.startsWith('/provider/')) return true; // Public profile provider tetap bisa diakses
+  if (pathname.startsWith('/provider/')) return true; // Public profile provider
   return false;
 }
 
@@ -67,28 +66,16 @@ export function middleware(request: NextRequest) {
   const token = getTokenFromCookies(request);
   const user = token ? decodeToken(token) : null;
 
-  // =============================================
-  // RULE 1: Public Routes - Allow everyone
-  // =============================================
-  if (isPublicRoute(pathname)) {
-    return NextResponse.next();
-  }
-
-  // =============================================
-  // RULE 2: Protected Routes - Require authentication
-  // =============================================
+  // RULE: Protected Routes - Require authentication
   if (isProtectedRoute(pathname)) {
     if (!user) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
-    return NextResponse.next(); // User sudah login, izinkan akses
+    return NextResponse.next();
   }
 
-  // =============================================
-  // RULE 3: Default - Allow access
-  // =============================================
   return NextResponse.next();
 }
 
