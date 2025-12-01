@@ -36,6 +36,9 @@ export default function HomePage() {
   const [switching, setSwitching] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   
+  // Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  
   // Data State
   const [services, setServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
@@ -50,7 +53,6 @@ export default function HomePage() {
 
   // Fetching Data: Services (Independent Effect)
   useEffect(() => {
-    // FIX: Removed unnecessary setIsLoadingServices(true) since initial state is true
     fetchServices()
       .then(res => setServices(res.data || []))
       .catch(err => console.error("Gagal memuat layanan:", err))
@@ -61,13 +63,11 @@ export default function HomePage() {
   useEffect(() => {
     const token = localStorage.getItem('posko_token');
     
-    // FIX: Only set login state if it differs to avoid redundant updates
     if (!!token !== isLoggedIn) {
       setIsLoggedIn(!!token);
     }
     
     if (token) {
-      // FIX: Removed unnecessary setIsLoadingProfile(true) since initial state is true
       fetchProfile()
         .then(res => setUserProfile(res.data.profile))
         .catch(() => { 
@@ -131,11 +131,17 @@ export default function HomePage() {
         }
         window.location.reload();
     } catch (error) {
-        // FIX: Type assertion for error
         const err = error as { response?: { data?: { message?: string } } };
         alert(err.response?.data?.message || "Gagal mengubah mode");
         setSwitching(false);
     }
+  };
+
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement> | React.FormEvent) => {
+      e.preventDefault();
+      if (searchQuery.trim()) {
+          router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+      }
   };
 
   if (isProviderMode && userProfile) {
@@ -155,7 +161,6 @@ export default function HomePage() {
             {isLoggedIn ?  (
                <Link href="/profile">
                  <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
-                   {/* FIX: Use Next Image instead of img */}
                    <Image 
                      src={profileAvatar} 
                      alt="Avatar" 
@@ -179,8 +184,8 @@ export default function HomePage() {
                 <span className="text-xl font-bold text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
               </Link>
               <nav className="flex gap-8 text-sm font-bold text-gray-600">
-                <Link href="/" className="hover:text-red-600 transition-colors">Beranda</Link>
-                <Link href="#" className="hover:text-red-600 transition-colors">Jasa</Link>
+                <Link href="/" className="hover:text-red-600 transition-colors text-red-600">Beranda</Link>
+                <Link href="/search" className="hover:text-red-600 transition-colors">Cari Jasa</Link>
                 <Link href="#" className="hover:text-red-600 transition-colors">Mitra</Link>
                 {isLoggedIn && <Link href="/orders" className="hover:text-red-600 transition-colors">Pesanan</Link>}
               </nav>
@@ -188,7 +193,14 @@ export default function HomePage() {
 
             <div className="flex items-center gap-6">
               <div className="relative w-72">
-                <input type="text" placeholder="Cari layanan atau teknisi..." className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" />
+                <input 
+                    type="text" 
+                    placeholder="Cari layanan atau teknisi..." 
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
+                />
                 <SearchIcon className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
               </div>
               
@@ -197,7 +209,6 @@ export default function HomePage() {
                     <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
                         <div className="text-right hidden xl:block"><p className="text-xs font-bold text-gray-900">Halo, {isLoadingProfile ? 'Memuat...' : profileName}</p><p className="text-[10px] text-gray-500 truncate max-w-[120px]">{profileEmail}</p></div>
                         <div className="w-9 h-9 bg-gray-100 rounded-full overflow-hidden border border-gray-200 relative">
-                          {/* FIX: Use Next Image */}
                           <Image 
                             src={profileAvatar} 
                             alt="Profile" 
@@ -214,7 +225,6 @@ export default function HomePage() {
                             <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fadeIn">
                                 <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 relative">
-                                      {/* FIX: Use Next Image */}
                                       <Image 
                                         src={profileAvatar} 
                                         alt="Avatar" 
@@ -253,18 +263,30 @@ export default function HomePage() {
           </div>
       </header>
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION MOBILE */}
       <section className="lg:hidden px-4 pt-6 pb-2">
         <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">Cari jasa apa <br/><span className="text-red-600 relative">sekarang?  <svg className="absolute w-full h-2 -bottom-1 left-0" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0,5 Q25,0 50,5 T100,5" stroke="currentColor" strokeWidth="2" fill="none" vectorEffect="non-scaling-stroke"/></svg></span></h2>
         <p className="text-xs text-gray-500 mb-6 max-w-[280px]">Hubungkan dengan ratusan teknisi terverifikasi di sekitar Anda.</p>
-        <div className="relative group"><div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400 group-focus-within:text-red-500 transition-colors"/></div><input type="text" placeholder="Cari layanan, teknisi, atau kategori..." className="w-full pl-11 pr-4 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all shadow-sm" /></div>
+        <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400 group-focus-within:text-red-500 transition-colors"/></div>
+            <input 
+                type="text" 
+                placeholder="Cari layanan, teknisi, atau kategori..." 
+                className="w-full pl-11 pr-4 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all shadow-sm" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
+            />
+        </div>
       </section>
       
+      {/* PROMO MOBILE */}
       <section className="lg:hidden mt-4 pl-4 overflow-x-auto no-scrollbar flex gap-3 pr-4">
         <PromoCardMobile color="red" title="Diskon 50%" subtitle="Pengguna Baru" btn="Klaim" /> 
         <PromoCardMobile color="dark" title="Garansi Puas" subtitle="Uang Kembali" btn="Cek Syarat" /> 
       </section>
       
+      {/* HERO SECTION DESKTOP */}
       <section className="hidden lg:block relative bg-white border-b border-gray-100 overflow-hidden">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-red-50/50 -skew-x-12 translate-x-20"></div>
         <div className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-2 items-center relative z-10">
@@ -287,7 +309,62 @@ export default function HomePage() {
         userLocation={userProfile?.location ?  { lat: userProfile.location.coordinates[1], lng: userProfile.location.coordinates[0] } : undefined}
       />
       
-      <footer className="bg-gray-50 border-t border-gray-200 py-12 text-center pb-24 lg:pb-12"><p className="text-gray-400 font-medium">© 2024 Posko Services.All rights reserved.</p></footer>
+      {/* SECTION BARU: KEUNGGULAN (Mobile & Desktop) */}
+      <section className="py-8 lg:py-16 bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8">
+            <div className="text-center mb-8 lg:mb-12">
+                <h2 className="text-xl lg:text-3xl font-extrabold text-gray-900">Mengapa Memilih Posko?</h2>
+                <p className="text-sm lg:text-lg text-gray-500 mt-2">Layanan profesional tanpa rasa khawatir</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-10">
+                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900 mb-2">Terverifikasi</h3>
+                    <p className="text-sm text-gray-500">Semua mitra kami telah melalui proses seleksi ketat dan verifikasi identitas.</p>
+                </div>
+                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900 mb-2">Harga Transparan</h3>
+                    <p className="text-sm text-gray-500">Ketahui estimasi harga di awal sebelum memesan. Tidak ada biaya tersembunyi.</p>
+                </div>
+                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+                    <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
+                    <h3 className="font-bold text-lg text-gray-900 mb-2">Respon Cepat</h3>
+                    <p className="text-sm text-gray-500">Dapatkan layanan segera dengan fitur pencarian real-time mitra terdekat.</p>
+                </div>
+            </div>
+        </div>
+      </section>
+
+      {/* SECTION BARU: CTA / BANNER APP (Mobile & Desktop) */}
+      <section className="px-4 py-8 lg:py-16">
+        <div className="max-w-7xl mx-auto bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 lg:p-16 relative overflow-hidden text-white flex flex-col md:flex-row items-center justify-between">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="relative z-10 max-w-xl">
+                <h2 className="text-2xl lg:text-4xl font-black mb-4">Butuh Bantuan Mendesak?</h2>
+                <p className="text-gray-300 mb-8 lg:text-lg">Download aplikasi Posko sekarang dan nikmati kemudahan memesan jasa service AC, kebersihan, hingga pijat refleksi dalam satu genggaman.</p>
+                <div className="flex gap-4">
+                    <button className="bg-white text-gray-900 px-6 py-3 rounded-xl font-bold text-sm lg:text-base hover:bg-gray-100 transition-colors">App Store</button>
+                    <button className="bg-white/10 border border-white/20 text-white px-6 py-3 rounded-xl font-bold text-sm lg:text-base hover:bg-white/20 transition-colors">Google Play</button>
+                </div>
+            </div>
+            {/* Dekorasi Visual Sederhana */}
+            <div className="hidden md:block relative w-64 h-64 lg:w-80 lg:h-80 opacity-80">
+                <div className="absolute inset-0 bg-gradient-to-tr from-red-500 to-orange-500 rounded-full blur-3xl opacity-30"></div>
+                <div className="relative w-full h-full bg-gray-800 rounded-2xl border border-gray-700 flex items-center justify-center transform rotate-6 hover:rotate-0 transition-transform duration-500">
+                     <span className="text-6xl">📱</span>
+                </div>
+            </div>
+        </div>
+      </section>
+      
+      <footer className="bg-gray-50 border-t border-gray-200 py-12 text-center pb-24 lg:pb-12"><p className="text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
 
       {/* FLOATING CHAT REAL-TIME (DESKTOP ONLY) */}
       {isLoggedIn && userProfile && (

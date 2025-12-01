@@ -9,11 +9,11 @@ export interface FetchProvidersParams {
   category?: string;
   search?: string;
   sortBy?: 'distance' | 'price_asc' | 'price_desc' | 'rating';
-  limit?: number; // [BARU] Tambahkan ini
+  limit?: number;
+  page?: number;
 }
 
 export const fetchProviders = async (params: FetchProvidersParams) => {
-  // Axios otomatis mengubah object params menjadi query string:
   const response = await api.get<ProviderListResponse>('/providers', { params });
   return response.data;
 };
@@ -29,9 +29,40 @@ export const fetchMyProviderProfile = async () => {
   return response.data;
 };
 
-// [UPDATE] Update Ketersediaan (Blocked Dates)
-// Menggantikan updateProviderSchedule
+// Update Ketersediaan (Blocked Dates)
 export const updateAvailability = async (blockedDates: string[]) => {
   const response = await api.put<{ message: string; data: string[] }>('/providers/availability', { blockedDates });
+  return response.data;
+};
+
+// Update Portfolio Images
+export const updatePortfolio = async (portfolioImages: string[]) => {
+  const response = await api.put<{ message: string; data: Provider }>('/providers/portfolio', { portfolioImages });
+  return response.data;
+};
+
+// Update Provider Services
+export const updateProviderServices = async (services: Array<{ serviceId: string; price: number; isActive: boolean }>) => {
+  const response = await api.put<{ message: string; data: Provider }>('/providers/services', { services });
+  return response.data;
+};
+
+// Update Schedule (Jam Operasional)
+export interface ScheduleItem {
+  dayIndex: number;
+  dayName: string;
+  isOpen: boolean;
+  start: string;
+  end: string;
+}
+
+export const updateSchedule = async (schedule: ScheduleItem[]) => {
+  const response = await api.put<{ message: string; data: ScheduleItem[] }>('/providers/schedule', { schedule });
+  return response.data;
+};
+
+// Toggle Online/Offline Status
+export const toggleOnlineStatus = async (isOnline: boolean) => {
+  const response = await api.put<{ message: string; data: { isOnline: boolean } }>('/providers/online-status', { isOnline });
   return response.data;
 };

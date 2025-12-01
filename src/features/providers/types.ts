@@ -1,5 +1,6 @@
 // src/features/providers/types.ts
-import { ServiceUnit } from "../services/types";
+
+export type ServiceUnit = 'unit' | 'jam' | 'meter' | 'kg' | 'paket' | 'orang' | 'kendaraan' | 'sesi';
 
 export interface ProviderServiceDetail {
   _id: string;
@@ -7,8 +8,6 @@ export interface ProviderServiceDetail {
   category: string;
   iconUrl: string;
   basePrice: number;
-  
-  // Properti tambahan agar sesuai dengan penggunaan di Checkout & Detail
   description?: string;
   shortDescription?: string;
   unit?: ServiceUnit;
@@ -25,7 +24,7 @@ export interface ProviderServiceDetail {
 
 export interface ProviderServiceItem {
   _id: string;
-  serviceId: ProviderServiceDetail; 
+  serviceId: ProviderServiceDetail;
   price: number;
   isActive: boolean;
 }
@@ -41,10 +40,20 @@ export interface ProviderUser {
     district?: string;
     province?: string;
     detail?: string;
+    postalCode?: string;
   };
   location?: {
-    coordinates: number[]; // [Longitude, Latitude]
+    type?: string;
+    coordinates: number[];
   };
+}
+
+export interface ScheduleItem {
+  dayIndex: number;
+  dayName: string;
+  isOpen: boolean;
+  start: string;
+  end: string;
 }
 
 export interface Provider {
@@ -54,20 +63,22 @@ export interface Provider {
   rating: number;
   isOnline: boolean;
   createdAt: string;
-  
+
   // Sistem Kalender
-  blockedDates: string[]; // Tanggal yang diliburkan manual (ISO String)
-  bookedDates?: string[]; // Tanggal yang penuh karena ada order (dari Backend)
-  
-  // [BARU] Portfolio/Dokumentasi
-  portfolioImages?: string[]; // URL gambar hasil kerja
-  
-  // [BARU] Statistik
+  blockedDates: string[];
+  bookedDates?: string[];
+
+  // Portfolio/Dokumentasi
+  portfolioImages?: string[];
+
+  // Statistik
   totalCompletedOrders?: number;
-  
-  // [PERBAIKAN] Jarak dari user (dihitung oleh backend via geo-spatial query)
-  // Property ini hanya ada ketika parameter lat/lng dikirim ke API
-  distance?: number; // Dalam meter
+
+  // Jadwal Operasional
+  schedule?: ScheduleItem[];
+
+  // Jarak dari user (dihitung oleh backend)
+  distance?: number;
 }
 
 export interface ProviderListResponse {
