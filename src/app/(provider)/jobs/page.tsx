@@ -69,8 +69,9 @@ export default function ProviderJobsPage() {
           </div>
         ) : (
           jobs.map((job) => {
-            // ✅ FIX: Type assertion untuk menghindari @ts-ignore
             const customer = (typeof job.userId === 'object' ? job.userId : {}) as User;
+            // Fix #3: Gunakan shippingAddress dari Order sebagai sumber utama alamat
+            const locationCity = job.shippingAddress?.city || customer.address?.city || 'Alamat tidak tersedia';
             
             return (
               <Link href={`/jobs/${job._id}`} key={job._id} className="block bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:border-red-200 hover:shadow-md transition-all relative overflow-hidden">
@@ -93,7 +94,7 @@ export default function ProviderJobsPage() {
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-bold text-gray-900 truncate">{customer.fullName || 'Pelanggan'}</h3>
-                    <p className="text-xs text-gray-500 truncate">{customer.address?.city || 'Alamat tidak tersedia'}</p>
+                    <p className="text-xs text-gray-500 truncate">{locationCity}</p>
                   </div>
                 </div>
 

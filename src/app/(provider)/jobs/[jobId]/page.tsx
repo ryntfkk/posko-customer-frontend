@@ -40,7 +40,7 @@ export default function ProviderJobDetail() {
     const statusLabels: Record<string, string> = {
       'on_the_way': 'Berangkat ke Lokasi',
       'working': 'Mulai Pengerjaan',
-      'completed': 'Selesaikan Pekerjaan'
+      'waiting_approval': 'Selesaikan Pekerjaan' // Fix #2: Label untuk status waiting_approval
     };
     const actionName = statusLabels[newStatus] || newStatus.replace(/_/g, ' ');
 
@@ -118,7 +118,8 @@ export default function ProviderJobDetail() {
     if (order.status === 'working') {
       return (
         <button
-          onClick={() => handleUpdateStatus('completed')}
+          // Fix #2: Ubah status target menjadi 'waiting_approval'
+          onClick={() => handleUpdateStatus('waiting_approval')}
           disabled={isUpdating}
           className="w-full py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-200 transition-all active:scale-95 flex justify-center items-center gap-2 disabled:opacity-50"
         >
@@ -136,7 +137,7 @@ export default function ProviderJobDetail() {
             </svg>
             <span>Menunggu Konfirmasi Pelanggan</span>
           </div>
-          <span className="text-xs font-normal opacity-80">Harap minta pelanggan cek aplikasi mereka.</span>
+          <span className="text-xs font-normal opacity-80">Harap minta pelanggan cek aplikasi mereka untuk konfirmasi.</span>
         </div>
       );
     }
@@ -156,7 +157,8 @@ export default function ProviderJobDetail() {
   };
 
   const customer = order.userId as PopulatedUser;
-  const orderAddress = order.shippingAddress;
+  // Fix #3: Gunakan shippingAddress dari Order
+  const orderAddress = order.shippingAddress; 
   const orderLocation = order.location;
 
   return (
