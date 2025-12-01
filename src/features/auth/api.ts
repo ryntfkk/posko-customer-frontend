@@ -114,6 +114,17 @@ export const updateProfile = async (data: any) => {
     return response.data;
 };
 
+// [NEW] Added missing exports for Role Management
+export const switchRole = async (role: string) => {
+  const response = await api.post('/auth/switch-role', { role });
+  return response.data;
+};
+
+export const registerPartner = async () => {
+  const response = await api.post('/auth/register-partner');
+  return response.data;
+};
+
 export const isAuthenticated = (): boolean => {
   return !!safeGetToken();
 };
