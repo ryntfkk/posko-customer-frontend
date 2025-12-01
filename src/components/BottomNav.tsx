@@ -1,32 +1,11 @@
-// src/app/(customer)/layout.tsx
+// src/components/BottomNav.tsx
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { fetchProfile } from '@/features/auth/api';
 
-// Mobile Bottom Navigation Only
-function BottomNav() {
+export default function BottomNav() {
   const pathname = usePathname();
-  const [isProviderMode, setIsProviderMode] = useState<boolean | null>(null);
-  
-  useEffect(() => {
-    const checkUserMode = async () => {
-      try {
-        const token = localStorage.getItem('posko_token');
-        if (token) {
-          const res = await fetchProfile();
-          setIsProviderMode(res.data.profile?.activeRole === 'provider');
-        } else {
-          setIsProviderMode(false);
-        }
-      } catch (error) {
-        setIsProviderMode(false);
-      }
-    };
-    checkUserMode();
-  }, []);
   
   // Helper untuk cek active state
   const isActive = (path: string) => {
@@ -35,15 +14,7 @@ function BottomNav() {
     return false;
   };
 
-  // Masih loading, jangan tampilkan apapun
-  if (isProviderMode === null) return null;
-
-  // Jika mode provider, sembunyikan navbar customer
-  if (isProviderMode) {
-    return null;
-  }
-
-  // Hide nav on specific pages (optional protection)
+  // Sembunyikan navigasi di halaman Auth (Login/Register)
   if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
     return null;
   }
@@ -98,20 +69,5 @@ function BottomNav() {
 
       </nav>
     </div>
-  );
-}
-
-export default function CustomerLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <>
-      <main className="min-h-screen pb-24 lg:pb-0">
-        {children}
-      </main>
-      <BottomNav />
-    </>
   );
 }

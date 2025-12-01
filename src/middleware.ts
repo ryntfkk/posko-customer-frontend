@@ -22,16 +22,13 @@ const PUBLIC_ROUTES = [
   '/services',
 ];
 
-// Routes yang memerlukan login (semua user)
+// Routes yang memerlukan login (User Customer)
 const PROTECTED_ROUTES = ['/orders', '/checkout', '/chat', '/profile'];
-
-const PROVIDER_ROUTES = ['/dashboard', '/jobs', '/settings', '/messages']; // [FIX] Tambahkan /messages
-const ADMIN_ROUTES = ['/admin'];
 
 function isPublicRoute(pathname: string): boolean {
   if (PUBLIC_ROUTES.includes(pathname)) return true;
   if (pathname.startsWith('/services/')) return true;
-  if (pathname.startsWith('/provider/')) return true; // Public profile /provider/[id]
+  if (pathname.startsWith('/provider/')) return true; // Public profile provider tetap bisa diakses
   return false;
 }
 
@@ -39,35 +36,8 @@ function isProtectedRoute(pathname: string): boolean {
   return PROTECTED_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
 }
 
-function isProviderRoute(pathname: string): boolean {
-  return PROVIDER_ROUTES.some(route => pathname === route || pathname.startsWith(route + '/'));
-}
-
-function isAdminRoute(pathname: string): boolean {
-  return pathname.startsWith('/admin');
-}
-
 function getTokenFromCookies(request: NextRequest): string | null {
   return request.cookies.get('posko_token')?.value || null;
-}
-
-function extractRole(decoded: DecodedToken): Role | null {
-  const roleFromActive = decoded.activeRole;
-  if (roleFromActive === 'customer' || roleFromActive === 'provider' || roleFromActive === 'admin') {
-    return roleFromActive;
-  }
-
-  const roleFromSingle = decoded.role;
-  if (roleFromSingle === 'customer' || roleFromSingle === 'provider' || roleFromSingle === 'admin') {
-    return roleFromSingle;
-  }
-
-  if (Array.isArray(decoded.roles)) {
-    const roleFromArray = decoded.roles.find((r): r is Role => ['customer', 'provider', 'admin'].includes(r));
-    if (roleFromArray) return roleFromArray;
-  }
-
-  return null;
 }
 
 function decodeToken(token: string): DecodedToken | null {
@@ -76,11 +46,7 @@ function decodeToken(token: string): DecodedToken | null {
     if (decoded.exp * 1000 < Date.now()) {
       return null;
     }
-
-    const role = extractRole(decoded);
-    if (!role) return null;
-
-    return { ...decoded, role };
+    return decoded;
   } catch {
     return null;
   }
@@ -101,11 +67,6 @@ export function middleware(request: NextRequest) {
   const token = getTokenFromCookies(request);
   const user = token ? decodeToken(token) : null;
 
-  // [BARU] Jika user adalah provider dan mencoba akses root '/', redirect ke dashboard
-  if (pathname === '/' && user?.role === 'provider') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
   // =============================================
   // RULE 1: Public Routes - Allow everyone
   // =============================================
@@ -116,44 +77,17 @@ export function middleware(request: NextRequest) {
   // =============================================
   // RULE 2: Protected Routes - Require authentication
   // =============================================
-  if (!user) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // =============================================
-  // RULE 3: Admin Routes - Only admin can access
-  // =============================================
-  if (isAdminRoute(pathname)) {
-    if (user.role !== 'admin') {
-      if (user.role === 'provider') {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-    return NextResponse.next();
-  }
-
-  // =============================================
-  // RULE 4: Provider Routes - Only provider/admin can access
-  // =============================================
-  if (isProviderRoute(pathname)) {
-    if (user.role !== 'provider' && user.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url));
-    }
-    return NextResponse.next();
-  }
-
-  // =============================================
-  // RULE 5: Protected Customer Routes - All authenticated users
-  // =============================================
   if (isProtectedRoute(pathname)) {
+    if (!user) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
     return NextResponse.next(); // User sudah login, izinkan akses
   }
 
   // =============================================
-  // RULE 6: Default - Allow authenticated users
+  // RULE 3: Default - Allow access
   // =============================================
   return NextResponse.next();
 }
