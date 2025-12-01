@@ -1,4 +1,4 @@
-// src/app/(customer)/checkout/page.tsx
+// src/app/checkout/page.tsx
 'use client';
 
 import Image from 'next/image';
@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 import { fetchServices } from '@/features/services/api';
 import { fetchProviderById } from '@/features/providers/api';
-import { Service, getUnitLabel, getQuantityLabel } from '@/features/services/types';
+import { Service, getUnitLabel } from '@/features/services/types';
 import { Provider } from '@/features/providers/types';
 import { getCartItemId, useCart } from '@/features/cart/useCart';
 
@@ -53,7 +53,8 @@ interface CheckoutOption {
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { cart, upsertItem, clearCart, isHydrated } = useCart();
+  // [UPDATE] Ambil helper checkConflict dan resetAndAddItem dari useCart
+  const { cart, upsertItem, clearCart, isHydrated, checkConflict, resetAndAddItem } = useCart();
 
   // State Data
   const [services, setServices] = useState<Service[]>([]);
@@ -64,15 +65,21 @@ function CheckoutContent() {
   const [checkoutType, setCheckoutType] = useState<CheckoutType>('basic');
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
   // State untuk modal detail
   const [selectedDetail, setSelectedDetail] = useState<CheckoutOption | null>(null);
+  
+  // [NEW] State untuk Conflict Modal
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+  const [pendingItem, setPendingItem] = useState<any>(null); // Item yang tertunda saat menunggu konfirmasi
+
   // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
-  // [FIX] State untuk menyimpan kategori yang terdeteksi dari provider
+  // State untuk menyimpan kategori yang terdeteksi dari provider
   const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
   const categoryParam = searchParams?.get('category') || null;
 
-  // [FIX] Kategori efektif yang akan digunakan (dari URL atau dari deteksi provider)
+  // Kategori efektif yang akan digunakan (dari URL atau dari deteksi provider)
   const effectiveCategory = categoryParam || detectedCategory;
 
   // 1.Sinkronisasi Query Params & State
@@ -93,15 +100,14 @@ function CheckoutContent() {
       setError(null);
       try {
         if (checkoutType === 'basic') {
-          // [FIX] Gunakan effectiveCategory untuk filter layanan
+          // Gunakan effectiveCategory untuk filter layanan
           const res = await fetchServices(effectiveCategory);
           setServices(res.data);
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
           setProvider(res.data);
           
-          // [FIX] Deteksi kategori dari layanan provider saat mode direct
-          // Ambil kategori pertama dari layanan aktif provider
+          // Deteksi kategori dari layanan provider saat mode direct
           const activeServices = res.data.services?.filter((s: { isActive: boolean }) => s.isActive) || [];
           
           if (activeServices.length > 0 && activeServices[0].serviceId?.category) {
@@ -179,9 +185,7 @@ function CheckoutContent() {
 
       if (checkoutType === 'basic') {
         if (item.orderType !== 'basic') return false;
-        // [FIX] Gunakan effectiveCategory untuk filter keranjang
         if (effectiveCategory) {
-          // Case-insensitive comparison untuk kategori
           const itemCategory = (item.category ?? '').toLowerCase();
           const filterCategory = effectiveCategory.toLowerCase();
           return itemCategory === filterCategory;
@@ -206,11 +210,7 @@ function CheckoutContent() {
       const targetOption = availableOptions.find(o => o.id === serviceIdParam);
 
       if (targetOption) {
-        const key = getCartItemId(targetOption.id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
-        const existing = cart.find(c => c.id === key);
-
-        if (!existing || existing.quantity === 0) {
-          upsertItem({
+        const itemPayload = {
             serviceId: targetOption.id,
             serviceName: targetOption.name,
             category: targetOption.category,
@@ -219,8 +219,21 @@ function CheckoutContent() {
             pricePerUnit: targetOption.price,
             providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
             providerName: checkoutType === 'direct' ? providerLabel : undefined,
-          });
+        };
+        
+        // [UPDATE] Cek konflik saat Auto-Add
+        if (checkConflict(itemPayload)) {
+            setPendingItem(itemPayload);
+            setIsConflictModalOpen(true);
+        } else {
+            const key = getCartItemId(targetOption.id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
+            const existing = cart.find(c => c.id === key);
+
+            if (!existing || existing.quantity === 0) {
+              upsertItem(itemPayload);
+            }
         }
+        
         hasAutoAdded.current = true;
 
         const newParams = new URLSearchParams(searchParams.toString());
@@ -228,7 +241,7 @@ function CheckoutContent() {
         window.history.replaceState(null, '', `?${newParams.toString()}`);
       }
     }
-  }, [isHydrated, searchParams, availableOptions, checkoutType, selectedProviderId, providerLabel, upsertItem, cart]);
+  }, [isHydrated, searchParams, availableOptions, checkoutType, selectedProviderId, providerLabel, upsertItem, cart, checkConflict]);
 
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
@@ -248,7 +261,7 @@ function CheckoutContent() {
       const queryParams = new URLSearchParams({
         type: checkoutType,
       });
-      // [FIX] Gunakan effectiveCategory untuk URL summary
+      // Gunakan effectiveCategory untuk URL summary
       if (checkoutType === 'basic' && effectiveCategory) {
         queryParams.append('category', effectiveCategory);
       }
@@ -277,8 +290,7 @@ function CheckoutContent() {
     setCheckoutType(targetMode);
     if (targetMode === 'basic') {
       setSelectedProviderId(null);
-      // [FIX] Sertakan kategori saat switch ke basic mode
-      // Gunakan detectedCategory (dari provider) atau categoryParam (dari URL awal)
+      // Sertakan kategori saat switch ke basic mode
       const categoryToUse = detectedCategory || categoryParam;
       if (categoryToUse) {
         router.replace(`/checkout?type=basic&category=${encodeURIComponent(categoryToUse)}`);
@@ -288,10 +300,21 @@ function CheckoutContent() {
     }
   };
 
+  // [NEW] Fungsi Konfirmasi Ganti Keranjang
+  const handleConfirmReplaceCart = () => {
+    if (pendingItem) {
+        resetAndAddItem(pendingItem);
+        setPendingItem(null);
+        setIsConflictModalOpen(false);
+    }
+  };
+
   const renderServiceOption = (option: CheckoutOption) => {
     const quantity = getQuantityForService(option.id);
+    
+    // [UPDATE] Handler Quantity dengan Conflict Check
     const handleUpdateQuantity = (newQuantity: number) => {
-      upsertItem({
+      const itemPayload = {
         serviceId: option.id,
         serviceName: option.name,
         category: option.category,
@@ -300,12 +323,22 @@ function CheckoutContent() {
         pricePerUnit: option.price,
         providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
         providerName: checkoutType === 'direct' ? providerLabel : undefined,
-      });
+      };
+
+      // Cek konflik sebelum upsert
+      // Kita cek konflik HANYA jika menambah quantity (newQuantity > quantity)
+      // Jika mengurangi, tidak perlu cek konflik
+      if (newQuantity > 0 && checkConflict(itemPayload)) {
+         setPendingItem(itemPayload);
+         setIsConflictModalOpen(true);
+         return;
+      }
+
+      upsertItem(itemPayload);
     };
 
     const durationText = formatDuration(option.estimatedDuration);
     
-    // RESPONSIVE UPDATE: Padding disesuaikan (p-3 mobile, p-4 desktop)
     return (
       <div
         key={option.id}
@@ -325,13 +358,11 @@ function CheckoutContent() {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                {/* RESPONSIVE UPDATE: Ukuran font judul disesuaikan */}
                 <h3 className="text-base md:text-lg font-bold text-gray-900 leading-tight">{option.name}</h3>
                 <span className="text-[10px] md:text-[11px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
                   {option.category}
                 </span>
               </div>
-              {/* RESPONSIVE UPDATE: Font deskripsi lebih kecil di mobile */}
               <p className="text-xs md:text-sm text-gray-600 line-clamp-2 mt-1">
                 {option.shortDescription || option.description}
               </p>
@@ -373,7 +404,6 @@ function CheckoutContent() {
           <div className="flex items-end gap-1.5 md:gap-2">
             {option.isPromo && option.promoPrice ? (
               <>
-                {/* RESPONSIVE UPDATE: Ukuran harga disesuaikan */}
                 <p className="text-base md:text-lg font-black text-red-700">{formatCurrency(option.promoPrice)}</p>
                 <p className="text-xs md:text-sm text-gray-400 line-through">{formatCurrency(option.price)}</p>
               </>
@@ -389,7 +419,6 @@ function CheckoutContent() {
           <button
             onClick={() => handleUpdateQuantity(quantity + 1)}
             disabled={checkoutType === 'direct' && !provider}
-            /* RESPONSIVE UPDATE: Ukuran tombol + lebih kecil di mobile (w-8 h-8) */
             className={`w-8 h-8 md:w-10 md:h-10 rounded-lg font-bold flex items-center justify-center text-sm md:text-lg ${
               checkoutType === 'direct' && !provider
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -401,7 +430,6 @@ function CheckoutContent() {
           <span className="text-sm md:text-xl font-black text-gray-900 w-6 md:w-8 text-center">{quantity}</span>
           <button
             onClick={() => handleUpdateQuantity(Math.max(0, quantity - 1))}
-            /* RESPONSIVE UPDATE: Ukuran tombol - lebih kecil di mobile */
             className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white border border-gray-200 hover:border-gray-400 flex items-center justify-center font-bold text-gray-600 text-sm md:text-lg"
           >
             -
@@ -423,7 +451,6 @@ function CheckoutContent() {
           </button>
           <div>
             <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-wide text-gray-400 block">Checkout</span>
-            {/* RESPONSIVE UPDATE: Judul halaman */}
             <h1 className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
               {checkoutType === 'direct' ? 'Pesan Mitra' : 'Pesan Cepat'}
             </h1>
@@ -450,7 +477,6 @@ function CheckoutContent() {
 
         {!isLoading && !error && (
           <>
-            {/* RESPONSIVE UPDATE: Padding container utama dikurangi di mobile */}
             <section className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               {/* Header Section Tipe Order */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 border-b border-gray-50 pb-4">
@@ -469,7 +495,6 @@ function CheckoutContent() {
                       </>
                     )}
                   </p>
-                  {/* [FIX] Tampilkan badge kategori jika ada */}
                   {effectiveCategory && (
                     <p className="text-[10px] md:text-xs text-gray-500 mt-1">
                       Kategori: <span className="font-semibold text-gray-700 capitalize">{effectiveCategory}</span>
@@ -502,7 +527,6 @@ function CheckoutContent() {
               </div>
 
               {/* Grid Content */}
-              {/* RESPONSIVE UPDATE: Gap grid dikurangi di mobile */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start">
                 {/* Kolom Kiri: Daftar Layanan */}
                 <div className="md:col-span-2 space-y-3 md:space-y-4">
@@ -552,7 +576,6 @@ function CheckoutContent() {
                 </div>
 
                 {/* Kolom Kanan: Ringkasan Keranjang */}
-                {/* RESPONSIVE UPDATE: Sticky disesuaikan */}
                 <div className="p-4 md:p-5 border border-gray-200 rounded-2xl bg-gray-50/50 sticky top-20 md:top-24 space-y-3 md:space-y-4">
                   <div className="flex justify-between items-center border-b border-gray-200 pb-2">
                     <p className="text-xs md:text-sm font-bold text-gray-900">Ringkasan Pesanan</p>
@@ -605,7 +628,6 @@ function CheckoutContent() {
             </section>
 
             {/* Bottom Action Bar */}
-            {/* RESPONSIVE UPDATE: Padding & Font Size disesuaikan */}
             <section className="sticky bottom-0 md:bottom-14 bg-white p-4 lg:p-6 rounded-t-2xl md:rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-[0_8px_30px_rgba(0,0,0,0.12)] border-t md:border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3 md:gap-4 z-30">
               <div className="flex justify-between items-center w-full sm:w-auto sm:block">
                 <span className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wide">Total Pembayaran</span>
@@ -742,6 +764,44 @@ function CheckoutContent() {
                 className="w-full py-3 bg-gray-900 text-white font-bold text-sm rounded-xl hover:bg-gray-800 transition-colors"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* [NEW] Modal Konfirmasi Ganti Keranjang */}
+      {isConflictModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-[fadeIn_0.2s_ease-out]">
+            <div className="p-5 text-center space-y-3">
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Ganti Keranjang?</h3>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Anda memilih layanan dari kategori atau mitra yang berbeda. 
+                Melanjutkan akan <strong>menghapus semua item</strong> di keranjang Anda saat ini.
+              </p>
+            </div>
+            
+            <div className="p-4 bg-gray-50 border-t border-gray-100 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                   setIsConflictModalOpen(false);
+                   setPendingItem(null);
+                }}
+                className="px-4 py-2.5 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 text-sm transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmReplaceCart}
+                className="px-4 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 text-sm shadow-md shadow-red-200 transition-all hover:translate-y-[-1px]"
+              >
+                Ya, Ganti
               </button>
             </div>
           </div>

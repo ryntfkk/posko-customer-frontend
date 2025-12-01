@@ -47,32 +47,27 @@ export const useCart = () => {
         }
     }, [cart, isHydrated]);
 
+    // [NEW] Helper untuk mengecek konflik provider/kategori
+    const checkConflict = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>): boolean => {
+        if (cart.length === 0) return false;
+
+        const existingItem = cart[0];
+        
+        const isDifferentProvider = item.orderType === 'direct' && item.providerId !== existingItem.providerId;
+        const isDifferentType = item.orderType !== existingItem.orderType;
+        const isDifferentCategory = item.orderType === 'basic'
+            && existingItem.orderType === 'basic'
+            && (existingItem.category ?? null) !== (item.category ?? null);
+
+        return isDifferentProvider || isDifferentType || isDifferentCategory;
+    }, [cart]);
+
+    // [MODIFIED] upsertItem tidak lagi melakukan auto-reset
     const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
 
         setCart(prevCart => {
-            // 1. CEK KONFLIK PROVIDER (Logic Baru)
-            // Jika keranjang ada isinya, cek apakah item baru berasal dari provider/tipe yang berbeda?
-            if (prevCart.length > 0) {
-                const existingItem = prevCart[0]; // Ambil sampel item pertama
-                
-                const isDifferentProvider = item.orderType === 'direct' && item.providerId !== existingItem.providerId;
-                const isDifferentType = item.orderType !== existingItem.orderType;
-                const isDifferentCategory = item.orderType === 'basic'
-                    && existingItem.orderType === 'basic'
-                    && (existingItem.category ?? null) !== (item.category ?? null);
-
-                // Jika Beda Provider atau Beda Tipe Order -> RESET KERANJANG (Ganti dengan item baru ini saja)
-                if (isDifferentProvider || isDifferentType || isDifferentCategory) {
-                    return [{
-                        ...item,
-                        id: itemId,
-                        totalPrice: item.quantity * item.pricePerUnit,
-                    }];
-                }
-            }
-
-            // 2. LOGIC UPDATE BIASA (Jika provider sama atau cart kosong)
+            // Logic Update Biasa (Tanpa Auto Reset)
             const existingIndex = prevCart.findIndex(existing => existing.id === itemId);
             const totalPrice = item.quantity * item.pricePerUnit;
 
@@ -102,6 +97,20 @@ export const useCart = () => {
 
             return [...prevCart, newItem];
         });
+    }, []);
+
+    // [NEW] Fungsi khusus untuk mengganti seluruh keranjang dengan item baru
+    const resetAndAddItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
+        const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
+        const totalPrice = item.quantity * item.pricePerUnit;
+
+        const newItem: CartItem = {
+             ...item,
+             id: itemId,
+             totalPrice,
+        };
+        
+        setCart([newItem]);
     }, []);
 
     const updateItemQuantity = useCallback((itemId: string, quantity: number) => {
@@ -136,7 +145,9 @@ export const useCart = () => {
 
     return {
         cart,
-        upsertItem, // Gunakan nama konsisten
+        upsertItem, 
+        resetAndAddItem, // Export fungsi baru
+        checkConflict,   // Export fungsi baru
         removeItem,
         clearCart,
         totalItems,
