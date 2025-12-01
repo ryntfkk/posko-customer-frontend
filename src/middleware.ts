@@ -74,6 +74,11 @@ export function middleware(request: NextRequest) {
   const token = getTokenFromCookies(request);
   const user = token ? decodeToken(token) : null;
 
+  // [BARU] Jika user adalah provider dan mencoba akses root '/', redirect ke dashboard
+  if (pathname === '/' && user?.role === 'provider') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   // =============================================
   // RULE 1: Public Routes - Allow everyone
   // =============================================
@@ -84,7 +89,7 @@ export function middleware(request: NextRequest) {
   // =============================================
   // RULE 2: Protected Routes - Require authentication
   // =============================================
-  if (! user) {
+  if (!user) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);

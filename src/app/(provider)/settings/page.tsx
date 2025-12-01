@@ -236,6 +236,18 @@ export default function ProviderSettingsPage() {
       item.dayIndex === dayIndex ?  { ...item, [field]: value } : item
     ));
   };
+  // [NEW] Handler Switch Role Back to Customer
+  const handleSwitchToCustomer = async () => {
+    setIsSwitching(true);
+    try {
+      await switchRole('customer');
+      window.location.href = '/'; // Hard reload ke home customer
+    } catch (error) {
+      console.error("Gagal pindah mode", error);
+      alert("Gagal berpindah ke mode customer.");
+      setIsSwitching(false);
+    }
+  };
 
   const handleLogout = async () => {
     if (! confirm('Apakah Anda yakin ingin keluar?')) return;
@@ -547,6 +559,27 @@ export default function ProviderSettingsPage() {
           {activeTab === 'account' && (
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-gray-900">Pengaturan Akun</h2>
+              {/* TOMBOL SWITCH MODE */}
+                <button
+                  onClick={handleSwitchToCustomer}
+                  disabled={isSwitching}
+                  className="w-full flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100 hover:bg-blue-100 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-blue-100 text-blue-600">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                    </div>
+                    <div className="text-left">
+                        <p className="font-bold text-blue-800">Beralih ke Mode Customer</p>
+                        <p className="text-xs text-blue-600">Pesan jasa sebagai pelanggan</p>
+                    </div>
+                  </div>
+                  {isSwitching ? (
+                    <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <svg className="w-5 h-5 text-blue-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                  )}
+                </button>
 
               <div className="space-y-2">
                 <button className="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
