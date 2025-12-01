@@ -1,4 +1,4 @@
-// src/app/(customer)/profile/page.tsx
+// src/app/profile/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -39,43 +39,63 @@ export default function ProfilePage() {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50">Memuat...</div>;
-  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Header Mobile */}
-      <div className="bg-white px-6 pt-12 pb-6 border-b border-gray-100 sticky top-0 z-20">
-        <h1 className="text-2xl font-bold text-gray-900">Akun Saya</h1>
-      </div>
-
-      <div className="p-6 space-y-6">
-        {/* Profile Card */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0 relative">
-            <Image 
-              src={user.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullName}`} 
-              alt="Avatar" 
-              fill
-              className="object-cover"
-            />
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header Profile */}
+      <div className="bg-white p-6 mb-4 shadow-sm">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="relative w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
+            {user?.profilePictureUrl ? (
+              <Image 
+                src={user.profilePictureUrl} 
+                alt={user.fullName}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-gray-900 truncate">{user.fullName}</h2>
-            <p className="text-sm text-gray-500 truncate">{user.email}</p>
-            <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-gray-100 text-gray-600 border-gray-200">
-              Pelanggan
-            </span>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{user?.fullName}</h1>
+            <p className="text-gray-500">{user?.phoneNumber}</p>
           </div>
         </div>
+      </div>
 
-        {/* Menu Utama */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <Link href="/orders" className="flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-50 transition-colors">
+      {/* Menu List */}
+      <div className="px-4 space-y-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            
+            {/* Edit Profil */}
+            <Link href="/profile/edit" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-600">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 text-blue-600">
+                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Daftar Pesanan Saya</span>
+                    <span className="text-sm font-medium text-gray-700">
+                        Edit Profil
+                    </span>
+                </div>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+            </Link>
+
+            {/* [BARU] Voucher Saya */}
+            <Link href="/profile/vouchers" className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center bg-purple-50 text-purple-600">
+                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                         </svg>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">
+                        Voucher Saya
+                    </span>
                 </div>
                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
             </Link>
@@ -94,10 +114,16 @@ export default function ProfilePage() {
             </button>
         </div>
 
-        <button onClick={handleLogout} className="w-full py-4 text-sm font-bold text-red-600 bg-red-50 rounded-2xl hover:bg-red-100 transition-colors">
-            Keluar Aplikasi
+        {/* Logout Button */}
+        <button 
+          onClick={handleLogout}
+          className="w-full bg-white p-4 rounded-xl shadow-sm text-red-600 font-medium border border-gray-100 hover:bg-red-50 transition-colors"
+        >
+          Keluar
         </button>
       </div>
+
+      {/* Bottom Nav Placeholder (handled by layout) */}
     </div>
   );
 }
