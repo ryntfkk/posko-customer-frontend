@@ -13,7 +13,6 @@ import { Service } from '@/features/services/types';
 import { useCart } from '@/features/cart/useCart';
 
 // --- KOMPONEN MODULAR ---
-import ProviderHome from '@/components/ProviderHome';
 import TechnicianSection from '@/components/home/TechnicianSection';
 import ServiceCategories from '@/components/home/ServiceCategories';
 import ChatWidget from '@/components/ChatWidget';
@@ -81,6 +80,13 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // [BARU] Effect untuk Redirect Provider ke Dashboard
+  useEffect(() => {
+    if (!isLoadingProfile && isProviderMode) {
+      router.replace('/dashboard');
+    }
+  }, [isProviderMode, isLoadingProfile, router]);
+
   const groupServicesToCategories = (services: Service[]) => {
     const categoriesMap = new Map();
     services.forEach(service => {
@@ -144,8 +150,13 @@ export default function HomePage() {
       }
   };
 
-  if (isProviderMode && userProfile) {
-    return <ProviderHome user={userProfile} />;
+  // Jika sedang mode provider, tampilkan loading sementara redirect berjalan
+  if (isProviderMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-red-600"></div>
+      </div>
+    );
   }
 
   return (
