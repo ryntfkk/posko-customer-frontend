@@ -21,7 +21,7 @@ const PUBLIC_ROUTES = [
 // Routes yang memerlukan login (semua user)
 const PROTECTED_ROUTES = ['/orders', '/checkout', '/chat', '/profile'];
 
-const PROVIDER_ROUTES = ['/dashboard', '/jobs', '/settings'];
+const PROVIDER_ROUTES = ['/dashboard', '/jobs', '/settings', '/messages']; // [FIX] Tambahkan /messages
 const ADMIN_ROUTES = ['/admin'];
 
 function isPublicRoute(pathname: string): boolean {
