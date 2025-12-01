@@ -1,4 +1,3 @@
-// src/app/(customer)/search/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -6,11 +5,13 @@ import Image from 'next/image';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { fetchProviders, FetchProvidersParams } from '@/features/providers/api';
+import { fetchProfile } from '@/features/auth/api'; // Import fetchProfile
 import { Provider } from '@/features/providers/types';
+import { User } from '@/features/auth/types'; // Import User Type
 
-// --- 1. Helper Hitung Jarak (Ditambahkan) ---
+// --- Helper Hitung Jarak ---
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius bumi dalam KM
+  const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a =
@@ -40,29 +41,34 @@ function SearchContent() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(query);
-  
-  // --- 2. State untuk Lokasi User (Ditambahkan) ---
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Effect: Ambil Lokasi User saat halaman dibuka
+  // --- State untuk User Profile (Sesuai Referensi) ---
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
+
+  // 1. Fetch User Profile
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.log('Izin lokasi ditolak/error:', error);
+    const loadUserProfile = async () => {
+      try {
+        const token = localStorage.getItem('posko_token');
+        if (token) {
+          const res = await fetchProfile();
+          // Asumsi responsenya: { data: { profile: User } } sesuai file referensi
+          setUserProfile(res.data.profile);
         }
-      );
-    }
+      } catch (error) {
+        console.error("Gagal memuat profil user:", error);
+      } finally {
+        setIsProfileLoaded(true);
+      }
+    };
+    loadUserProfile();
   }, []);
 
-  // Effect: Fetch Data Provider
+  // 2. Fetch Providers (Menunggu Profile Loaded agar koordinat akurat)
   useEffect(() => {
+    if (!isProfileLoaded) return; // Tunggu profile selesai dimuat (sukses atau gagal)
+
     const loadData = async () => {
       setIsLoading(true);
       try {
@@ -71,10 +77,12 @@ function SearchContent() {
           search: query, 
         };
         
-        // Jika lokasi user sudah ada, kirim ke API agar hasil urut berdasarkan jarak (opsional, tergantung backend)
-        if (userLocation) {
-            params.lat = userLocation.lat;
-            params.lng = userLocation.lng;
+        // Ambil koordinat dari profile user jika ada
+        if (userProfile?.location?.coordinates) {
+          // GeoJSON biasanya [lng, lat]
+          const [lng, lat] = userProfile.location.coordinates;
+          params.lat = lat;
+          params.lng = lng;
         }
 
         const res = await fetchProviders(params);
@@ -87,7 +95,7 @@ function SearchContent() {
     };
 
     loadData();
-  }, [query, category, userLocation]); // Re-fetch jika lokasi user ditemukan
+  }, [query, category, userProfile, isProfileLoaded]); // Re-fetch saat profile loaded/updated
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,9 +104,20 @@ function SearchContent() {
     router.push(`/search?${params.toString()}`);
   };
 
+  // Helper untuk mengambil Lat/Lng User saat ini untuk perhitungan visual
+  const getUserCoordinates = () => {
+    if (userProfile?.location?.coordinates) {
+      return {
+        lng: userProfile.location.coordinates[0],
+        lat: userProfile.location.coordinates[1]
+      };
+    }
+    return null;
+  };
+  const userCoords = getUserCoordinates();
+
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
-      {/* Header Search */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-3xl mx-auto px-4 py-4">
             <form onSubmit={handleSearch} className="relative">
@@ -127,11 +146,12 @@ function SearchContent() {
                 </h1>
                 <p className="text-sm text-gray-500">{providers.length} mitra ditemukan</p>
             </div>
-            {/* Indikator Lokasi (Opsional) */}
-            {!userLocation && (
-                <p className="text-xs text-orange-500 hidden md:block">
-                    *Aktifkan lokasi untuk melihat jarak
-                </p>
+            
+            {/* Indikator Login/Lokasi (Opsional) */}
+            {isProfileLoaded && !userProfile && (
+               <Link href="/login" className="text-xs text-red-600 hover:underline hidden md:block">
+                  Masuk untuk melihat jarak terdekat
+               </Link>
             )}
         </div>
 
@@ -152,15 +172,16 @@ function SearchContent() {
         ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {providers.map((prov) => {
-                    // --- Logic Jarak (Ditambahkan) ---
                     let distanceStr = null;
-                    if (userLocation && prov.userId?.location?.coordinates) {
+                    
+                    // Logic Hitung Jarak: Gunakan userCoords (dari profile) dan provider coords
+                    if (userCoords && prov.userId?.location?.coordinates) {
                         const provLng = prov.userId.location.coordinates[0];
                         const provLat = prov.userId.location.coordinates[1];
-                        distanceStr = calculateDistance(userLocation.lat, userLocation.lng, provLat, provLng);
+                        distanceStr = calculateDistance(userCoords.lat, userCoords.lng, provLat, provLng);
                     }
 
-                    // Helpers Lain
+                    // Helpers
                     const getLocationLabel = () => {
                         const addr = prov.userId?.address;
                         if (!addr) return 'Lokasi Mitra';
@@ -202,7 +223,7 @@ function SearchContent() {
                                     </div>
                                 )}
 
-                                {/* --- 3. Badge Jarak (Ditambahkan) --- */}
+                                {/* Distance Badge */}
                                 {distanceStr && (
                                     <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-[9px] lg:text-[10px] font-medium text-gray-700 border border-white/20 shadow-sm">
                                         <span className="text-red-500">
