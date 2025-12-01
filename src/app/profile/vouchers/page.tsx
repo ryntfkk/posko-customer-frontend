@@ -12,8 +12,11 @@ export default function MyVouchersPage() {
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  // Tab State: 'my' (Terklaim) atau 'market' (Cari Promo)
+  // Untuk simplifikasi, halaman ini fokus 'my', tapi kita kasih link ke market
+  
   useEffect(() => {
-    const fetchVouchers = async () => {
+    const fetchMyVouchers = async () => {
       try {
         const res = await voucherApi.getMyVouchers();
         setVouchers(res.data);
@@ -23,7 +26,7 @@ export default function MyVouchersPage() {
         setLoading(false);
       }
     };
-    fetchVouchers();
+    fetchMyVouchers();
   }, []);
 
   const handleCopy = (code: string) => {
@@ -35,7 +38,7 @@ export default function MyVouchersPage() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: 'numeric',
-      month: 'long',
+      month: 'short',
       year: 'numeric',
     });
   };
@@ -51,13 +54,13 @@ export default function MyVouchersPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
       <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center gap-3">
         <button onClick={() => router.back()} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
@@ -68,37 +71,65 @@ export default function MyVouchersPage() {
         <h1 className="text-lg font-bold text-gray-900">Voucher Saya</h1>
       </div>
 
-      {/* Content */}
+      {/* Tabs / Banner to Market */}
+      <div className="p-4 pb-0">
+          <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-xl p-4 text-white flex justify-between items-center shadow-md">
+              <div>
+                  <h3 className="font-bold text-sm">Mau promo lebih banyak?</h3>
+                  <p className="text-xs opacity-90">Klaim voucher baru di Voucher Center</p>
+              </div>
+              <Link href="/vouchers" className="bg-white text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-50 transition-colors">
+                  Cari Promo
+              </Link>
+          </div>
+      </div>
+
+      {/* Content List */}
       <div className="p-4 space-y-4">
         {vouchers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center pt-20 text-center">
+          <div className="flex flex-col items-center justify-center pt-10 text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900">Belum ada voucher</h3>
-            <p className="text-gray-500 mt-1 max-w-xs">
-              Saat ini kamu belum memiliki voucher diskon yang tersedia.
+            <h3 className="text-lg font-medium text-gray-900">Belum ada voucher aktif</h3>
+            <p className="text-gray-500 mt-1 text-sm max-w-xs">
+              Voucher yang kamu klaim akan muncul di sini. Yuk cari promo menarik!
             </p>
+            <Link href="/vouchers" className="mt-4 px-6 py-2 border border-red-600 text-red-600 font-bold rounded-full text-sm hover:bg-red-50">
+                Klaim Voucher Dulu
+            </Link>
           </div>
         ) : (
           vouchers.map((voucher) => (
             <div 
-              key={voucher._id} 
+              key={voucher.userVoucherId || voucher._id} 
               className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative"
             >
               {/* Left Decoration Stripe */}
-              <div className="absolute left-0 top-0 bottom-0 w-2 bg-purple-500"></div>
+              <div className="absolute left-0 top-0 bottom-0 w-2 bg-red-500"></div>
               
               {/* Card Body */}
               <div className="p-4 pl-6 flex flex-col gap-3">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-gray-900 text-lg">{voucher.code}</h3>
-                    <p className="text-sm text-gray-600 mt-1">{voucher.description}</p>
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{voucher.description}</p>
+                    
+                    {/* Label Spesifik Layanan */}
+                    {voucher.applicableServices && voucher.applicableServices.length > 0 ? (
+                         <span className="inline-block mt-1 text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">
+                            Khusus Layanan Tertentu
+                         </span>
+                    ) : (
+                         <span className="inline-block mt-1 text-[10px] font-bold bg-green-50 text-green-600 px-2 py-0.5 rounded border border-green-100">
+                            Semua Layanan
+                         </span>
+                    )}
+
                   </div>
-                  <div className="bg-purple-50 text-purple-700 text-xs font-semibold px-2 py-1 rounded">
+                  <div className="bg-red-50 text-red-700 text-xs font-bold px-2 py-1 rounded whitespace-nowrap">
                     {voucher.discountType === 'percentage' 
                       ? `Diskon ${voucher.discountValue}%` 
                       : `Potongan ${formatCurrency(voucher.discountValue)}`}
@@ -106,7 +137,7 @@ export default function MyVouchersPage() {
                 </div>
 
                 <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                    </svg>
                    <span>Min. Belanja: <b>{formatCurrency(voucher.minPurchase)}</b></span>
@@ -123,17 +154,17 @@ export default function MyVouchersPage() {
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       copiedCode === voucher.code 
                         ? 'bg-green-100 text-green-700' 
-                        : 'bg-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-white border border-red-200 text-red-600 hover:bg-red-50'
                     }`}
                   >
-                    {copiedCode === voucher.code ? 'Tersalin!' : 'Salin Kode'}
+                    {copiedCode === voucher.code ? 'Tersalin!' : 'Salin'}
                   </button>
                 </div>
               </div>
               
               {/* Circle Cutouts for Ticket Effect */}
-              <div className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-gray-50 rounded-full"></div>
-              <div className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-gray-50 rounded-full"></div>
+              <div className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-gray-50 rounded-full border-r border-gray-100"></div>
+              <div className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 bg-gray-50 rounded-full border-l border-gray-100"></div>
             </div>
           ))
         )}

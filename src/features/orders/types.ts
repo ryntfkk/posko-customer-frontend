@@ -59,6 +59,7 @@ export interface CreateOrderPayload {
   propertyDetails?: PropertyDetails;
   scheduledTimeSlot?: ScheduledTimeSlot;
   attachments?: Attachment[];
+  voucherCode?: string; // Field baru untuk kirim kode voucher
 }
 
 // ============ POPULATED ORDER ITEM ============
@@ -116,7 +117,11 @@ export interface Order {
   userId: string | PopulatedUser;
   providerId?: string | PopulatedProvider | null;
   items: PopulatedOrderItem[];
+  
   totalAmount: number;
+  adminFee?: number;       // Field baru
+  discountAmount?: number; // Field baru
+  
   status: OrderStatus;
   orderType: 'direct' | 'basic';
   scheduledAt?: string;

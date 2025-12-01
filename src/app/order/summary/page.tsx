@@ -14,6 +14,11 @@ import useMidtrans from '@/hooks/useMidtrans';
 import { fetchProfile } from '@/features/auth/api';
 import { User, Address, GeoLocation } from '@/features/auth/types';
 
+// Import API & Types Settings & Vouchers
+import { settingsApi } from '@/features/settings/api';
+import { voucherApi } from '@/features/vouchers/api';
+import { Voucher } from '@/features/vouchers/types';
+
 // Import komponen lokal
 import { AttachmentUploader } from '@/components/OrderComponents'; 
 
@@ -47,13 +52,6 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-// --- DATA MOCKUP VOUCHER ---
-const AVAILABLE_VOUCHERS = [
-  { code: 'POSKO10', discount: 10000, description: 'Diskon Rp 10.000 untuk pengguna baru' },
-  { code: 'HEMAT50', discount: 50000, description: 'Potongan spesial akhir bulan' },
-  { code: 'ONGKIR0', discount: 5000, description: 'Potongan biaya platform' },
-];
-
 function OrderSummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams(); 
@@ -62,9 +60,13 @@ function OrderSummaryContent() {
   
   const isSnapLoaded = useMidtrans();
 
-  // State Data
+  // State Data User
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+
+  // State Settings & Vouchers
+  const [adminFee, setAdminFee] = useState(0);
+  const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]); // Ini sekarang memuat voucher MY (yang sudah diklaim)
 
   // State Form/Input
   const [isProcessing, setIsProcessing] = useState(false);
@@ -74,6 +76,7 @@ function OrderSummaryContent() {
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{code: string, discount: number} | null>(null);
+  const [isCheckingVoucher, setIsCheckingVoucher] = useState(false);
   
   // Alamat & Lokasi
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
@@ -113,36 +116,6 @@ function OrderSummaryContent() {
   }
   const [attachments, setAttachments] = useState<UIAttachment[]>([]);
 
-  // Load User Profile
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const res = await fetchProfile();
-        const profile = res.data.profile;
-        setUserProfile(profile);
-
-        if (profile.address) {
-          setSelectedAddress(profile.address);
-        }
-        if (profile.location && profile.location.coordinates && profile.location.coordinates[0] !== 0) {
-          setOrderLocation(profile.location);
-        }
-        
-        // Pre-fill customer contact dari profile
-        setCustomerContact({
-          name: profile.fullName || '',
-          phone: profile.phoneNumber || '',
-          alternatePhone: ''
-        });
-      } catch (error) {
-        console.error("Gagal memuat profil:", error);
-      } finally {
-        setIsProfileLoading(false);
-      }
-    };
-    loadProfile();
-  }, []);
-
   // Parse Query Params
   const checkoutType = searchParams?.get('type') as 'direct' | 'basic' || 'basic';
   const selectedProviderId = searchParams?.get('providerId') || null;
@@ -169,6 +142,50 @@ function OrderSummaryContent() {
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
+  // Load User Profile, Settings, & Vouchers
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // 1. Load Profile
+        const profileRes = await fetchProfile();
+        const profile = profileRes.data.profile;
+        setUserProfile(profile);
+
+        if (profile.address) {
+          setSelectedAddress(profile.address);
+        }
+        if (profile.location && profile.location.coordinates && profile.location.coordinates[0] !== 0) {
+          setOrderLocation(profile.location);
+        }
+        
+        // Pre-fill customer contact dari profile
+        setCustomerContact({
+          name: profile.fullName || '',
+          phone: profile.phoneNumber || '',
+          alternatePhone: ''
+        });
+
+        // 2. Load Global Config (Admin Fee)
+        const settingsRes = await settingsApi.getGlobalConfig();
+        if (settingsRes.data) {
+            setAdminFee(settingsRes.data.adminFee);
+        }
+
+        // 3. Load My Vouchers (Hanya yang sudah diklaim)
+        const vouchersRes = await voucherApi.getMyVouchers();
+        if (vouchersRes.data) {
+            setAvailableVouchers(vouchersRes.data);
+        }
+
+      } catch (error) {
+        console.error("Gagal memuat data awal:", error);
+      } finally {
+        setIsProfileLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
   // Handler add attachment pakai File
   const handleAddAttachment = useCallback((file: File, desc: string) => {
     const previewUrl = URL.createObjectURL(file);
@@ -194,16 +211,42 @@ function OrderSummaryContent() {
     });
   }, []);
 
-  // Handler Promo
-  const handleApplyPromo = (code: string) => {
-    const voucher = AVAILABLE_VOUCHERS.find(v => v.code === code.toUpperCase());
-    if (voucher) {
-        setAppliedPromo({ code: voucher.code, discount: voucher.discount });
+  // Handler Promo (Updated with API & Items Payload)
+  const handleApplyPromo = async (code: string) => {
+    if (!code) return;
+    setIsCheckingVoucher(true);
+    try {
+        // [UPDATE] Construct payload items agar backend bisa validasi per layanan
+        const itemsPayload = activeCartItems.map(item => ({
+            serviceId: item.serviceId,
+            price: item.pricePerUnit,
+            quantity: item.quantity
+        }));
+
+        const res = await voucherApi.checkVoucher({
+            code: code,
+            items: itemsPayload // Kirim array items
+        });
+        
+        const { estimatedDiscount, eligibleTotal } = res.data;
+        
+        setAppliedPromo({ code: code.toUpperCase(), discount: estimatedDiscount });
         setIsPromoModalOpen(false);
         setPromoCodeInput('');
-        alert(`Selamat! Promo ${voucher.code} berhasil digunakan.`);
-    } else {
-        alert('Kode promo tidak valid atau kadaluarsa.');
+        
+        // Beri feedback jika voucher spesifik layanan
+        if (eligibleTotal < currentTotalAmount) {
+             alert(`Promo ${code.toUpperCase()} berhasil! Hemat ${formatCurrency(estimatedDiscount)}. (Hanya berlaku untuk layanan tertentu di keranjang Anda)`);
+        } else {
+             alert(`Selamat! Promo ${code.toUpperCase()} berhasil digunakan. Hemat ${formatCurrency(estimatedDiscount)}`);
+        }
+
+    } catch (error: any) {
+        console.error("Voucher Error:", error);
+        alert(error.response?.data?.message || 'Kode promo tidak valid atau tidak memenuhi syarat.');
+        setAppliedPromo(null);
+    } finally {
+        setIsCheckingVoucher(false);
     }
   };
 
@@ -238,8 +281,8 @@ function OrderSummaryContent() {
     try {
       const mainItem = activeCartItems[0];
       
-      // Hitung total setelah diskon (untuk dikirim ke backend, pastikan backend validasi ulang)
-      const finalAmount = Math.max(0, currentTotalAmount - (appliedPromo?.discount || 0));
+      // Hitung total akhir: Subtotal + Admin Fee - Diskon
+      const finalAmount = Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0));
 
       const orderPayload: CreateOrderPayload = {
         orderType: mainItem.orderType,
@@ -267,7 +310,8 @@ function OrderSummaryContent() {
             url: att.url,
             type: att.type,
             description: att.description
-        }))
+        })),
+        voucherCode: appliedPromo?.code // Kirim kode voucher ke backend
       };
 
       console.log("1.Membuat Order...", orderPayload);
@@ -677,8 +721,10 @@ function OrderSummaryContent() {
                   <span className="font-semibold text-gray-900">{formatCurrency(currentTotalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Biaya Platform</span>
-                  <span className="font-semibold text-green-600">Gratis</span>
+                  <span className="text-gray-600">Biaya Platform (Admin)</span>
+                  <span className={`font-semibold ${adminFee === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                    {adminFee === 0 ? 'Gratis' : formatCurrency(adminFee)}
+                  </span>
                 </div>
                 
                 {/* PROMO CODE DISPLAY */}
@@ -713,7 +759,7 @@ function OrderSummaryContent() {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-900 font-bold text-sm md:text-base">Total Pembayaran</span>
                   <span className="text-xl md:text-2xl font-black text-red-600">
-                      {formatCurrency(Math.max(0, currentTotalAmount - (appliedPromo?.discount || 0)))}
+                      {formatCurrency(Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0)))}
                   </span>
                 </div>
               </div>
@@ -777,9 +823,12 @@ function OrderSummaryContent() {
                         />
                         <button 
                             onClick={() => handleApplyPromo(promoCodeInput)}
-                            disabled={!promoCodeInput}
-                            className="px-4 py-2 bg-gray-900 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-gray-800 transition-colors"
+                            disabled={!promoCodeInput || isCheckingVoucher}
+                            className="px-4 py-2 bg-gray-900 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
                         >
+                            {isCheckingVoucher && (
+                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            )}
                             Pakai
                         </button>
                     </div>
@@ -787,19 +836,41 @@ function OrderSummaryContent() {
                     {/* List Voucher */}
                     <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Voucher Tersedia</p>
-                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                            {AVAILABLE_VOUCHERS.map((voucher) => (
-                                <div key={voucher.code} className="border border-gray-200 rounded-xl p-3 flex justify-between items-center hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer" onClick={() => handleApplyPromo(voucher.code)}>
-                                    <div>
-                                        <p className="font-bold text-gray-900">{voucher.code}</p>
-                                        <p className="text-xs text-gray-500">{voucher.description}</p>
+                        {availableVouchers.length > 0 ? (
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                {availableVouchers.map((voucher) => (
+                                    <div 
+                                        key={voucher._id} 
+                                        className={`border border-gray-200 rounded-xl p-3 flex justify-between items-center hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer ${currentTotalAmount < voucher.minPurchase ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                                        onClick={() => {
+                                            if (currentTotalAmount >= voucher.minPurchase) {
+                                                handleApplyPromo(voucher.code);
+                                            }
+                                        }}
+                                    >
+                                        <div>
+                                            <p className="font-bold text-gray-900">{voucher.code}</p>
+                                            <p className="text-xs text-gray-500">{voucher.description}</p>
+                                            {currentTotalAmount < voucher.minPurchase && (
+                                                <p className="text-[10px] text-red-500 mt-1">Min. belanja {formatCurrency(voucher.minPurchase)}</p>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
+                                                {voucher.discountType === 'percentage' ? `${voucher.discountValue}%` : formatCurrency(voucher.discountValue)}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">
-                                        Hemat {formatCurrency(voucher.discount)}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                <p className="text-sm text-gray-500">Belum ada voucher yang diklaim.</p>
+                                <Link href="/vouchers" className="text-xs font-bold text-red-600 hover:underline mt-1 inline-block">
+                                    Cari di Voucher Center
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -824,4 +895,3 @@ export default function OrderSummaryPage() {
     </Suspense>
   );
 }
-
