@@ -3,10 +3,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtDecode } from 'jwt-decode';
 
+type Role = 'customer' | 'provider' | 'admin';
+
 interface DecodedToken {
-  userId: string;
-  email: string;
-  role: 'customer' | 'provider' | 'admin';
+  userId?: string;
+  email?: string;
+  role?: Role;
+  activeRole?: Role;
+  roles?: Role[];
   exp: number;
 }
 
@@ -47,13 +51,36 @@ function getTokenFromCookies(request: NextRequest): string | null {
   return request.cookies.get('posko_token')?.value || null;
 }
 
+function extractRole(decoded: DecodedToken): Role | null {
+  const roleFromActive = decoded.activeRole;
+  if (roleFromActive === 'customer' || roleFromActive === 'provider' || roleFromActive === 'admin') {
+    return roleFromActive;
+  }
+
+  const roleFromSingle = decoded.role;
+  if (roleFromSingle === 'customer' || roleFromSingle === 'provider' || roleFromSingle === 'admin') {
+    return roleFromSingle;
+  }
+
+  if (Array.isArray(decoded.roles)) {
+    const roleFromArray = decoded.roles.find((r): r is Role => ['customer', 'provider', 'admin'].includes(r));
+    if (roleFromArray) return roleFromArray;
+  }
+
+  return null;
+}
+
 function decodeToken(token: string): DecodedToken | null {
   try {
     const decoded = jwtDecode<DecodedToken>(token);
     if (decoded.exp * 1000 < Date.now()) {
       return null;
     }
-    return decoded;
+
+    const role = extractRole(decoded);
+    if (!role) return null;
+
+    return { ...decoded, role };
   } catch {
     return null;
   }
