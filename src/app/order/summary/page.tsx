@@ -802,7 +802,7 @@ function OrderSummaryContent() {
 
       {/* MODAL PROMO */}
       {isPromoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm p-20">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="font-bold text-lg text-gray-900">Pakai Promo</h3>
