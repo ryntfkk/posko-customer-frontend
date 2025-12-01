@@ -1,3 +1,4 @@
+// src/app/(provider)/layout.tsx
 'use client';
 
 import Link from 'next/link';
@@ -5,16 +6,22 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
-// Icon Components
+// Icon Components for Sidebar
 const DashboardIcon = ({ active }: { active: boolean }) => (
   <svg className={`w-5 h-5 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
   </svg>
 );
 
 const JobsIcon = ({ active }: { active: boolean }) => (
   <svg className={`w-5 h-5 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 00-2-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+  </svg>
+);
+
+const ChatIcon = ({ active }: { active: boolean }) => (
+  <svg className={`w-5 h-5 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
   </svg>
 );
 
@@ -25,41 +32,42 @@ const SettingsIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-const HomeIcon = ({ active }: { active: boolean }) => (
-  <svg className={`w-5 h-5 ${active ? 'text-red-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+const HomeIcon = () => (
+  <svg className="w-5 h-5 text-gray-400 group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
   </svg>
 );
 
-// Desktop Sidebar
+// Desktop Sidebar Component
 function ProviderSidebar() {
   const pathname = usePathname();
 
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', Icon: DashboardIcon },
     { href: '/jobs', label: 'Pesanan', Icon: JobsIcon },
+    { href: '/chat', label: 'Chat', Icon: ChatIcon },
     { href: '/settings', label: 'Pengaturan', Icon: SettingsIcon },
   ];
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen p-6">
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen p-6 fixed top-0 bottom-0 left-0 overflow-y-auto z-40">
       {/* Logo */}
-      <div className="mb-8 flex items-center gap-3">
-        <div className="w-10 h-10 relative">
+      <div className="mb-10 flex items-center gap-3 px-2">
+        <div className="w-8 h-8 relative">
           <Image src="/logo.png" alt="Logo Posko" fill className="object-contain" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-gray-900">
+          <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
             Posko<span className="text-red-600">.</span>
           </h1>
-          <p className="text-xs text-gray-400">Mitra Panel</p>
+          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Mitra Panel</p>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 space-y-2">
         {menuItems.map((item) => {
           const active = isActive(item.href);
           return (
@@ -68,8 +76,8 @@ function ProviderSidebar() {
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                 active
-                  ? 'bg-red-50 text-red-600'
-                  : 'text-gray-600 hover:bg-gray-50'
+                  ? 'bg-red-50 text-red-700 shadow-sm'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
               <item.Icon active={active} />
@@ -80,12 +88,12 @@ function ProviderSidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="pt-6 border-t border-gray-100">
+      <div className="pt-6 border-t border-gray-100 mt-auto">
         <Link
           href="/"
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-all"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-red-600 transition-all group"
         >
-          <HomeIcon active={false} />
+          <HomeIcon />
           Kembali ke Beranda
         </Link>
       </div>
@@ -93,7 +101,7 @@ function ProviderSidebar() {
   );
 }
 
-// [UPDATED] Menggunakan ProviderBottomNav yang diimport, bukan fungsi lokal
+// Main Layout
 export default function ProviderLayout({
   children,
 }: {
@@ -102,7 +110,7 @@ export default function ProviderLayout({
   return (
     <div className="flex min-h-screen bg-gray-50">
       <ProviderSidebar />
-      <main className="flex-1 pb-24 lg:pb-0">
+      <main className="flex-1 lg:ml-64 w-full">
         {children}
       </main>
       <ProviderBottomNav />

@@ -1,10 +1,10 @@
+// src/components/provider/ProviderBottomNav.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { fetchProfile } from '@/features/auth/api';
 
+// --- ICONS ---
 const DashboardIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -23,9 +23,10 @@ const MessagesIcon = () => (
   </svg>
 );
 
-const AccountIcon = () => (
+const SettingsIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
 
@@ -37,48 +38,11 @@ interface NavItem {
 
 export default function ProviderBottomNav() {
   const pathname = usePathname();
-  const [isProviderMode, setIsProviderMode] = useState<boolean | null>(null);
 
-  // Cek role user untuk memastikan navbar yang benar ditampilkan
-  useEffect(() => {
-    const checkUserMode = async () => {
-      try {
-        const token = localStorage.getItem('posko_token');
-        if (token) {
-          const res = await fetchProfile();
-          setIsProviderMode(res.data.profile?.activeRole === 'provider');
-        } else {
-          setIsProviderMode(false);
-        }
-      } catch {
-        setIsProviderMode(false);
-      }
-    };
-    checkUserMode();
-  }, []);
-
-  // Jangan render saat masih loading
-  if (isProviderMode === null) {
-    return null;
-  }
-
-  // Jangan render jika user bukan provider mode
-  if (!isProviderMode) {
-    return null;
-  }
-
-  // Deteksi halaman profil publik provider (yang dilihat customer: /provider/ID)
-  // Kita harus mengecualikan halaman ini agar ProviderBottomNav tidak muncul saat customer melihat profil mitra
-  // Tapi kita harus HATI-HATI: Provider melihat profil sendiri ada di /profile (bukan /provider/ID)
-  if (pathname && pathname.match(/^\/provider\/[a-f0-9]+$/i)) {
-    return null;
-  }
-
-  // PENTING: Jangan render di halaman services/[category]
-  if (pathname && pathname.match(/^\/services\/.+$/)) {
-    return null;
-  }
-
+  // Helper untuk cek halaman publik agar navbar tidak muncul saat user melihat profil orang lain
+  // (Asumsi: Halaman provider view publik ada di /provider/ID)
+  // Tetapi Navigasi ini hanya di-render di ProviderLayout, jadi aman.
+  
   const isActive = (path: string) => {
     // Exact match untuk dashboard
     if (path === '/dashboard' && pathname === '/dashboard') return true;
@@ -89,11 +53,8 @@ export default function ProviderBottomNav() {
     // Match untuk Chat
     if (path === '/chat' && pathname.startsWith('/chat')) return true;
     
-    // Match untuk Profile/Settings (Provider settings ada di /settings, tapi main profile di /profile)
-    // Kita arahkan ikon Akun ke /settings untuk provider sesuai layout provider asli, 
-    // atau ke /profile jika ingin konsisten dengan customer. 
-    // Berdasarkan file layout provider sebelumnya, provider menggunakan /settings.
-    if (path === '/settings' && (pathname === '/settings' || pathname === '/profile')) return true;
+    // Match untuk Settings
+    if (path === '/settings' && pathname.startsWith('/settings')) return true;
     
     return false;
   };
@@ -102,27 +63,27 @@ export default function ProviderBottomNav() {
     { href: '/dashboard', icon: <DashboardIcon />, label: 'Dashboard' },
     { href: '/jobs', icon: <JobsIcon />, label: 'Pesanan' },
     { href: '/chat', icon: <MessagesIcon />, label: 'Chat' },
-    { href: '/settings', icon: <AccountIcon />, label: 'Akun' }, // Provider menggunakan settings
+    { href: '/settings', icon: <SettingsIcon />, label: 'Pengaturan' },
   ];
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-5 pt-2 px-6 z-[999] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-      <div className="flex justify-between items-center">
-        {navItems.map((item) => (
-          <Link 
-            key={item.href}
-            href={item.href} 
-            className="flex flex-col items-center gap-1 w-16"
-          >
-            <div className={`transition-colors duration-200 ${isActive(item.href) ?  'text-red-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
-              {item.icon}
-            </div>
-            <span className={`text-[10px] font-bold transition-colors duration-200 ${isActive(item.href) ? 'text-red-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
-              {item.label}
-            </span>
-          </Link>
-        ))}
-      </div>
+    <div className="lg:hidden fixed bottom-6 left-6 right-6 z-[99]">
+      <nav className="bg-white/95 backdrop-blur-md border border-gray-100 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] rounded-2xl px-2 py-3.5 flex justify-between items-center max-w-sm mx-auto">
+        {navItems.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link 
+              key={item.href}
+              href={item.href} 
+              className="flex-1 flex flex-col items-center justify-center group"
+            >
+              <div className={`transition-all duration-300 ${active ? 'text-red-600 scale-110 drop-shadow-sm' : 'text-gray-400 group-hover:text-gray-600'}`}>
+                {item.icon}
+              </div>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
