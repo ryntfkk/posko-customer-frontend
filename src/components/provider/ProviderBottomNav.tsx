@@ -13,7 +13,7 @@ const DashboardIcon = () => (
 
 const JobsIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 00-2-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
   </svg>
 );
 
@@ -67,7 +67,9 @@ export default function ProviderBottomNav() {
     return null;
   }
 
-  // Deteksi halaman profil publik provider (yang dilihat customer)
+  // Deteksi halaman profil publik provider (yang dilihat customer: /provider/ID)
+  // Kita harus mengecualikan halaman ini agar ProviderBottomNav tidak muncul saat customer melihat profil mitra
+  // Tapi kita harus HATI-HATI: Provider melihat profil sendiri ada di /profile (bukan /provider/ID)
   if (pathname && pathname.match(/^\/provider\/[a-f0-9]+$/i)) {
     return null;
   }
@@ -78,10 +80,21 @@ export default function ProviderBottomNav() {
   }
 
   const isActive = (path: string) => {
-    if (path === '/(provider)/dashboard' && pathname === '/dashboard') return true;
-    if (path === '/(provider)/jobs' && pathname === '/jobs') return true;
-    if (path === '/chat' && pathname === '/chat') return true;
-    if (path === '/profile' && pathname === '/profile') return true;
+    // Exact match untuk dashboard
+    if (path === '/dashboard' && pathname === '/dashboard') return true;
+    
+    // Match untuk Jobs (termasuk detail job)
+    if (path === '/jobs' && (pathname === '/jobs' || pathname.startsWith('/jobs/'))) return true;
+    
+    // Match untuk Chat
+    if (path === '/chat' && pathname.startsWith('/chat')) return true;
+    
+    // Match untuk Profile/Settings (Provider settings ada di /settings, tapi main profile di /profile)
+    // Kita arahkan ikon Akun ke /settings untuk provider sesuai layout provider asli, 
+    // atau ke /profile jika ingin konsisten dengan customer. 
+    // Berdasarkan file layout provider sebelumnya, provider menggunakan /settings.
+    if (path === '/settings' && (pathname === '/settings' || pathname === '/profile')) return true;
+    
     return false;
   };
 
@@ -89,11 +102,11 @@ export default function ProviderBottomNav() {
     { href: '/dashboard', icon: <DashboardIcon />, label: 'Dashboard' },
     { href: '/jobs', icon: <JobsIcon />, label: 'Pesanan' },
     { href: '/chat', icon: <MessagesIcon />, label: 'Chat' },
-    { href: '/profile', icon: <AccountIcon />, label: 'Akun' },
+    { href: '/settings', icon: <AccountIcon />, label: 'Akun' }, // Provider menggunakan settings
   ];
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-5 pt-2 px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-5 pt-2 px-6 z-[999] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
       <div className="flex justify-between items-center">
         {navItems.map((item) => (
           <Link 
@@ -101,10 +114,10 @@ export default function ProviderBottomNav() {
             href={item.href} 
             className="flex flex-col items-center gap-1 w-16"
           >
-            <div className={`${isActive(item.href) ?  'text-red-600' : 'text-gray-400'}`}>
+            <div className={`transition-colors duration-200 ${isActive(item.href) ?  'text-red-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
               {item.icon}
             </div>
-            <span className={`text-[10px] font-bold ${isActive(item.href) ? 'text-red-600' : 'text-gray-400'}`}>
+            <span className={`text-[10px] font-bold transition-colors duration-200 ${isActive(item.href) ? 'text-red-600' : 'text-gray-400 group-hover:text-gray-600'}`}>
               {item.label}
             </span>
           </Link>

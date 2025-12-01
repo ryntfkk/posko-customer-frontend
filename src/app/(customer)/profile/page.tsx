@@ -1,12 +1,12 @@
-// src/app/profile/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import { fetchProfile, switchRole } from '@/features/auth/api'; // Import switchRole
+import Image from 'next/image'; // Perbaikan import Image (tadi pakai img tag biasa)
+import { fetchProfile, switchRole } from '@/features/auth/api';
 import { User } from '@/features/auth/types';
+import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -37,21 +37,17 @@ export default function ProfilePage() {
     if (!user) return;
     setSwitching(true);
     
-    // Jika user adalah customer -> Arahkan ke halaman daftar mitra (placeholder)
     const isProvider = user.roles.includes('provider');
     
     if (!isProvider) {
-        // Logic Daftar Mitra
         alert("Fitur pendaftaran mitra akan segera hadir!");
         setSwitching(false);
         return;
     }
 
-    // Jika sudah provider -> Switch active role
     try {
         const targetRole = user.activeRole === 'provider' ? 'customer' : 'provider';
         await switchRole(targetRole);
-        // Refresh halaman atau redirect ke home untuk melihat perubahan
         window.location.href = '/'; 
     } catch (error) {
         console.error("Gagal pindah mode", error);
@@ -76,11 +72,12 @@ export default function ProfilePage() {
       <div className="p-6 space-y-6">
         {/* Profile Card */}
         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0">
-            <img 
+          <div className="w-16 h-16 rounded-full bg-gray-100 overflow-hidden border border-gray-200 shrink-0 relative">
+            <Image 
               src={user.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.fullName}`} 
               alt="Avatar" 
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
             />
           </div>
           <div className="flex-1 min-w-0">
@@ -94,15 +91,28 @@ export default function ProfilePage() {
 
         {/* Menu Utama */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <Link href="/orders" className="flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-50 transition-colors">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-600">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            {/* Tampilkan Menu sesuai Role */}
+            {isCurrentlyProviderMode ? (
+                <Link href="/jobs" className="flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">Kelola Pesanan (Mitra)</span>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">Daftar Pesanan</span>
-                </div>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-            </Link>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                </Link>
+            ) : (
+                <Link href="/orders" className="flex items-center justify-between p-4 hover:bg-gray-50 border-b border-gray-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-600">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">Daftar Pesanan Saya</span>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+                </Link>
+            )}
             
             <button onClick={handleSwitchMode} disabled={switching} className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left">
                 <div className="flex items-center gap-3">
@@ -114,7 +124,7 @@ export default function ProfilePage() {
                         )}
                     </div>
                     <span className="text-sm font-medium text-gray-700">
-                        {switching ? 'Memproses...' : isProvider ? (isCurrentlyProviderMode ? 'Pindah ke Mode Customer' : 'Pindah ke Mode Provider') : 'Daftar Jadi Mitra'}
+                        {switching ? 'Memproses...' : isProvider ? (isCurrentlyProviderMode ? 'Pindah ke Mode Customer' : 'Pindah ke Mode Mitra') : 'Daftar Jadi Mitra'}
                     </span>
                 </div>
                 {!switching && <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>}
@@ -148,29 +158,8 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* Bottom Nav (Sama seperti Home) */}
-      <div className="fixed bottom-0 left-0 right-0 pb-5 pt-2 px-4 bg-gradient-to-t from-white via-white/90 to-transparent z-40">
-          <nav className="bg-white border border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl px-6 py-3.5 flex justify-between items-center">
-            <Link href="/" className="flex flex-col items-center justify-center gap-1 w-12 text-gray-400 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-            </Link>
-            {/* Tombol Order dummy */}
-            <button className="flex flex-col items-center justify-center gap-1 w-12 text-gray-400 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-            </button>
-            {/* Tombol Chat dummy */}
-            <button className="flex flex-col items-center justify-center gap-1 w-12 text-gray-400 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-            </button>
-            {/* Profile Active */}
-            <Link href="/profile" className="flex flex-col items-center justify-center gap-1 w-12 text-red-600 transition-colors">
-                <div className="relative">
-                    <svg className="w-6 h-6" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-600 rounded-full border-2 border-white"></span>
-                </div>
-            </Link>
-          </nav>
-        </div>
+      {/* [FIX] Tampilkan Navigasi Provider jika dalam mode provider */}
+      {isCurrentlyProviderMode && <ProviderBottomNav />}
     </div>
   );
 }

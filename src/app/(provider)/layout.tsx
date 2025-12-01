@@ -1,9 +1,9 @@
-// src/app/(provider)/layout.tsx
 'use client';
 
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import ProviderBottomNav from '@/components/provider/ProviderBottomNav';
 
 // Icon Components
 const DashboardIcon = ({ active }: { active: boolean }) => (
@@ -93,43 +93,7 @@ function ProviderSidebar() {
   );
 }
 
-// Mobile Bottom Navigation for Provider
-function ProviderBottomNav() {
-  const pathname = usePathname();
-
-  const isActive = (path: string) => {
-    if (path === '/' && pathname === '/') return true;
-    if (path !== '/' && pathname.startsWith(path)) return true;
-    return false;
-  };
-
-  return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-5 pt-2 px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-      <div className="flex justify-between items-center">
-        <Link href="/" className="flex flex-col items-center gap-1 w-16">
-          <HomeIcon active={isActive('/')} />
-          <span className={`text-[10px] font-bold ${isActive('/') ? 'text-red-600' : 'text-gray-400'}`}>Beranda</span>
-        </Link>
-        
-        <Link href="/dashboard" className="flex flex-col items-center gap-1 w-16">
-          <DashboardIcon active={isActive('/dashboard')} />
-          <span className={`text-[10px] font-bold ${isActive('/dashboard') ? 'text-red-600' : 'text-gray-400'}`}>Dashboard</span>
-        </Link>
-        
-        <Link href="/jobs" className="flex flex-col items-center gap-1 w-16">
-          <JobsIcon active={isActive('/jobs')} />
-          <span className={`text-[10px] font-bold ${isActive('/jobs') ?  'text-red-600' : 'text-gray-400'}`}>Pesanan</span>
-        </Link>
-
-        <Link href="/settings" className="flex flex-col items-center gap-1 w-16">
-          <SettingsIcon active={isActive('/settings')} />
-          <span className={`text-[10px] font-bold ${isActive('/settings') ? 'text-red-600' : 'text-gray-400'}`}>Pengaturan</span>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
+// [UPDATED] Menggunakan ProviderBottomNav yang diimport, bukan fungsi lokal
 export default function ProviderLayout({
   children,
 }: {
