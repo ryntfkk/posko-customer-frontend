@@ -53,7 +53,7 @@ interface ProviderHomeProps {
 }
 
 export default function ProviderHome({ user }: ProviderHomeProps) {
-  if (!user) return null;
+  // [FIX] Pindahkan pengecekan user ke bawah setelah Hooks
 
   // --- STATE DASHBOARD ---
   const [activeTab, setActiveTab] = useState<'incoming' | 'active' | 'history'>('incoming');
@@ -213,6 +213,11 @@ export default function ProviderHome({ user }: ProviderHomeProps) {
 
     return [...blanks, ...dayCells];
   };
+
+  // --- EARLY RETURN DIPINDAHKAN KE SINI ---
+  // Pengecekan user dilakukan setelah semua Hooks tereksekusi.
+  // Jika user null, maka component akan merender null, tapi urutan hooks tetap terjaga.
+  if (!user) return null;
 
   if (isLoading) {
     return (
