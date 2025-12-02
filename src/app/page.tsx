@@ -1,4 +1,4 @@
-// src/app/(customer)/page.tsx
+// src/app/page.tsx
 'use client';
 
 import Link from 'next/link';
@@ -10,6 +10,8 @@ import { fetchProfile, switchRole, registerPartner } from '@/features/auth/api';
 import { User } from '@/features/auth/types';
 import { fetchServices } from '@/features/services/api';
 import { Service } from '@/features/services/types';
+import { voucherApi } from '@/features/vouchers/api';
+import { Voucher } from '@/features/vouchers/types';
 import { useCart } from '@/features/cart/useCart';
 
 // --- KOMPONEN MODULAR ---
@@ -41,6 +43,8 @@ export default function HomePage() {
   // Data State
   const [services, setServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [promos, setPromos] = useState<Voucher[]>([]);
+  const [isLoadingPromos, setIsLoadingPromos] = useState(true);
   
   // Helpers
   const profileName = userProfile?.fullName || 'User Posko';
@@ -56,6 +60,14 @@ export default function HomePage() {
       .then(res => setServices(res.data || []))
       .catch(err => console.error("Gagal memuat layanan:", err))
       .finally(() => setIsLoadingServices(false));
+  }, []);
+
+  // Fetching Data: Vouchers (Independent Effect)
+  useEffect(() => {
+    voucherApi.getAvailableVouchers()
+        .then(res => setPromos(res.data || []))
+        .catch(err => console.error("Gagal memuat promo:", err))
+        .finally(() => setIsLoadingPromos(false));
   }, []);
 
   // Fetching Data: User Profile (Independent Effect)
@@ -291,14 +303,39 @@ export default function HomePage() {
         </div>
       </section>
       
-      {/* PROMO MOBILE */}
-      <section className="lg:hidden mt-4 pl-4 overflow-x-auto no-scrollbar flex gap-3 pr-4">
-        <PromoCardMobile color="red" title="Diskon 50%" subtitle="Pengguna Baru" btn="Klaim" /> 
-        <PromoCardMobile color="dark" title="Garansi Puas" subtitle="Uang Kembali" btn="Cek Syarat" /> 
+      {/* PROMO / VOUCHERS SECTION */}
+      <section className="mt-6 px-4 lg:px-8 max-w-7xl mx-auto">
+         <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-2">
+                <span className="text-xl">🔥</span>
+                <h2 className="text-lg lg:text-2xl font-bold text-gray-900">Promo Spesial Untukmu</h2>
+             </div>
+             <Link href="/vouchers" className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline">Lihat Semua</Link>
+         </div>
+         
+         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x">
+             {isLoadingPromos ? (
+                [1,2,3].map(i => (
+                    <div key={i} className="w-[280px] h-36 bg-gray-100 rounded-2xl animate-pulse shrink-0"></div>
+                ))
+             ) : promos.length > 0 ? (
+                 promos.slice(0, 5).map((promo, idx) => (
+                    <PromoCard 
+                        key={promo._id} 
+                        voucher={promo}
+                        index={idx}
+                    />
+                 ))
+             ) : (
+                <div className="w-full p-6 bg-gray-50 border border-gray-100 rounded-2xl text-center">
+                    <p className="text-gray-500 text-sm">Belum ada promo tersedia saat ini.</p>
+                </div>
+             )}
+         </div>
       </section>
       
       {/* HERO SECTION DESKTOP */}
-      <section className="hidden lg:block relative bg-white border-b border-gray-100 overflow-hidden">
+      <section className="hidden lg:block relative bg-white border-b border-gray-100 overflow-hidden mt-6">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-red-50/50 -skew-x-12 translate-x-20"></div>
         <div className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-2 items-center relative z-10">
             <div>
@@ -395,13 +432,35 @@ export default function HomePage() {
   );
 }
 
-function PromoCardMobile({ color, title, subtitle, btn }: { color: 'red'|'dark', title: string, subtitle: string, btn: string }) {
-  const bgClass = color === 'red' ?  'bg-gradient-to-br from-red-600 to-orange-600 shadow-red-200' : 'bg-gray-900 shadow-gray-200';
+// Updated Promo Card to handle dynamic data
+function PromoCard({ voucher, index }: { voucher: Voucher, index: number }) {
+  // Simple rotation/color variety based on index
+  const colors = ['from-red-600 to-orange-600', 'from-blue-600 to-indigo-600', 'from-emerald-600 to-teal-600', 'from-purple-600 to-pink-600'];
+  const bgClass = colors[index % colors.length];
+  
+  const discountText = voucher.discountType === 'percentage' 
+    ? `Diskon ${voucher.discountValue}%` 
+    : `Potongan ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(voucher.discountValue)}`;
+
   return (
-    <div className={`w-[280px] h-36 rounded-2xl ${bgClass} p-5 flex flex-col justify-between text-white shadow-lg relative overflow-hidden shrink-0`}>
-      <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-2xl"></div>
-      <div><span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wide uppercase ${color === 'red' ?  'bg-white/20' : 'bg-red-600'}`}>Promo</span><h3 className="font-bold text-xl mt-2">{title}</h3><p className="text-xs opacity-90">{subtitle}</p></div>
-      <button className={`w-fit text-[10px] font-bold px-3 py-1.5 rounded-full ${color === 'red' ? 'bg-white text-red-600' : 'bg-white/10 border border-white/20'}`}>{btn}</button>
+    <div className={`w-[280px] h-36 rounded-2xl bg-gradient-to-br ${bgClass} p-5 flex flex-col justify-between text-white shadow-lg relative overflow-hidden shrink-0 group hover:shadow-xl transition-all cursor-pointer`}>
+      <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
+      
+      <div>
+        <div className="flex justify-between items-start">
+            <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wide uppercase bg-white/20 backdrop-blur-sm border border-white/10">{voucher.code}</span>
+            <span className="text-[10px] opacity-75">S/d {new Date(voucher.expiryDate).toLocaleDateString('id', { day: 'numeric', month: 'short' })}</span>
+        </div>
+        <h3 className="font-bold text-xl mt-3 line-clamp-1" title={discountText}>{discountText}</h3>
+        <p className="text-xs opacity-90 line-clamp-1">{voucher.description}</p>
+      </div>
+      
+      <div className="flex items-center justify-between mt-2">
+         <span className="text-[10px] font-medium opacity-80">Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}</span>
+         <Link href="/vouchers" className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white text-gray-900 hover:bg-gray-100 transition-colors">
+            Klaim
+         </Link>
+      </div>
     </div>
   )
 }

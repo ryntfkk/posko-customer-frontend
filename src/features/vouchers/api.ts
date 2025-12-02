@@ -1,3 +1,4 @@
+// src/features/vouchers/api.ts
 import api from '@/lib/axios';
 import { Voucher, UserVoucher, CheckVoucherPayload, CheckVoucherResponse } from './types';
 
@@ -10,10 +11,8 @@ export const voucherApi = {
 
   // Get My Vouchers (Claimed)
   getMyVouchers: async () => {
-    // Note: Pastikan response backend untuk ini mengembalikan struktur yang sesuai dengan UserVoucher
-    const response = await api.get<{ message: string; data: Voucher[] }>('/vouchers/my-vouchers'); 
-    // Backend 'listMyVouchers' di code Anda mengembalikan formatted voucher (mirip Voucher tapi ada userVoucherId),
-    // jadi return type di sini disesuaikan dengan kebutuhan UI.
+    // [FIXED] Endpoint disesuaikan dengan backend routes.js ('/my' bukan '/my-vouchers')
+    const response = await api.get<{ message: string; data: Voucher[] }>('/vouchers/my'); 
     return response.data;
   },
 
