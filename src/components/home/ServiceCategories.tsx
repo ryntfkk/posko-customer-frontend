@@ -45,7 +45,7 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
     : categories;
 
   return (
-    <section className="px-4 mt-6 lg:max-w-7xl lg:mx-auto lg:px-8 lg:py-16">
+    <section className="px-4 mt-2 lg:max-w-7xl lg:mx-auto lg:px-8 lg:py-16">
       <div className="flex justify-between items-end mb-4 lg:mb-8">
         <h3 className="text-base lg:text-2xl font-bold text-gray-900">
           <span className="lg:hidden">Layanan</span>

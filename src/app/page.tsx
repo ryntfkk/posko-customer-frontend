@@ -288,7 +288,7 @@ export default function HomePage() {
 
       {/* HERO SECTION MOBILE */}
       <section className="lg:hidden px-4 pt-6 pb-2">
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">Cari jasa apa <br/><span className="text-red-600 relative">sekarang?  <svg className="absolute w-full h-2 -bottom-1 left-0" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0,5 Q25,0 50,5 T100,5" stroke="currentColor" strokeWidth="2" fill="none" vectorEffect="non-scaling-stroke"/></svg></span></h2>
+        <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">Cari jasa apa <span className="text-red-600 relative">sekarang?  <svg className="absolute w-full h-2 -bottom-1 left-0" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0,5 Q25,0 50,5 T100,5" stroke="currentColor" strokeWidth="2" fill="none" vectorEffect="non-scaling-stroke"/></svg></span></h2>
         <p className="text-xs text-gray-500 mb-6 max-w-[280px]">Hubungkan dengan ratusan teknisi terverifikasi di sekitar Anda.</p>
         <div className="relative group">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400 group-focus-within:text-red-500 transition-colors"/></div>
@@ -304,7 +304,7 @@ export default function HomePage() {
       </section>
       
       {/* PROMO / VOUCHERS SECTION */}
-      <section className="mt-6 px-4 lg:px-8 max-w-7xl mx-auto">
+      <section className="mt-2 px-4 lg:px-8 max-w-7xl mx-auto">
          <div className="flex items-center justify-between mb-4">
              <div className="flex items-center gap-2">
                 <span className="text-xl">🔥</span>
@@ -457,9 +457,17 @@ function PromoCard({ voucher, index }: { voucher: Voucher, index: number }) {
       
       <div className="flex items-center justify-between mt-2">
          <span className="text-[10px] font-medium opacity-80">Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}</span>
-         <Link href="/vouchers" className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white text-gray-900 hover:bg-gray-100 transition-colors">
-            Klaim
-         </Link>
+         
+         {/* [UPDATE] Tampilan jika sudah diklaim */}
+         {voucher.isClaimed ? (
+             <span className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white/90 text-gray-500 cursor-default shadow-sm">
+                Diklaim
+             </span>
+         ) : (
+             <Link href="/vouchers" className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">
+                Klaim
+             </Link>
+         )}
       </div>
     </div>
   )

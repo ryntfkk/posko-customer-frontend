@@ -59,9 +59,9 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
   // Loading State
   if (isLoading) {
     return (
-      <section className="py-6 lg:py-12 bg-white">
+      <section className="py-2 lg:py-12 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between mb-6 px-4 lg:px-8">
+          <div className="flex items-center justify-between mb-6 px-4 lg:px-80">
             <div>
               <h2 className="text-lg lg:text-2xl font-bold text-gray-900">Mitra Terdekat</h2>
               <p className="text-xs lg:text-base text-gray-500">Teknisi profesional di sekitar Anda</p>
@@ -80,7 +80,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
   // Empty State
   if (providers.length === 0) {
     return (
-      <section className="py-6 lg:py-12 bg-white">
+      <section className="py-2 lg:py-12 bg-white">
          <div className="max-w-7xl mx-auto px-4 lg:px-8">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -97,7 +97,7 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
   }
 
   return (
-    <section className="py-6 lg:py-12 bg-white">
+    <section className="py-2 lg:py-12 bg-white">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4 lg:mb-8 px-4 lg:px-8">
           <div>

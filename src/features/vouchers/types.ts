@@ -13,6 +13,7 @@ export interface Voucher {
   userVoucherId?: string; // ID unik klaim (jika sudah diklaim)
   applicableServices?: Array<{ _id: string; name: string } | string>; // Bisa array object atau string ID
   claimedAt?: string;
+  isClaimed?: boolean; // [UPDATE] Penanda apakah sudah diklaim
 }
 
 
