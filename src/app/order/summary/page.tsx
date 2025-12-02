@@ -66,7 +66,7 @@ function OrderSummaryContent() {
 
   // State Settings & Vouchers
   const [adminFee, setAdminFee] = useState(0);
-  const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]); // Ini sekarang memuat voucher MY (yang sudah diklaim)
+  const [availableVouchers, setAvailableVouchers] = useState<Voucher[]>([]);
 
   // State Form/Input
   const [isProcessing, setIsProcessing] = useState(false);
@@ -80,7 +80,6 @@ function OrderSummaryContent() {
   
   // Alamat & Lokasi
   const [selectedAddress, setSelectedAddress] = useState<Address | undefined>(undefined);
-  // Lokasi yang akan dikirim ke API
   const [orderLocation, setOrderLocation] = useState<GeoLocation | undefined>(undefined);
   
   // Customer Contact
@@ -89,7 +88,7 @@ function OrderSummaryContent() {
     phone: '',
     alternatePhone: ''
   });
-  const [showAlternatePhone, setShowAlternatePhone] = useState(false); // Toggle no hp cadangan
+  const [showAlternatePhone, setShowAlternatePhone] = useState(false);
   
   // Order Note
   const [orderNote, setOrderNote] = useState('');
@@ -142,11 +141,61 @@ function OrderSummaryContent() {
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
+  // [LANGKAH 2] Ekstrak provider data untuk validasi tanggal
+  const providerData = useMemo(() => {
+    if (checkoutType === 'direct' && activeCartItems.length > 0) {
+      const firstItem = activeCartItems[0];
+      // Ambil bookedDates dan blockedDates dari cart item (jika ada)
+      return {
+        bookedDates: (firstItem as any).bookedDates || [],
+        blockedDates: (firstItem as any).blockedDates || []
+      };
+    }
+    return { bookedDates: [], blockedDates: [] };
+  }, [checkoutType, activeCartItems]);
+
+  // [LANGKAH 2] Helper function untuk cek apakah tanggal tidak tersedia
+  const isDateUnavailable = useCallback((dateString: string): { unavailable: boolean; reason: string } => {
+    if (!dateString) return { unavailable: false, reason: '' };
+    
+    const selectedDate = new Date(dateString);
+    const dateOnly = selectedDate.toISOString().split('T')[0];
+    
+    // Cek apakah tanggal sudah lewat
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      return { unavailable: true, reason: 'Tanggal sudah lewat' };
+    }
+    
+    // Cek blockedDates (Libur manual oleh mitra)
+    const isBlocked = providerData.blockedDates.some((d: string) => {
+      const blockedDate = d.split('T')[0];
+      return blockedDate === dateOnly;
+    });
+    
+    if (isBlocked) {
+      return { unavailable: true, reason: 'Mitra sedang libur pada tanggal ini' };
+    }
+    
+    // Cek bookedDates (Sudah ada order aktif)
+    const isBooked = providerData.bookedDates.some((d: string) => {
+      const bookedDate = d.split('T')[0];
+      return bookedDate === dateOnly;
+    });
+    
+    if (isBooked) {
+      return { unavailable: true, reason: 'Mitra sudah penuh pada tanggal ini' };
+    }
+    
+    return { unavailable: false, reason: '' };
+  }, [providerData]);
+
   // Load User Profile, Settings, & Vouchers
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 1. Load Profile
+        // 1.Load Profile
         const profileRes = await fetchProfile();
         const profile = profileRes.data.profile;
         setUserProfile(profile);
@@ -165,13 +214,13 @@ function OrderSummaryContent() {
           alternatePhone: ''
         });
 
-        // 2. Load Global Config (Admin Fee)
+        // 2.Load Global Config (Admin Fee)
         const settingsRes = await settingsApi.getGlobalConfig();
         if (settingsRes.data) {
             setAdminFee(settingsRes.data.adminFee);
         }
 
-        // 3. Load My Vouchers (Hanya yang sudah diklaim)
+        // 3.Load My Vouchers (Hanya yang sudah diklaim)
         const vouchersRes = await voucherApi.getMyVouchers();
         if (vouchersRes.data) {
             setAvailableVouchers(vouchersRes.data);
@@ -207,7 +256,7 @@ function OrderSummaryContent() {
   const handleLocationChange = useCallback((lat: number, lng: number) => {
     setOrderLocation({
         type: 'Point',
-        coordinates: [lng, lat] // GeoJSON format: [lng, lat]
+        coordinates: [lng, lat]
     });
   }, []);
 
@@ -216,7 +265,6 @@ function OrderSummaryContent() {
     if (!code) return;
     setIsCheckingVoucher(true);
     try {
-        // [UPDATE] Construct payload items agar backend bisa validasi per layanan
         const itemsPayload = activeCartItems.map(item => ({
             serviceId: item.serviceId,
             price: item.pricePerUnit,
@@ -225,7 +273,7 @@ function OrderSummaryContent() {
 
         const res = await voucherApi.checkVoucher({
             code: code,
-            items: itemsPayload // Kirim array items
+            items: itemsPayload
         });
         
         const { estimatedDiscount, eligibleTotal } = res.data;
@@ -234,11 +282,10 @@ function OrderSummaryContent() {
         setIsPromoModalOpen(false);
         setPromoCodeInput('');
         
-        // Beri feedback jika voucher spesifik layanan
         if (eligibleTotal < currentTotalAmount) {
-             alert(`Promo ${code.toUpperCase()} berhasil! Hemat ${formatCurrency(estimatedDiscount)}. (Hanya berlaku untuk layanan tertentu di keranjang Anda)`);
+             alert(`Promo ${code.toUpperCase()} berhasil! Hemat ${formatCurrency(estimatedDiscount)}.(Hanya berlaku untuk layanan tertentu di keranjang Anda)`);
         } else {
-             alert(`Selamat! Promo ${code.toUpperCase()} berhasil digunakan. Hemat ${formatCurrency(estimatedDiscount)}`);
+             alert(`Selamat! Promo ${code.toUpperCase()} berhasil digunakan.Hemat ${formatCurrency(estimatedDiscount)}`);
         }
 
     } catch (error: any) {
@@ -254,11 +301,38 @@ function OrderSummaryContent() {
       setAppliedPromo(null);
   };
 
+  // [LANGKAH 2] Handler untuk validasi perubahan tanggal
+  const handleScheduledAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setScheduledAt(newValue);
+    
+    // Validasi client-side hanya untuk direct order
+    if (checkoutType === 'direct' && newValue) {
+      const validation = isDateUnavailable(newValue);
+      if (validation.unavailable) {
+        // Tampilkan peringatan (tidak blocking, user masih bisa lanjut)
+        setTimeout(() => {
+          alert(`⚠️ Peringatan: ${validation.reason}.Silakan pilih tanggal lain untuk menghindari kegagalan pembayaran.`);
+          setScheduledAt(''); // Reset input
+        }, 100);
+      }
+    }
+  };
+
   // Submit Order
   const handlePlaceOrderAndPay = async () => {
     if (!scheduledAt) {
       alert("Mohon pilih tanggal dan jam kunjungan terlebih dahulu.");
       return;
+    }
+    
+    // [LANGKAH 2] Validasi tanggal sebelum submit (untuk direct order)
+    if (checkoutType === 'direct') {
+      const validation = isDateUnavailable(scheduledAt);
+      if (validation.unavailable) {
+        alert(`❌ ${validation.reason}.Silakan pilih tanggal lain.`);
+        return;
+      }
     }
     
     if (!selectedAddress || !orderLocation || orderLocation.coordinates[0] === 0) {
@@ -271,7 +345,7 @@ function OrderSummaryContent() {
       return;
     }
 
-    if (! isSnapLoaded) {
+    if (!isSnapLoaded) {
       alert('Sistem pembayaran sedang dimuat, mohon tunggu sebentar...');
       return;
     }
@@ -281,7 +355,6 @@ function OrderSummaryContent() {
     try {
       const mainItem = activeCartItems[0];
       
-      // Hitung total akhir: Subtotal + Admin Fee - Diskon
       const finalAmount = Math.max(0, currentTotalAmount + adminFee - (appliedPromo?.discount || 0));
 
       const orderPayload: CreateOrderPayload = {
@@ -311,7 +384,7 @@ function OrderSummaryContent() {
             type: att.type,
             description: att.description
         })),
-        voucherCode: appliedPromo?.code // Kirim kode voucher ke backend
+        voucherCode: appliedPromo?.code
       };
 
       console.log("1.Membuat Order...", orderPayload);
@@ -319,11 +392,11 @@ function OrderSummaryContent() {
       const orderId = orderRes.data._id;
       const orderNumber = orderRes.data.orderNumber;
       
-      console.log("2. Meminta Token Pembayaran...");
+      console.log("2.Meminta Token Pembayaran...");
       const paymentRes = await createPayment(orderId);
       const snapToken = paymentRes.data.snapToken;
 
-      console.log("3.Membuka Snap Midtrans...");
+      console.log("3. Membuka Snap Midtrans...");
       if (window.snap) {
         window.snap.pay(snapToken, {
           onSuccess: (result) => {
@@ -349,15 +422,25 @@ function OrderSummaryContent() {
         });
       }
 
-    } catch (error) {
-      console.error("❌ Error:", error);
-      alert('Terjadi kesalahan. Silakan coba lagi.');
+    } catch (error: any) {
+      console.error("❌ Error saat membuat order:", error);
+      
+      // Perbaikan Error Handling - Tangkap pesan error spesifik dari backend
+      let errorMessage = 'Terjadi kesalahan.Silakan coba lagi.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (isProfileLoading || !isHydrated) {
+  if (isProfileLoading || ! isHydrated) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
         <div className="w-10 h-10 border-4 border-gray-200 border-t-red-600 rounded-full animate-spin"></div>
@@ -370,7 +453,7 @@ function OrderSummaryContent() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-8 text-center">
         <svg className="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm0 0H7"></path>
         </svg>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Keranjang Kosong</h2>
         <Link href="/checkout" className="inline-block mt-4 px-6 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
@@ -438,7 +521,7 @@ function OrderSummaryContent() {
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-red-50 rounded-full flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
                 </div>
                 <div>
@@ -460,7 +543,7 @@ function OrderSummaryContent() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-600 mb-1 block">No.HP Utama <span className="text-red-500">*</span></label>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">No. HP Utama <span className="text-red-500">*</span></label>
                     <input 
                       type="tel"
                       value={customerContact.phone}
@@ -511,10 +594,15 @@ function OrderSummaryContent() {
                   <input 
                     type="datetime-local"
                     value={scheduledAt}
-                    onChange={(e) => setScheduledAt(e.target.value)}
+                    onChange={handleScheduledAtChange}
                     min={new Date().toISOString().slice(0, 16)}
                     className="w-full min-w-0 appearance-none px-4 py-2 md:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition-all"
                   />
+                  {checkoutType === 'direct' && (
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      💡 Pilih tanggal yang tersedia. Sistem akan memvalidasi ketersediaan mitra.
+                    </p>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -698,7 +786,7 @@ function OrderSummaryContent() {
                <div className="space-y-3">
                    <div>
                         <h3 className="text-sm md:text-base font-bold text-gray-900">Lampiran Foto</h3>
-                        <p className="text-xs text-gray-500 mt-1">Tambahkan foto kondisi awal (maks. 5 foto)</p>
+                        <p className="text-xs text-gray-500 mt-1">Tambahkan foto kondisi awal (maks.5 foto)</p>
                    </div>
                    <AttachmentUploader 
                         attachments={attachments}
@@ -728,7 +816,7 @@ function OrderSummaryContent() {
                 </div>
                 
                 {/* PROMO CODE DISPLAY */}
-                {appliedPromo ? (
+                {appliedPromo ?  (
                    <div className="flex justify-between items-center text-green-600 bg-green-50 p-2 rounded-lg border border-green-100">
                      <div className="flex flex-col">
                         <span className="font-bold text-xs">Voucher: {appliedPromo.code}</span>
@@ -748,7 +836,7 @@ function OrderSummaryContent() {
                             className="text-red-600 text-xs md:text-sm font-semibold hover:underline flex items-center gap-1"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
-                            Makin hemat dengan promo?
+                            Makin hemat dengan promo? 
                         </button>
                     </div>
                 )}
@@ -767,14 +855,14 @@ function OrderSummaryContent() {
               {/* TOMBOL BAYAR UTAMA */}
               <button 
                 onClick={handlePlaceOrderAndPay}
-                disabled={isProcessing || !selectedAddress || ! scheduledAt || !customerContact.phone.trim()}
+                disabled={isProcessing || !selectedAddress || !scheduledAt || !customerContact.phone.trim()}
                 className={`w-full py-3 md:py-4 rounded-xl font-bold text-white text-sm md:text-base shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${
-                  isProcessing || ! selectedAddress || !scheduledAt || !customerContact.phone.trim()
+                  isProcessing || !selectedAddress || !scheduledAt || !customerContact.phone.trim()
                     ? 'bg-gray-400 cursor-not-allowed shadow-none' 
                     : 'bg-red-600 hover:bg-red-700 shadow-red-200 hover:-translate-y-1'
                 }`}
               >
-                {isProcessing ?  (
+                {isProcessing ? (
                   <>
                     <svg className="animate-spin h-4 w-4 md:h-5 md:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -841,7 +929,7 @@ function OrderSummaryContent() {
                                 {availableVouchers.map((voucher) => (
                                     <div 
                                         key={voucher._id} 
-                                        className={`border border-gray-200 rounded-xl p-3 flex justify-between items-center hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer ${currentTotalAmount < voucher.minPurchase ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                                        className={`border border-gray-200 rounded-xl p-3 flex justify-between items-center hover:border-red-200 hover:bg-red-50 transition-colors cursor-pointer ${currentTotalAmount < voucher.minPurchase ? 'opacity-50' : ''}`}
                                         onClick={() => {
                                             if (currentTotalAmount >= voucher.minPurchase) {
                                                 handleApplyPromo(voucher.code);
@@ -852,7 +940,7 @@ function OrderSummaryContent() {
                                             <p className="font-bold text-gray-900">{voucher.code}</p>
                                             <p className="text-xs text-gray-500">{voucher.description}</p>
                                             {currentTotalAmount < voucher.minPurchase && (
-                                                <p className="text-[10px] text-red-500 mt-1">Min. belanja {formatCurrency(voucher.minPurchase)}</p>
+                                                <p className="text-[10px] text-red-500 mt-1">Min.belanja {formatCurrency(voucher.minPurchase)}</p>
                                             )}
                                         </div>
                                         <div className="flex flex-col items-end gap-1">
