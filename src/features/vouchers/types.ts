@@ -15,16 +15,6 @@ export interface Voucher {
   claimedAt?: string;
 }
 
-export interface CheckVoucherPayload {
-  code: string;
-  purchaseAmount?: number; // Opsional (karena logic baru pakai items)
-  // [BARU] Kirim items untuk validasi layanan spesifik
-  items?: Array<{
-    serviceId: string;
-    price: number;
-    quantity: number;
-  }>;
-}
 
 export interface CheckVoucherResult {
    _id: string;
@@ -41,11 +31,6 @@ export interface VoucherListResponse {
   data: Voucher[];
 }
 
-export interface CheckVoucherResponse {
-  message: string;
-  data: CheckVoucherResult;
-}
-
 // [BARU] Response Klaim
 export interface ClaimVoucherResponse {
   message: string;
@@ -54,3 +39,24 @@ export interface ClaimVoucherResponse {
     validUntil: string;
   };
 }   
+
+// [BARU] Payload untuk pengecekan voucher
+export interface CheckVoucherPayload {
+  code: string;
+  items: {
+    serviceId: string;
+    price: number;
+    quantity: number;
+  }[];
+}
+
+// [BARU] Response hasil pengecekan voucher (Sesuai Backend Step 2)
+export interface CheckVoucherResponse {
+  _id: string;
+  userVoucherId: string;
+  code: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  estimatedDiscount: number; // Field Penting!
+  eligibleTotal: number;     // Field Penting!
+}

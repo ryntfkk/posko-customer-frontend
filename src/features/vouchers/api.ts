@@ -1,33 +1,31 @@
 import api from '@/lib/axios';
-import { 
-  VoucherListResponse, 
-  CheckVoucherPayload, 
-  CheckVoucherResponse,
-  ClaimVoucherResponse 
-} from './types';
+import { Voucher, UserVoucher, CheckVoucherPayload, CheckVoucherResponse } from './types';
 
 export const voucherApi = {
-  // [BARU] Marketplace: Ambil daftar voucher yang BELUM diklaim
-  getAvailableVouchers: async (): Promise<VoucherListResponse> => {
-    const response = await api.get('/vouchers/available');
+  // Get Market/Available Vouchers
+  getAvailableVouchers: async () => {
+    const response = await api.get<{ message: string; data: Voucher[] }>('/vouchers/available');
     return response.data;
   },
 
-  // [MODIFIKASI] Voucher Saya: Ambil daftar yang SUDAH diklaim
-  getMyVouchers: async (): Promise<VoucherListResponse> => {
-    const response = await api.get('/vouchers/my');
+  // Get My Vouchers (Claimed)
+  getMyVouchers: async () => {
+    // Note: Pastikan response backend untuk ini mengembalikan struktur yang sesuai dengan UserVoucher
+    const response = await api.get<{ message: string; data: Voucher[] }>('/vouchers/my-vouchers'); 
+    // Backend 'listMyVouchers' di code Anda mengembalikan formatted voucher (mirip Voucher tapi ada userVoucherId),
+    // jadi return type di sini disesuaikan dengan kebutuhan UI.
     return response.data;
   },
 
-  // [BARU] Klaim Voucher
-  claimVoucher: async (code: string): Promise<ClaimVoucherResponse> => {
-    const response = await api.post('/vouchers/claim', { code });
+  // Claim Voucher
+  claimVoucher: async (code: string) => {
+    const response = await api.post<{ message: string; data: any }>('/vouchers/claim', { code });
     return response.data;
   },
 
-  // Cek validitas voucher (Payload updated support items)
-  checkVoucher: async (payload: CheckVoucherPayload): Promise<CheckVoucherResponse> => {
-    const response = await api.post('/vouchers/check', payload);
+  // [UPDATE] Check Voucher Logic
+  checkVoucher: async (payload: CheckVoucherPayload) => {
+    const response = await api.post<{ message: string; data: CheckVoucherResponse }>('/vouchers/check', payload);
     return response.data;
-  },
+  }
 };
