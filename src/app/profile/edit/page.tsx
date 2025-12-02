@@ -1,4 +1,3 @@
-// src/app/profile/edit/page.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -16,42 +15,44 @@ export default function EditProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // State Form
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
-    email: '', // Read-only usually
     birthDate: '',
-    gender: '', // Perlu dipastikan backend support field ini di update
+    gender: '',
   });
 
   // State Gambar
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
-  // 1. Load Profil Saat Ini
+  // 1.Load Profil Saat Ini
   useEffect(() => {
     const loadData = async () => {
       try {
         const res = await fetchProfile();
         const profile = res.data.profile;
         setUser(profile);
-        
+
         // Pre-fill form
         setFormData({
           fullName: profile.fullName || '',
           phoneNumber: profile.phoneNumber || '',
-          email: profile.email || '',
-          birthDate: profile.birthDate ? new Date(profile.birthDate).toISOString().split('T')[0] : '',
-          gender: (profile as any).gender || '', // Casting any jika tipe User belum update
+          birthDate: profile.birthDate ?  new Date(profile.birthDate).toISOString().split('T')[0] : '',
+          gender: (profile as any).gender || '',
         });
 
         // Set preview image awal
         setPreviewImage(profile.profilePictureUrl || null);
       } catch (error) {
         console.error('Gagal memuat profil:', error);
-        router.push('/login');
+        setErrorMessage('Gagal memuat profil.Silakan login kembali.');
+        setTimeout(() => router.push('/login'), 2000);
       } finally {
         setLoading(false);
       }
@@ -63,16 +64,26 @@ export default function EditProfilePage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrorMessage(null);
   };
 
-  // 3. Handle Pilih Gambar
+  // 3.Handle Pilih Gambar dengan Validasi
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
+    setErrorMessage(null);
+
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
-      // Validasi Ukuran (Max 2MB misalnya)
+
+      // Validasi Tipe File
+      if (! file.type.startsWith('image/')) {
+        setFileError('Hanya file gambar yang diperbolehkan (JPG, PNG, etc)');
+        return;
+      }
+
+      // Validasi Ukuran (Max 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        alert("Ukuran file terlalu besar (Maks. 2MB)");
+        setFileError('Ukuran file terlalu besar. Maksimal 2MB');
         return;
       }
 
@@ -81,39 +92,87 @@ export default function EditProfilePage() {
     }
   };
 
-  // 4. Submit Data
+  // 4. Validasi Form Data
+  const validateForm = (): boolean => {
+    // Validasi Nama Lengkap
+    if (!formData.fullName || formData.fullName.trim().length === 0) {
+      setErrorMessage('Nama lengkap tidak boleh kosong');
+      return false;
+    }
+
+    if (formData.fullName.trim().length < 3) {
+      setErrorMessage('Nama lengkap minimal 3 karakter');
+      return false;
+    }
+
+    // Validasi Nomor HP (Format dasar)
+    if (formData.phoneNumber && formData.phoneNumber.trim().length > 0) {
+      const phoneRegex = /^(\+62|0)[0-9]{9,14}$/;
+      if (!phoneRegex.test(formData.phoneNumber.replace(/\s/g, ''))) {
+        setErrorMessage('Format nomor HP tidak valid. Gunakan format 08xx atau +62xx');
+        return false;
+      }
+    }
+
+    // Validasi Tanggal Lahir
+    if (formData.birthDate) {
+      const birthDate = new Date(formData.birthDate);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+
+      if (age < 13) {
+        setErrorMessage('Usia minimal 13 tahun');
+        return false;
+      }
+
+      if (birthDate > today) {
+        setErrorMessage('Tanggal lahir tidak boleh di masa depan');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // 5.Submit Data
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    // Validasi form terlebih dahulu
+    if (! validateForm()) {
+      return;
+    }
+
     setIsSaving(true);
 
     try {
-      // Skenario 1: Mengirim JSON (Jika backend handle JSON biasa)
-      // Skenario 2: Mengirim FormData (Untuk upload file)
-      
-      // Kita gunakan FormData untuk mengakomodir upload file
+      // Gunakan FormData untuk mengakomodir upload file
       const payload = new FormData();
-      payload.append('fullName', formData.fullName);
-      payload.append('phoneNumber', formData.phoneNumber);
+      payload.append('fullName', formData.fullName.trim());
+      payload.append('phoneNumber', formData.phoneNumber.trim());
       payload.append('birthDate', formData.birthDate);
       payload.append('gender', formData.gender);
-      
+
+      // Hanya append file jika ada file baru yang dipilih
       if (selectedFile) {
         payload.append('profilePicture', selectedFile);
       }
 
-      // NOTE: Jika api.ts menggunakan default header JSON, 
-      // Axios biasanya otomatis mendeteksi FormData dan menghapus header Content-Type JSON
-      // Namun jika updateProfile di api.ts strict, Anda mungkin perlu menyesuaikan di sana.
+      await updateProfile(payload);
+
+      setSuccessMessage('Profil berhasil diperbarui!');
       
-      await updateProfile(payload); // Pastikan backend menerima FormData atau sesuaikan payload jadi JSON jika file upload terpisah
-      
-      alert("Profil berhasil diperbarui!");
-      router.push('/profile'); // Kembali ke halaman profil
-      router.refresh();
-      
+      // Delay redirect untuk user bisa melihat success message
+      setTimeout(() => {
+        router.push('/profile');
+        router.refresh();
+      }, 1500);
     } catch (error: any) {
-      console.error("Gagal update:", error);
-      alert(error.response?.data?.message || "Gagal memperbarui profil.");
+      console.error('Gagal update:', error);
+      const errorMsg = error.response?.data?.message || 'Gagal memperbarui profil. Silakan coba lagi.';
+      setErrorMessage(errorMsg);
     } finally {
       setIsSaving(false);
     }
@@ -141,13 +200,34 @@ export default function EditProfilePage() {
       </header>
 
       <main className="max-w-lg mx-auto p-4 md:p-6">
+        
+        {/* Error Alert */}
+        {errorMessage && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2">
+            <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Success Alert */}
+        {successMessage && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex items-start gap-2">
+            <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{successMessage}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           
           {/* Section Foto Profil */}
           <div className="flex flex-col items-center gap-3 py-4">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-200 relative">
-                {previewImage ? (
+                {previewImage ?  (
                   <Image 
                     src={previewImage} 
                     alt="Preview" 
@@ -165,11 +245,16 @@ export default function EditProfilePage() {
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </div>
               </div>
-              <button type="button" className="absolute bottom-0 right-0 bg-red-600 text-white p-1.5 rounded-full shadow-sm border-2 border-white">
-                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+              <button type="button" className="absolute bottom-0 right-0 bg-red-600 text-white p-1.5 rounded-full shadow-sm border-2 border-white hover:bg-red-700 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
               </button>
             </div>
             <p className="text-xs text-gray-500 font-medium">Ketuk untuk ubah foto</p>
+            
+            {/* File Error */}
+            {fileError && (
+              <p className="text-xs text-red-600 font-medium">{fileError}</p>
+            )}
             
             {/* Hidden Input File */}
             <input 
@@ -186,13 +271,14 @@ export default function EditProfilePage() {
             
             {/* Nama Lengkap */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nama Lengkap</label>
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nama Lengkap *</label>
               <input 
                 type="text"
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
                 placeholder="Masukkan nama lengkap"
+                required
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none"
               />
             </div>
@@ -203,7 +289,7 @@ export default function EditProfilePage() {
               <input 
                 type="email"
                 name="email"
-                value={formData.email}
+                value={formData.phoneNumber === '' ? user?.email || '' : user?.email || ''}
                 disabled
                 className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-600 cursor-not-allowed"
               />
