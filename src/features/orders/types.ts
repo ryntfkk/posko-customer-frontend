@@ -40,6 +40,14 @@ export interface Attachment {
   description?: string;
   uploadedAt?: string;
 }
+// [BARU] Interface untuk Biaya Tambahan
+export interface AdditionalFee {
+  _id: string;
+  description: string;
+  amount: number;
+  status: 'pending_approval' | 'approved_unpaid' | 'paid' | 'rejected';
+  paymentId?: string;
+}
 
 // ============ CREATE ORDER PAYLOAD (UPDATED) ============
 export interface CreateOrderPayload {
@@ -139,6 +147,10 @@ export interface Order {
   propertyDetails?: PropertyDetails;
   scheduledTimeSlot?: ScheduledTimeSlot;
   attachments?: Attachment[];
+
+  // [BARU] Field tambahan dari Backend
+  additionalFees?: AdditionalFee[];
+  completionEvidence?: Attachment[];
   
   createdAt: string;
   updatedAt: string;
