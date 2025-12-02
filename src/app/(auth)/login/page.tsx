@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { loginUser } from '@/features/auth/api';
+import { loginUser, switchRole } from '@/features/auth/api';
 import { jwtDecode } from 'jwt-decode';
 
 const EyeIcon = () => (
@@ -56,8 +56,8 @@ export default function LoginPage() {
     switch (role) {
       case 'admin':
         return '/admin/dashboard';
+      // Provider dan Customer sama-sama diarahkan ke Home di Customer App
       case 'provider':
-        return '/dashboard';
       case 'customer':
       default:
         return '/';
@@ -81,18 +81,48 @@ export default function LoginPage() {
 
     try {
       const result = await loginUser({ email, password });
-      const token = result.data.tokens.accessToken;
       
-      // Save token to localStorage
+      // 1. Ambil token awal dari respon login
+      let token = result.data.tokens.accessToken;
+      
+      // 2. Decode untuk cek role saat ini
+      let decoded = jwtDecode<DecodedToken>(token);
+      
+      // 3. Simpan token sementara (agar request switchRole di bawah terautentikasi)
       localStorage.setItem('posko_token', token);
-      
-      // Save token to cookie for middleware
       setCookie('posko_token', token);
+
+      // 4. LOGIKA AUTO-SWITCH:
+      // Jika user login sebagai 'provider' di Aplikasi Customer, 
+      // kita otomatis ubah role aktifnya menjadi 'customer'.
+      if (decoded.role === 'provider') {
+         try {
+           // Request ganti role ke backend
+           const switchRes = await switchRole('customer');
+           
+           // Jika sukses, update token dengan token baru (role: customer)
+           token = switchRes.data.tokens.accessToken;
+           
+           // Update decoded data agar redirect di bawah menggunakan role yang benar
+           decoded = jwtDecode<DecodedToken>(token);
+           
+           // Update storage dengan token final
+           localStorage.setItem('posko_token', token);
+           setCookie('posko_token', token);
+           
+         } catch (switchErr) {
+           console.error('Gagal auto-switch role:', switchErr);
+           // Jika gagal switch, kita biarkan lanjut login dengan token lama.
+           // User akan tetap masuk (karena fix getRedirectUrl), 
+           // tapi mungkin perlu switch manual nanti jika ingin belanja.
+         }
+      } else {
+        // Jika bukan provider, simpan token asli
+        localStorage.setItem('posko_token', token);
+        setCookie('posko_token', token);
+      }
       
-      // Decode token to get role
-      const decoded = jwtDecode<DecodedToken>(token);
-      
-      // Redirect based on role
+      // 5. Redirect user sesuai role (yang sekarang sudah 'customer' atau tetap 'admin')
       const redirectUrl = getRedirectUrl(decoded.role);
       
       router.push(redirectUrl);
