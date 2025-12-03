@@ -18,16 +18,8 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
 
-// Setup Leaflet Icon (Fix missing icon issue)
-import L from 'leaflet';
-const RedIcon = L.icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+// [FIXED] Import Leaflet dan pembuatan Icon dipindahkan ke useEffect di dalam komponen
+// agar tidak dijalankan di server (SSR) yang menyebabkan error "window is not defined".
 
 // --- ICONS (SVG) ---
 const Icons = {
@@ -83,6 +75,28 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isSnapLoaded = useMidtrans();
+
+  // [FIXED] State untuk custom icon leaflet
+  const [redIcon, setRedIcon] = useState<any>(null);
+
+  // [FIXED] Load Leaflet dan Icon hanya di Client Side
+  useEffect(() => {
+    (async function initLeaflet() {
+      // Import leaflet secara dinamis
+      const L = (await import('leaflet')).default;
+      
+      const icon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      });
+      
+      setRedIcon(icon);
+    })();
+  }, []);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -414,9 +428,11 @@ export default function OrderDetailPage({ params }: PageProps) {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='© OpenStreetMap'
                   />
-                  <Marker position={mapCenter} icon={RedIcon}>
-                    <Popup>Lokasi Pesanan</Popup>
-                  </Marker>
+                  {redIcon && (
+                    <Marker position={mapCenter} icon={redIcon}>
+                      <Popup>Lokasi Pesanan</Popup>
+                    </Marker>
+                  )}
                 </MapContainer>
                 {/* Overlay to prevent interaction if desired, or make it a link to maps */}
                 <a 
@@ -543,4 +559,4 @@ export default function OrderDetailPage({ params }: PageProps) {
       </div>
     </div>
   );
-}
+}   
