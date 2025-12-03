@@ -7,7 +7,8 @@ import Image from 'next/image';
 import { io, Socket } from 'socket.io-client';
 import api from '@/lib/axios';
 import { fetchProfile } from '@/features/auth/api';
-import { fetchMyOrders } from '@/features/orders/api';
+// [FIX] Ganti 'fetchMyOrders' menjadi 'listOrders'
+import { listOrders } from '@/features/orders/api';
 import { User } from '@/features/auth/types';
 import { Order, PopulatedProvider } from '@/features/orders/types';
 
@@ -53,8 +54,8 @@ export default function ChatPage() {
         const chatRes = await api.get('/chat');
         setRooms(chatRes.data.data);
 
-        // Fetch orders khusus customer
-        const ordersRes = await fetchMyOrders('customer');
+        // [FIX] Gunakan 'listOrders' untuk mengambil data pesanan
+        const ordersRes = await listOrders('customer');
         const orders = Array.isArray(ordersRes.data) ? ordersRes.data : [];
         const activeOnly = orders.filter(o => 
             ['pending', 'paid', 'accepted', 'on_the_way', 'working', 'waiting_approval'].includes(o.status)
@@ -92,6 +93,8 @@ export default function ChatPage() {
     initChat();
     return () => { socket?.disconnect(); };
   }, [router]);
+
+  // ... (sisa kode komponen sama seperti sebelumnya)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

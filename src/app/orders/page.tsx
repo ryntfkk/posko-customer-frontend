@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
-import { fetchMyOrders } from '@/features/orders/api';
+// [FIX] Ubah import dari 'fetchMyOrders' menjadi 'listOrders'
+import { listOrders } from '@/features/orders/api'; 
 import { Order, OrderStatus } from '@/features/orders/types';
 
 const formatCurrency = (amount: number) => {
@@ -23,7 +24,8 @@ export default function OrdersPage() {
   useEffect(() => {
     const loadOrders = async () => {
       try {
-        const res = await fetchMyOrders('customer');
+        // [FIX] Gunakan 'listOrders' untuk memanggil API
+        const res = await listOrders('customer');
         setOrders(res.data);
       } catch (error) {
         console.error('Gagal memuat orders:', error);
@@ -33,6 +35,8 @@ export default function OrdersPage() {
     };
     loadOrders();
   }, []);
+
+  // ... (sisa kode di bawah tetap sama)
 
   const getStatusColor = (status: OrderStatus) => {
     const colors: Record<OrderStatus, string> = {
