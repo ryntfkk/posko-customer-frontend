@@ -53,7 +53,8 @@ interface CheckoutOption {
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // [UPDATE] Ambil helper checkConflict dan resetAndAddItem dari useCart
+  
+  // Custom Hook Cart
   const { cart, upsertItem, clearCart, isHydrated, checkConflict, resetAndAddItem } = useCart();
 
   // State Data
@@ -69,31 +70,36 @@ function CheckoutContent() {
   // State untuk modal detail
   const [selectedDetail, setSelectedDetail] = useState<CheckoutOption | null>(null);
   
-  // [NEW] State untuk Conflict Modal
+  // State untuk Conflict Modal
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   const [pendingItem, setPendingItem] = useState<any>(null); // Item yang tertunda saat menunggu konfirmasi
 
   // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
+  
   // State untuk menyimpan kategori yang terdeteksi dari provider
   const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
+  
+  // Ambil params sekali saja saat render untuk menghindari dependency hell
   const categoryParam = searchParams?.get('category') || null;
+  const serviceIdParam = searchParams?.get('serviceId');
+  const typeParam = searchParams?.get('type') as CheckoutType | null;
+  const providerIdParam = searchParams?.get('providerId');
 
   // Kategori efektif yang akan digunakan (dari URL atau dari deteksi provider)
   const effectiveCategory = categoryParam || detectedCategory;
 
-  // 1.Sinkronisasi Query Params & State
+  // 1. Sinkronisasi Query Params & State (Hanya saat mount atau URL berubah signifikan)
   useEffect(() => {
-    if (!searchParams) return;
+    if (typeParam) {
+        setCheckoutType(typeParam === 'direct' ? 'direct' : 'basic');
+    }
+    if (providerIdParam) {
+        setSelectedProviderId(providerIdParam);
+    }
+  }, [typeParam, providerIdParam]);
 
-    const typeParam = searchParams.get('type') as CheckoutType | null;
-    const providerParam = searchParams.get('providerId');
-
-    setCheckoutType(typeParam === 'direct' ? 'direct' : 'basic');
-    setSelectedProviderId(providerParam);
-  }, [searchParams]);
-
-  // 2.Fetch Data Berdasarkan Tipe Order
+  // 2. Fetch Data Berdasarkan Tipe Order
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -200,48 +206,57 @@ function CheckoutContent() {
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Auto-Add Service jika ada `serviceId` di URL
+  // 4. Auto-Add Service Logic (Optimized)
+  // Menghindari dependency yang terlalu banyak dengan cart atau checkConflict di dalam useEffect
   useEffect(() => {
-    if (!searchParams) return;
+    if (!isHydrated || hasAutoAdded.current || availableOptions.length === 0) return;
+    if (!serviceIdParam) return;
 
-    const serviceIdParam = searchParams.get('serviceId');
+    const targetOption = availableOptions.find(o => o.id === serviceIdParam);
 
-    if (isHydrated && !hasAutoAdded.current && serviceIdParam && availableOptions.length > 0) {
-      const targetOption = availableOptions.find(o => o.id === serviceIdParam);
+    if (targetOption) {
+      const itemPayload = {
+          serviceId: targetOption.id,
+          serviceName: targetOption.name,
+          category: targetOption.category,
+          orderType: checkoutType,
+          quantity: 1,
+          pricePerUnit: targetOption.price,
+          providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
+          providerName: checkoutType === 'direct' ? providerLabel : undefined,
+      };
+      
+      // Kita lock dulu agar tidak loop
+      hasAutoAdded.current = true;
 
-      if (targetOption) {
-        const itemPayload = {
-            serviceId: targetOption.id,
-            serviceName: targetOption.name,
-            category: targetOption.category,
-            orderType: checkoutType,
-            quantity: 1,
-            pricePerUnit: targetOption.price,
-            providerId: checkoutType === 'direct' ? selectedProviderId || undefined : undefined,
-            providerName: checkoutType === 'direct' ? providerLabel : undefined,
-        };
-        
-        // [UPDATE] Cek konflik saat Auto-Add
-        if (checkConflict(itemPayload)) {
-            setPendingItem(itemPayload);
-            setIsConflictModalOpen(true);
-        } else {
-            const key = getCartItemId(targetOption.id, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
-            const existing = cart.find(c => c.id === key);
-
-            if (!existing || existing.quantity === 0) {
-              upsertItem(itemPayload);
-            }
-        }
-        
-        hasAutoAdded.current = true;
-
-        const newParams = new URLSearchParams(searchParams.toString());
-        newParams.delete('serviceId');
-        window.history.replaceState(null, '', `?${newParams.toString()}`);
+      // Cek konflik dilakukan di sini. Perhatikan bahwa 'cart' yang diakses di dalam useEffect
+      // harus fresh. Karena 'cart' ada di dependency array useCart -> checkConflict,
+      // kita perlu memasukkan 'checkConflict' ke dependency.
+      
+      if (checkConflict(itemPayload)) {
+          setPendingItem(itemPayload);
+          setIsConflictModalOpen(true);
+      } else {
+          // Langsung tambah jika aman
+          upsertItem(itemPayload);
       }
+
+      // Bersihkan URL agar bersih
+      const newParams = new URLSearchParams(window.location.search);
+      newParams.delete('serviceId');
+      window.history.replaceState(null, '', `?${newParams.toString()}`);
     }
-  }, [isHydrated, searchParams, availableOptions, checkoutType, selectedProviderId, providerLabel, upsertItem, cart, checkConflict]);
+  }, [
+      isHydrated, 
+      serviceIdParam, 
+      availableOptions, 
+      checkoutType, 
+      selectedProviderId, 
+      providerLabel, 
+      checkConflict, 
+      upsertItem 
+      // 'cart' tidak perlu masuk sini karena sudah terbungkus di dalam 'checkConflict'
+  ]);
 
   const getQuantityForService = (serviceId: string) => {
     const key = getCartItemId(serviceId, checkoutType, checkoutType === 'direct' ? selectedProviderId : undefined);
@@ -285,6 +300,7 @@ function CheckoutContent() {
       return;
     }
 
+    // Reset flag auto-add saat ganti mode agar bisa auto-add lagi jika URL berubah
     hasAutoAdded.current = false;
 
     setCheckoutType(targetMode);
