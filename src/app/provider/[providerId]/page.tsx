@@ -160,23 +160,26 @@ export default function ProviderProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-12 font-sans">
-      {/* HEADER */}
+    // CONTAINER UTAMA: pb-24 -> pb-20 (Lebih kompak)
+    <div className="min-h-screen bg-gray-50 pb-20 lg:pb-12 font-sans">
+      {/* HEADER: py-3 -> py-2 (Lebih sleek) */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-200 transition-all">
-        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-3 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-2 flex items-center justify-between">
           <Link
             href="/"
             className="p-2 -ml-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-full transition-colors"
           >
             <BackIcon />
           </Link>
+          {/* JUDUL: text-sm font-bold tetap ringkas */}
           <h1 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Profil Mitra</h1>
           <div className="w-8"></div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 lg:px-8 py-6 space-y-6">
-        {/* 1.HERO SECTION */}
+      {/* MAIN CONTENT: py-6 -> py-4 (Ringkas). space-y-6 -> space-y-4 */}
+      <main className="max-w-6xl mx-auto px-4 lg:px-8 py-4 space-y-4">
+        {/* 1.HERO SECTION (Sudah diperbaiki di L2) */}
         <ProviderHeroSection
           provider={provider}
           distance={distance}
@@ -187,8 +190,8 @@ export default function ProviderProfilePage() {
           onOpenCalendar={handleOpenCalendar}
         />
 
-        {/* LAYOUT GRID UTAMA */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* LAYOUT GRID UTAMA: gap-6 -> gap-4 (Rapat) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
           {/* KOLOM KIRI (Tab Section: Services & Docs) */}
           <div className="lg:col-span-2">
             <ProviderTabSection
@@ -207,7 +210,7 @@ export default function ProviderProfilePage() {
         </div>
       </main>
 
-      {/* MODALS */}
+      {/* MODALS (Tidak berubah) */}
       <ProviderCalendarModal
         provider={provider}
         isOpen={isCalendarOpen}
@@ -227,7 +230,7 @@ export default function ProviderProfilePage() {
         onClose={handleCloseLightbox}
       />
 
-      {/* STICKY BOTTOM CTA (Mobile Only) */}
+      {/* STICKY BOTTOM CTA (Mobile Only - Diperbaiki di 4.2) */}
       <ProviderStickyBottomCTA provider={provider} />
     </div>
   );
