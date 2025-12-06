@@ -8,8 +8,10 @@ import dynamic from 'next/dynamic'; // Untuk import map tanpa SSR
 
 import { fetchOrderById, updateOrderStatus, rejectAdditionalFee } from '@/features/orders/api';
 import { createPayment } from '@/features/payments/api';
+import { createReview } from '@/features/reviews/api'; // [NEW] Import API Review
 import { Order, OrderStatus } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans';
+import ReviewModal from '@/components/ReviewModal'; // [NEW] Import Component Modal
 import 'leaflet/dist/leaflet.css';
 
 // --- DYNAMIC IMPORT MAP (Client Only) ---
@@ -17,9 +19,6 @@ const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapCo
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false });
-
-// [FIXED] Import Leaflet dan pembuatan Icon dipindahkan ke useEffect di dalam komponen
-// agar tidak dijalankan di server (SSR) yang menyebabkan error "window is not defined".
 
 // --- ICONS (SVG) ---
 const Icons = {
@@ -76,10 +75,14 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isSnapLoaded = useMidtrans();
 
-  // [FIXED] State untuk custom icon leaflet
+  // [NEW] Review State
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // State untuk custom icon leaflet
   const [redIcon, setRedIcon] = useState<any>(null);
 
-  // [FIXED] Load Leaflet dan Icon hanya di Client Side
+  // Load Leaflet dan Icon hanya di Client Side
   useEffect(() => {
     (async function initLeaflet() {
       // Import leaflet secara dinamis
@@ -160,6 +163,41 @@ export default function OrderDetailPage({ params }: PageProps) {
       alert('Gagal konfirmasi.');
     } finally {
       setIsActionLoading(false);
+    }
+  };
+
+  // [NEW] Handle Submit Review
+  const handleSubmitReview = async (rating: number, comment: string) => {
+    if (!order) return;
+    
+    // Pastikan providerId ada dan ambil ID-nya (bisa object atau string)
+    const providerId = typeof order.providerId === 'object' 
+        ? order.providerId._id 
+        : order.providerId;
+
+    if (!providerId) {
+        alert("Data provider tidak valid.");
+        return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+        await createReview({
+            userId: order.userId, // Pastikan user ID diambil dari order
+            providerId: providerId,
+            rating,
+            comment
+        });
+        alert("Terima kasih atas ulasan Anda!");
+        setIsReviewModalOpen(false);
+        // Refresh data atau redirect jika perlu.
+        // Di sini kita reload untuk update UI jika ada indikator "Sudah direview" (next step)
+        window.location.reload();
+    } catch (error) {
+        console.error(error);
+        alert("Gagal mengirim ulasan.");
+    } finally {
+        setIsSubmittingReview(false);
     }
   };
 
@@ -543,9 +581,12 @@ export default function OrderDetailPage({ params }: PageProps) {
           </button>
         )}
 
-        {/* Case: Completed (Review) */}
+        {/* Case: Completed (Review) - [UPDATED ACTION] */}
         {order.status === 'completed' && (
-          <button className="flex-1 h-12 bg-gray-900 text-white font-bold rounded-xl active:scale-95 transition-all">
+          <button 
+            onClick={() => setIsReviewModalOpen(true)}
+            className="flex-1 h-12 bg-gray-900 text-white font-bold rounded-xl active:scale-95 transition-all hover:bg-gray-800"
+          >
             Beri Ulasan
           </button>
         )}
@@ -557,6 +598,14 @@ export default function OrderDetailPage({ params }: PageProps) {
            </div>
         )}
       </div>
+
+      {/* [NEW] Review Modal */}
+      <ReviewModal 
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        onSubmit={handleSubmitReview}
+        isSubmitting={isSubmittingReview}
+      />
     </div>
   );
-}   
+}
