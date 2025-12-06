@@ -1,5 +1,5 @@
 // src/features/cart/useCart.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 // Tipe untuk satu item di Keranjang
 export interface CartItem {
@@ -22,89 +22,92 @@ export const getCartItemId = (serviceId: string, orderType: 'direct' | 'basic', 
 };
 
 export const useCart = () => {
-    const [cart, setCart] = useState<CartItem[]>([]);
+    // 1. Lazy Initialization (Baca storage hanya SEKALI saat mount)
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const saved = localStorage.getItem(CART_KEY);
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            console.error("[Cart] Failed to parse initial storage:", e);
+            return [];
+        }
+    });
+
     const [isHydrated, setIsHydrated] = useState(false);
+    
+    // Ref untuk melacak apakah perubahan state berasal dari event storage (tab lain)
+    // agar kita tidak menulis balik ke storage secara redundan.
+    const isSyncingFromStorage = useRef(false);
 
-    // 1. Inisialisasi & Listener Storage (Sinkronisasi Antar Tab)
     useEffect(() => {
-        // Load awal
-        const loadCart = () => {
-            const savedCart = localStorage.getItem(CART_KEY);
-            if (savedCart) {
-                try {
-                    setCart(JSON.parse(savedCart));
-                } catch (e) {
-                    console.error("Failed to parse cart from localStorage", e);
-                    setCart([]);
-                }
-            }
-        };
-
-        loadCart();
         setIsHydrated(true);
+    }, []);
 
-        // Handler saat LocalStorage berubah di Tab lain
+    // 2. Listener Storage (Sinkronisasi Antar Tab)
+    useEffect(() => {
         const handleStorageChange = (event: StorageEvent) => {
-            if (event.key === CART_KEY && event.newValue) {
+            if (event.key === CART_KEY) {
                 try {
-                    setCart(JSON.parse(event.newValue));
+                    const newValue = event.newValue ? JSON.parse(event.newValue) : [];
+                    // Set flag sync agar useEffect penulis tidak menimpa balik
+                    isSyncingFromStorage.current = true;
+                    setCart(newValue);
                 } catch (e) {
-                    console.error("Failed to sync cart from storage event", e);
+                    console.error("[Cart] Sync error:", e);
                 }
-            } else if (event.key === CART_KEY && !event.newValue) {
-                // Jika key dihapus (clear cart di tab lain)
-                setCart([]);
             }
-        };
-
-        // Handler saat window fokus kembali (untuk memastikan data fresh)
-        const handleFocus = () => {
-            loadCart();
         };
 
         window.addEventListener('storage', handleStorageChange);
-        window.addEventListener('focus', handleFocus);
-
-        return () => {
-            window.removeEventListener('storage', handleStorageChange);
-            window.removeEventListener('focus', handleFocus);
-        };
+        return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
-    // 2. Simpan ke localStorage setiap kali state cart berubah (Hanya di tab aktif)
+    // 3. Simpan ke localStorage setiap kali state cart berubah
+    // (Hanya jika perubahan BUKAN berasal dari sinkronisasi tab lain)
     useEffect(() => {
         if (isHydrated) {
+            if (isSyncingFromStorage.current) {
+                // Reset flag dan jangan tulis ke storage (karena data sudah dari storage)
+                isSyncingFromStorage.current = false;
+                return;
+            }
             localStorage.setItem(CART_KEY, JSON.stringify(cart));
         }
     }, [cart, isHydrated]);
 
-    // [HELPER] Cek apakah item baru konflik dengan item lama (Provider beda / Tipe beda)
-    const checkConflict = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>): boolean => {
+    // [HELPER] Cek konflik lebih robust (Iterasi seluruh cart, bukan cuma index 0)
+    const checkConflict = useCallback((newItem: Omit<CartItem, 'totalPrice'|'id'>): boolean => {
         if (cart.length === 0) return false;
 
-        const existingItem = cart[0];
-        
-        const isDifferentProvider = item.orderType === 'direct' && item.providerId !== existingItem.providerId;
-        const isDifferentType = item.orderType !== existingItem.orderType;
-        // Cek kategori hanya jika basic order (opsional, tergantung rule bisnis)
-        const isDifferentCategory = item.orderType === 'basic'
-            && existingItem.orderType === 'basic'
-            && (existingItem.category ?? null) !== (item.category ?? null);
+        // Ambil sampel order yang ada (biasanya keranjang harus homogen)
+        // Kita cek apakah item baru bertentangan dengan item APAPUN yang sudah ada
+        const hasConflict = cart.some(existingItem => {
+            const isDifferentProvider = newItem.orderType === 'direct' && newItem.providerId !== existingItem.providerId;
+            const isDifferentType = newItem.orderType !== existingItem.orderType;
+            
+            // Aturan Bisnis: Order Basic sebaiknya satu kategori dalam satu checkout (Opsional, tergantung rule)
+            // Jika rule membolehkan mix category di basic, hapus bagian ini.
+            // Di sini kita asumsikan Strict Mode: Satu checkout = Satu tipe flow.
+            
+            return isDifferentProvider || isDifferentType;
+        });
 
-        return isDifferentProvider || isDifferentType || isDifferentCategory;
+        return hasConflict;
     }, [cart]);
 
     // [MODIFIED] Update atau Tambah Item
     const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
+        const totalPrice = item.quantity * item.pricePerUnit;
 
         setCart(prevCart => {
             const existingIndex = prevCart.findIndex(existing => existing.id === itemId);
-            const totalPrice = item.quantity * item.pricePerUnit;
 
             if (existingIndex >= 0) {
+                // Item sudah ada, update
                 const updated = [...prevCart];
-                // Hapus jika quantity 0
+                
                 if (item.quantity <= 0) {
                     updated.splice(existingIndex, 1);
                     return updated;
@@ -119,6 +122,7 @@ export const useCart = () => {
                 return updated;
             }
 
+            // Item baru
             if (item.quantity <= 0) return prevCart;
 
             const newItem: CartItem = {
@@ -131,7 +135,7 @@ export const useCart = () => {
         });
     }, []);
 
-    // [HELPER] Reset Cart dan Tambah Item Baru (Untuk User yang setuju ganti provider)
+    // [HELPER] Reset Cart dan Tambah Item Baru (Replace Cart)
     const resetAndAddItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
         const totalPrice = item.quantity * item.pricePerUnit;
@@ -147,20 +151,21 @@ export const useCart = () => {
 
     const updateItemQuantity = useCallback((itemId: string, quantity: number) => {
         setCart(prevCart => {
-            return prevCart.reduce((acc, item) => {
+            // Jika quantity 0, filter out (hapus)
+            if (quantity <= 0) {
+                return prevCart.filter(item => item.id !== itemId);
+            }
+
+            return prevCart.map(item => {
                 if (item.id === itemId) {
-                    if (quantity > 0) {
-                        acc.push({
-                            ...item,
-                            quantity,
-                            totalPrice: quantity * item.pricePerUnit,
-                        });
-                    }
-                } else {
-                    acc.push(item);
+                    return {
+                        ...item,
+                        quantity,
+                        totalPrice: quantity * item.pricePerUnit,
+                    };
                 }
-                return acc;
-            }, [] as CartItem[]);
+                return item;
+            });
         });
     }, []);
 
