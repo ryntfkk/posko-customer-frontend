@@ -1,4 +1,3 @@
-// src/app/checkout/page.tsx
 'use client';
 
 import Image from 'next/image';
@@ -9,6 +8,7 @@ import { fetchServices } from '@/features/services/api';
 import { fetchProviderById } from '@/features/providers/api';
 import { Service, getUnitLabel } from '@/features/services/types';
 import { Provider } from '@/features/providers/types';
+// Pastikan import ini benar
 import { getCartItemId, useCart } from '@/features/cart/useCart';
 
 const formatCurrency = (amount: number) => {
@@ -54,8 +54,9 @@ function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Custom Hook Cart
-  const { cart, upsertItem, clearCart, isHydrated, checkConflict, resetAndAddItem } = useCart();
+  // [CRITICAL FIX] Menggunakan isInitialized (sesuai update useCart Langkah 3)
+  // Jangan gunakan isHydrated karena sudah dihapus/diganti namanya
+  const { cart, upsertItem, clearCart, isInitialized, checkConflict, resetAndAddItem } = useCart();
 
   // State Data
   const [services, setServices] = useState<Service[]>([]);
@@ -72,7 +73,7 @@ function CheckoutContent() {
   
   // State untuk Conflict Modal
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
-  const [pendingItem, setPendingItem] = useState<any>(null); // Item yang tertunda saat menunggu konfirmasi
+  const [pendingItem, setPendingItem] = useState<any>(null);
 
   // Ref untuk mencegah infinite loop saat auto-add
   const hasAutoAdded = useRef(false);
@@ -80,16 +81,14 @@ function CheckoutContent() {
   // State untuk menyimpan kategori yang terdeteksi dari provider
   const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
   
-  // Ambil params sekali saja saat render untuk menghindari dependency hell
   const categoryParam = searchParams?.get('category') || null;
   const serviceIdParam = searchParams?.get('serviceId');
   const typeParam = searchParams?.get('type') as CheckoutType | null;
   const providerIdParam = searchParams?.get('providerId');
 
-  // Kategori efektif yang akan digunakan (dari URL atau dari deteksi provider)
   const effectiveCategory = categoryParam || detectedCategory;
 
-  // 1. Sinkronisasi Query Params & State (Hanya saat mount atau URL berubah signifikan)
+  // 1. Sinkronisasi Query Params & State
   useEffect(() => {
     if (typeParam) {
         setCheckoutType(typeParam === 'direct' ? 'direct' : 'basic');
@@ -99,23 +98,20 @@ function CheckoutContent() {
     }
   }, [typeParam, providerIdParam]);
 
-  // 2. Fetch Data Berdasarkan Tipe Order
+  // 2. Fetch Data
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
       setError(null);
       try {
         if (checkoutType === 'basic') {
-          // Gunakan effectiveCategory untuk filter layanan
           const res = await fetchServices(effectiveCategory);
           setServices(res.data);
         } else if (checkoutType === 'direct' && selectedProviderId) {
           const res = await fetchProviderById(selectedProviderId);
           setProvider(res.data);
           
-          // Deteksi kategori dari layanan provider saat mode direct
           const activeServices = res.data.services?.filter((s: { isActive: boolean }) => s.isActive) || [];
-          
           if (activeServices.length > 0 && activeServices[0].serviceId?.category) {
             setDetectedCategory(activeServices[0].serviceId.category);
           }
@@ -206,10 +202,10 @@ function CheckoutContent() {
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
   const currentTotalItems = activeCartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // 4. Auto-Add Service Logic (Optimized)
-  // Menghindari dependency yang terlalu banyak dengan cart atau checkConflict di dalam useEffect
+  // 4. Auto-Add Service Logic
   useEffect(() => {
-    if (!isHydrated || hasAutoAdded.current || availableOptions.length === 0) return;
+    // [FIX] Gunakan isInitialized di sini juga
+    if (!isInitialized || hasAutoAdded.current || availableOptions.length === 0) return;
     if (!serviceIdParam) return;
 
     const targetOption = availableOptions.find(o => o.id === serviceIdParam);
@@ -226,28 +222,21 @@ function CheckoutContent() {
           providerName: checkoutType === 'direct' ? providerLabel : undefined,
       };
       
-      // Kita lock dulu agar tidak loop
       hasAutoAdded.current = true;
 
-      // Cek konflik dilakukan di sini. Perhatikan bahwa 'cart' yang diakses di dalam useEffect
-      // harus fresh. Karena 'cart' ada di dependency array useCart -> checkConflict,
-      // kita perlu memasukkan 'checkConflict' ke dependency.
-      
       if (checkConflict(itemPayload)) {
           setPendingItem(itemPayload);
           setIsConflictModalOpen(true);
       } else {
-          // Langsung tambah jika aman
           upsertItem(itemPayload);
       }
 
-      // Bersihkan URL agar bersih
       const newParams = new URLSearchParams(window.location.search);
       newParams.delete('serviceId');
       window.history.replaceState(null, '', `?${newParams.toString()}`);
     }
   }, [
-      isHydrated, 
+      isInitialized, // [FIX] Dependency diperbarui
       serviceIdParam, 
       availableOptions, 
       checkoutType, 
@@ -255,7 +244,6 @@ function CheckoutContent() {
       providerLabel, 
       checkConflict, 
       upsertItem 
-      // 'cart' tidak perlu masuk sini karena sudah terbungkus di dalam 'checkConflict'
   ]);
 
   const getQuantityForService = (serviceId: string) => {
@@ -265,7 +253,12 @@ function CheckoutContent() {
   };
 
   const handleConfirmOrder = async () => {
-    if (!isHydrated) return;
+    // [CRITICAL FIX] Cek isInitialized, BUKAN isHydrated
+    if (!isInitialized) {
+        console.warn("Cart belum siap (not initialized)");
+        return;
+    }
+    
     if (activeCartItems.length === 0 || currentTotalItems <= 0) {
       alert('Pilih minimal satu layanan sebelum melanjutkan.');
       return;
@@ -276,7 +269,7 @@ function CheckoutContent() {
       const queryParams = new URLSearchParams({
         type: checkoutType,
       });
-      // Gunakan effectiveCategory untuk URL summary
+      
       if (checkoutType === 'basic' && effectiveCategory) {
         queryParams.append('category', effectiveCategory);
       }
@@ -285,12 +278,12 @@ function CheckoutContent() {
         queryParams.append('providerId', selectedProviderId);
       }
 
+      // Navigasi ke halaman Summary
       router.push(`/order/summary?${queryParams.toString()}`);
     } catch (err) {
       console.error(err);
-      alert('Terjadi kendala. Silakan coba lagi.');
-    } finally {
-      setIsSubmitting(false);
+      alert('Terjadi kendala saat navigasi.');
+      setIsSubmitting(false); // Reset state hanya jika gagal
     }
   };
 
@@ -300,13 +293,11 @@ function CheckoutContent() {
       return;
     }
 
-    // Reset flag auto-add saat ganti mode agar bisa auto-add lagi jika URL berubah
     hasAutoAdded.current = false;
 
     setCheckoutType(targetMode);
     if (targetMode === 'basic') {
       setSelectedProviderId(null);
-      // Sertakan kategori saat switch ke basic mode
       const categoryToUse = detectedCategory || categoryParam;
       if (categoryToUse) {
         router.replace(`/checkout?type=basic&category=${encodeURIComponent(categoryToUse)}`);
@@ -316,7 +307,6 @@ function CheckoutContent() {
     }
   };
 
-  // [NEW] Fungsi Konfirmasi Ganti Keranjang
   const handleConfirmReplaceCart = () => {
     if (pendingItem) {
         resetAndAddItem(pendingItem);
@@ -328,7 +318,6 @@ function CheckoutContent() {
   const renderServiceOption = (option: CheckoutOption) => {
     const quantity = getQuantityForService(option.id);
     
-    // [UPDATE] Handler Quantity dengan Conflict Check
     const handleUpdateQuantity = (newQuantity: number) => {
       const itemPayload = {
         serviceId: option.id,
@@ -341,9 +330,6 @@ function CheckoutContent() {
         providerName: checkoutType === 'direct' ? providerLabel : undefined,
       };
 
-      // Cek konflik sebelum upsert
-      // Kita cek konflik HANYA jika menambah quantity (newQuantity > quantity)
-      // Jika mengurangi, tidak perlu cek konflik
       if (newQuantity > 0 && checkConflict(itemPayload)) {
          setPendingItem(itemPayload);
          setIsConflictModalOpen(true);
@@ -362,7 +348,6 @@ function CheckoutContent() {
           quantity > 0 ? 'border-red-600 bg-red-50 shadow-md' : 'border-gray-200 bg-white hover:border-gray-400'
         }`}
       >
-        {/* Badge Promo */}
         {option.isPromo && option.discountPercent && option.discountPercent > 0 && (
           <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-md z-10">
             -{option.discountPercent}%
@@ -370,7 +355,6 @@ function CheckoutContent() {
         )}
 
         <div className="flex-1 space-y-2">
-          {/* Header */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -385,9 +369,7 @@ function CheckoutContent() {
             </div>
           </div>
 
-          {/* Info Badges */}
           <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-            {/* Durasi */}
             {durationText && (
               <div className="flex items-center gap-1 text-[10px] md:text-xs text-gray-500">
                 <svg className="w-3 h-3 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -397,7 +379,6 @@ function CheckoutContent() {
               </div>
             )}
 
-            {/* Includes count */}
             {option.includes && option.includes.length > 0 && (
               <div className="flex items-center gap-1 text-[10px] md:text-xs text-green-600">
                 <svg className="w-3 h-3 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,7 +388,6 @@ function CheckoutContent() {
               </div>
             )}
 
-            {/* Lihat Detail */}
             <button
               onClick={() => setSelectedDetail(option)}
               className="text-[10px] md:text-xs text-blue-600 hover:text-blue-700 font-medium hover:underline"
@@ -416,7 +396,6 @@ function CheckoutContent() {
             </button>
           </div>
 
-          {/* Harga */}
           <div className="flex items-end gap-1.5 md:gap-2">
             {option.isPromo && option.promoPrice ? (
               <>
@@ -430,7 +409,6 @@ function CheckoutContent() {
           </div>
         </div>
 
-        {/* Quantity Controls */}
         <div className="flex flex-col items-center justify-center gap-1 md:gap-2">
           <button
             onClick={() => handleUpdateQuantity(quantity + 1)}
@@ -457,7 +435,6 @@ function CheckoutContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10 font-sans">
-      {/* Header */}
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 lg:px-8 py-3 md:py-4 flex items-center gap-3 md:gap-4">
           <button onClick={() => router.back()} className="text-gray-600 hover:text-red-600">
@@ -494,7 +471,6 @@ function CheckoutContent() {
         {!isLoading && !error && (
           <>
             <section className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-              {/* Header Section Tipe Order */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 border-b border-gray-50 pb-4">
                 <div>
                   <p className="text-[10px] md:text-[12px] font-semibold text-gray-500 uppercase tracking-wide">Mode Pemesanan</p>
@@ -542,9 +518,7 @@ function CheckoutContent() {
                 </div>
               </div>
 
-              {/* Grid Content */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start">
-                {/* Kolom Kiri: Daftar Layanan */}
                 <div className="md:col-span-2 space-y-3 md:space-y-4">
                   {checkoutType === 'direct' && provider && (
                     <div className="flex items-start gap-3 md:gap-4 p-3 md:p-4 mb-2 bg-blue-50/50 border border-blue-100 rounded-2xl">
@@ -591,7 +565,6 @@ function CheckoutContent() {
                   </div>
                 </div>
 
-                {/* Kolom Kanan: Ringkasan Keranjang */}
                 <div className="p-4 md:p-5 border border-gray-200 rounded-2xl bg-gray-50/50 sticky top-20 md:top-24 space-y-3 md:space-y-4">
                   <div className="flex justify-between items-center border-b border-gray-200 pb-2">
                     <p className="text-xs md:text-sm font-bold text-gray-900">Ringkasan Pesanan</p>
@@ -600,7 +573,7 @@ function CheckoutContent() {
                     )}
                   </div>
 
-                  {!isHydrated ? (
+                  {!isInitialized ? (
                     <p className="text-xs md:text-sm text-gray-500 animate-pulse">Memuat keranjang...</p>
                   ) : activeCartItems.length === 0 ? (
                     <div className="text-center py-6 md:py-8 text-gray-400">
@@ -643,7 +616,6 @@ function CheckoutContent() {
               </div>
             </section>
 
-            {/* Bottom Action Bar */}
             <section className="sticky bottom-0 md:bottom-14 bg-white p-4 lg:p-6 rounded-t-2xl md:rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] md:shadow-[0_8px_30px_rgba(0,0,0,0.12)] border-t md:border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3 md:gap-4 z-30">
               <div className="flex justify-between items-center w-full sm:w-auto sm:block">
                 <span className="text-[10px] md:text-xs text-gray-500 font-medium uppercase tracking-wide">Total Pembayaran</span>
@@ -684,7 +656,6 @@ function CheckoutContent() {
       {selectedDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelectedDetail(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
             <div className="p-3 md:p-4 border-b border-gray-100 flex justify-between items-start shrink-0">
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -706,9 +677,7 @@ function CheckoutContent() {
               </button>
             </div>
 
-            {/* Content - Scrollable */}
             <div className="p-3 md:p-4 space-y-4 overflow-y-auto">
-              {/* Harga & Info */}
               <div className="flex items-end justify-between bg-gray-50 p-3 md:p-4 rounded-xl">
                 <div>
                   <p className="text-[10px] md:text-xs text-gray-500 mb-1">Harga</p>
@@ -732,13 +701,11 @@ function CheckoutContent() {
                 )}
               </div>
 
-              {/* Deskripsi */}
               <div>
                 <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase mb-2">Deskripsi</p>
                 <p className="text-sm text-gray-700 leading-relaxed">{selectedDetail.description}</p>
               </div>
 
-              {/* Includes */}
               {selectedDetail.includes && selectedDetail.includes.length > 0 && (
                 <div>
                   <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase mb-2">✓ Termasuk</p>
@@ -755,7 +722,6 @@ function CheckoutContent() {
                 </div>
               )}
 
-              {/* Excludes */}
               {selectedDetail.excludes && selectedDetail.excludes.length > 0 && (
                 <div>
                   <p className="text-[10px] md:text-xs font-bold text-gray-500 uppercase mb-2">✗ Tidak Termasuk</p>
@@ -773,7 +739,6 @@ function CheckoutContent() {
               )}
             </div>
 
-            {/* Footer */}
             <div className="p-3 md:p-4 bg-gray-50 border-t border-gray-100 shrink-0">
               <button
                 onClick={() => setSelectedDetail(null)}
@@ -827,7 +792,6 @@ function CheckoutContent() {
   );
 }
 
-// Wrapper untuk Suspense
 export default function CheckoutPageWrapper() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div></div>}>

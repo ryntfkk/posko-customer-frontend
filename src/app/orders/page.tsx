@@ -5,9 +5,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
-// [FIX] Ubah import dari 'fetchMyOrders' menjadi 'listOrders'
 import { listOrders } from '@/features/orders/api'; 
-import { Order, OrderStatus } from '@/features/orders/types';
+import { Order, OrderStatus, PaginationMeta } from '@/features/orders/types';
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('id-ID', {
@@ -20,23 +19,46 @@ const formatCurrency = (amount: number) => {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
 
-  useEffect(() => {
-    const loadOrders = async () => {
-      try {
-        // [FIX] Gunakan 'listOrders' untuk memanggil API
-        const res = await listOrders('customer');
+  const fetchOrders = async (pageNum: number, isLoadMore = false) => {
+    try {
+      if (isLoadMore) setIsLoadingMore(true);
+      else setIsLoading(true);
+
+      const res = await listOrders('customer', pageNum, 10);
+      
+      if (isLoadMore) {
+        setOrders(prev => [...prev, ...res.data]);
+      } else {
         setOrders(res.data);
-      } catch (error) {
-        console.error('Gagal memuat orders:', error);
-      } finally {
-        setIsLoading(false);
       }
-    };
-    loadOrders();
+
+      if (res.meta) {
+        setMeta(res.meta);
+      }
+    } catch (error) {
+      console.error('Gagal memuat orders:', error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Initial Load
+  useEffect(() => {
+    fetchOrders(1, false);
   }, []);
 
-  // ... (sisa kode di bawah tetap sama)
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchOrders(nextPage, true);
+  };
 
   const getStatusColor = (status: OrderStatus) => {
     const colors: Record<OrderStatus, string> = {
@@ -110,86 +132,107 @@ export default function OrdersPage() {
             </Link>
           </div>
         ) : (
-          orders.map((order) => {
-            const providerData = typeof order.providerId === 'object' ? order.providerId : null;
-            
-            return (
-              <Link
-                key={order._id}
-                href={`/orders/${order._id}`}
-                className="block bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-gray-200 transition-all group"
-              >
-                {/* Header Row */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="space-y-0.5">
-                    {/* [BARU] Order Number */}
-                    <span className="text-[10px] text-gray-400 font-mono font-bold">
-                      {order.orderNumber || `#${order._id.slice(-6).toUpperCase()}`}
-                    </span>
-                    <span className="text-xs text-gray-500 block">
-                      {new Date(order.createdAt).toLocaleDateString('id-ID', { 
-                        day: 'numeric', 
-                        month: 'short', 
-                        year: 'numeric', 
-                        hour: '2-digit', 
-                        minute: '2-digit', 
-                        hour12: false 
-                      })}
-                    </span>
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
-                    {formatStatus(order.status)}
-                  </span>
-                </div>
-
-                {/* Service Info */}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
-                    {order.items[0]?.serviceId?.iconUrl ? (
-                      <Image src={order.items[0].serviceId.iconUrl} alt="Icon" width={24} height={24} className="object-contain opacity-80" />
-                    ) : (
-                      <span className="text-[10px] font-bold text-gray-400">SVC</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">
-                      {order.items[0]?.name}
-                      {order.items.length > 1 && <span className="text-gray-400 font-normal text-xs ml-1">+{order.items.length - 1} lainnya</span>}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
-                      {providerData ? (
-                        <>Mitra: {providerData.userId?.fullName}</>
-                      ) : (
-                        <>{order.orderType === 'basic' ? 'Cari Otomatis' : 'Menunggu Mitra'}</>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* [BARU] Customer Contact Preview (jika ada) */}
-                {order.customerContact?.phone && (
-                  <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                    </svg>
-                    <span>{order.customerContact.name || 'Customer'} • {order.customerContact.phone}</span>
-                  </div>
-                )}
-
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-50">
-                  <div className="text-xs text-gray-500">
-                    {order.scheduledAt && (
-                      <span>
-                        Jadwal: {new Date(order.scheduledAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          <>
+            {orders.map((order) => {
+              const providerData = typeof order.providerId === 'object' ? order.providerId : null;
+              
+              return (
+                <Link
+                  key={order._id}
+                  href={`/orders/${order._id}`}
+                  className="block bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-gray-200 transition-all group"
+                >
+                  {/* Header Row */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-gray-400 font-mono font-bold">
+                        {order.orderNumber || `#${order._id.slice(-6).toUpperCase()}`}
                       </span>
-                    )}
+                      <span className="text-xs text-gray-500 block">
+                        {new Date(order.createdAt).toLocaleDateString('id-ID', { 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric', 
+                          hour: '2-digit', 
+                          minute: '2-digit', 
+                          hour12: false 
+                        })}
+                      </span>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${getStatusColor(order.status)}`}>
+                      {formatStatus(order.status)}
+                    </span>
                   </div>
-                  <p className="font-bold text-red-600">{formatCurrency(order.totalAmount)}</p>
-                </div>
-              </Link>
-            );
-          })
+
+                  {/* Service Info */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden">
+                      {order.items[0]?.serviceId?.iconUrl ? (
+                        <Image src={order.items[0].serviceId.iconUrl} alt="Icon" width={24} height={24} className="object-contain opacity-80" />
+                      ) : (
+                        <span className="text-[10px] font-bold text-gray-400">SVC</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">
+                        {order.items[0]?.name}
+                        {order.items.length > 1 && <span className="text-gray-400 font-normal text-xs ml-1">+{order.items.length - 1} lainnya</span>}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">
+                        {providerData ? (
+                          <>Mitra: {providerData.userId?.fullName}</>
+                        ) : (
+                          <>{order.orderType === 'basic' ? 'Cari Otomatis' : 'Menunggu Mitra'}</>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Customer Contact Preview */}
+                  {order.customerContact?.phone && (
+                    <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                      </svg>
+                      <span>{order.customerContact.name || 'Customer'} • {order.customerContact.phone}</span>
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                    <div className="text-xs text-gray-500">
+                      {order.scheduledAt && (
+                        <span>
+                          Jadwal: {new Date(order.scheduledAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-bold text-red-600">{formatCurrency(order.totalAmount)}</p>
+                  </div>
+                </Link>
+              );
+            })}
+
+            {/* Load More Button */}
+            {meta && page < meta.totalPages && (
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="px-6 py-2.5 bg-white border border-gray-300 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  {isLoadingMore ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></span>
+                      Memuat...
+                    </span>
+                  ) : (
+                    'Tampilkan Lebih Banyak'
+                  )}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>

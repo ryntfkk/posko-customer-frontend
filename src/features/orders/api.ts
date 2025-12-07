@@ -1,5 +1,5 @@
 import axios from '@/lib/axios';
-import { CreateOrderPayload, Order, OrderListResponse, OrderResponse, OrderStatus } from './types';
+import { CreateOrderPayload, OrderListResponse, OrderResponse, OrderStatus } from './types';
 
 // Fetch single order
 export const fetchOrderById = async (orderId: string): Promise<OrderResponse> => {
@@ -7,9 +7,17 @@ export const fetchOrderById = async (orderId: string): Promise<OrderResponse> =>
   return data;
 };
 
-// List orders
-export const listOrders = async (view?: 'customer' | 'provider'): Promise<OrderListResponse> => {
-  const params = view ? { view } : {};
+// List orders (Updated with Pagination)
+export const listOrders = async (
+  view?: 'customer' | 'provider', 
+  page: number = 1, 
+  limit: number = 10
+): Promise<OrderListResponse> => {
+  const params = {
+    ...(view ? { view } : {}),
+    page,
+    limit
+  };
   const { data } = await axios.get('/orders', { params });
   return data;
 };
@@ -29,10 +37,8 @@ export const updateOrderStatus = async (
   return data;
 };
 
-// [BARU] Reject Additional Fee
+// Reject Additional Fee
 export const rejectAdditionalFee = async (orderId: string, feeId: string): Promise<OrderResponse> => {
-  // Asumsi route endpoint sesuai dengan controller params
-  // Anda mungkin perlu menambahkan route ini di backend: router.put('/:orderId/fees/:feeId/reject', controller.rejectAdditionalFee)
   const { data } = await axios.put(`/orders/${orderId}/fees/${feeId}/reject`);
   return data;
 };

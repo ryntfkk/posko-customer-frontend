@@ -1,6 +1,14 @@
 // src/features/orders/types.ts
 import { Address } from "../auth/types";
 
+// ============ PAGINATION META (NEW) ============
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // ============ ORDER ITEM PAYLOAD ============
 export interface OrderItemPayload {
   serviceId: string;
@@ -10,14 +18,14 @@ export interface OrderItemPayload {
   note?: string;
 }
 
-// ============ [BARU] CUSTOMER CONTACT (CRITICAL) ============
+// ============ CUSTOMER CONTACT ============
 export interface CustomerContact {
   name: string;          // Nama penerima (bisa beda dengan user)
   phone: string;         // Nomor HP utama
   alternatePhone?: string; // Nomor cadangan
 }
 
-// ============ [BARU] PROPERTY DETAILS (MEDIUM) ============
+// ============ PROPERTY DETAILS ============
 export interface PropertyDetails {
   type: 'rumah' | 'apartemen' | 'kantor' | 'ruko' | 'kendaraan' | 'lainnya' | '';
   floor?: number | null;     // Lantai berapa (apartemen/gedung)
@@ -26,21 +34,22 @@ export interface PropertyDetails {
   accessNote?: string;       // Catatan akses khusus
 }
 
-// ============ [BARU] SCHEDULED TIME SLOT (MEDIUM) ============
+// ============ SCHEDULED TIME SLOT ============
 export interface ScheduledTimeSlot {
   preferredStart: string;  // "09:00"
   preferredEnd: string;    // "12:00"
   isFlexible: boolean;     // Boleh datang di luar slot? 
 }
 
-// ============ [BARU] ATTACHMENT (HIGH) ============
+// ============ ATTACHMENT ============
 export interface Attachment {
   url: string;
   type: 'photo' | 'video';
   description?: string;
   uploadedAt?: string;
 }
-// [BARU] Interface untuk Biaya Tambahan
+
+// ============ ADDITIONAL FEE ============
 export interface AdditionalFee {
   _id: string;
   description: string;
@@ -49,7 +58,7 @@ export interface AdditionalFee {
   paymentId?: string;
 }
 
-// ============ CREATE ORDER PAYLOAD (UPDATED) ============
+// ============ CREATE ORDER PAYLOAD ============
 export interface CreateOrderPayload {
   orderType: 'direct' | 'basic';
   providerId?: string | null;
@@ -61,13 +70,12 @@ export interface CreateOrderPayload {
     type: 'Point', 
     coordinates: number[];
   };
-  // [BARU] Field tambahan
   customerContact: CustomerContact;
   orderNote?: string;
   propertyDetails?: PropertyDetails;
   scheduledTimeSlot?: ScheduledTimeSlot;
   attachments?: Attachment[];
-  voucherCode?: string; // Field baru untuk kirim kode voucher
+  voucherCode?: string;
 }
 
 // ============ POPULATED ORDER ITEM ============
@@ -121,34 +129,31 @@ export type OrderStatus =
 // ============ ORDER INTERFACE (FULL) ============
 export interface Order {
   _id: string;
-  orderNumber: string; // [BARU] Human-readable order number
+  orderNumber: string;
   userId: string | PopulatedUser;
   providerId?: string | PopulatedProvider | null;
   items: PopulatedOrderItem[];
   
   totalAmount: number;
-  adminFee?: number;       // Field baru
-  discountAmount?: number; // Field baru
+  adminFee?: number;
+  discountAmount?: number;
   
   status: OrderStatus;
   orderType: 'direct' | 'basic';
   scheduledAt?: string;
   
-  // Address & Location
   shippingAddress?: Address;
   location?: {
     type: 'Point';
     coordinates: number[];
   };
   
-  // [BARU] Field tambahan
   customerContact?: CustomerContact;
   orderNote?: string;
   propertyDetails?: PropertyDetails;
   scheduledTimeSlot?: ScheduledTimeSlot;
   attachments?: Attachment[];
 
-  // [BARU] Field tambahan dari Backend
   additionalFees?: AdditionalFee[];
   completionEvidence?: Attachment[];
   
@@ -166,4 +171,5 @@ export interface OrderListResponse {
   messageKey?: string;
   message?: string;
   data: Order[];
+  meta?: PaginationMeta; // [UPDATED] Ditambahkan optional meta
 }

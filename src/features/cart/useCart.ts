@@ -1,5 +1,5 @@
 // src/features/cart/useCart.ts
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 // Tipe untuk satu item di Keranjang
 export interface CartItem {
@@ -16,42 +16,40 @@ export interface CartItem {
 }
 
 const CART_KEY = 'posko_cart';
+const DEBOUNCE_DELAY_MS = 300; // Tunggu 300ms sebelum tulis ke storage
 
 export const getCartItemId = (serviceId: string, orderType: 'direct' | 'basic', providerId?: string | null) => {
     return `${serviceId}-${orderType}-${providerId || 'default'}`;
 };
 
 export const useCart = () => {
-    // 1. Lazy Initialization (Baca storage hanya SEKALI saat mount)
-    const [cart, setCart] = useState<CartItem[]>(() => {
-        if (typeof window === 'undefined') return [];
-        try {
-            const saved = localStorage.getItem(CART_KEY);
-            return saved ? JSON.parse(saved) : [];
-        } catch (e) {
-            console.error("[Cart] Failed to parse initial storage:", e);
-            return [];
-        }
-    });
-
-    const [isHydrated, setIsHydrated] = useState(false);
+    // [HYDRATION FIX] State awal selalu kosong untuk menghindari mismatch Server vs Client
+    const [cart, setCart] = useState<CartItem[]>([]);
+    const [isInitialized, setIsInitialized] = useState(false);
     
     // Ref untuk melacak apakah perubahan state berasal dari event storage (tab lain)
-    // agar kita tidak menulis balik ke storage secara redundan.
     const isSyncingFromStorage = useRef(false);
 
+    // 1. Initial Load & Storage Listener (Mount Only)
     useEffect(() => {
-        setIsHydrated(true);
-    }, []);
+        // Load data awal dari LocalStorage
+        try {
+            const saved = localStorage.getItem(CART_KEY);
+            if (saved) {
+                setCart(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.error("[Cart] Failed to parse initial storage:", e);
+        } finally {
+            setIsInitialized(true);
+        }
 
-    // 2. Listener Storage (Sinkronisasi Antar Tab)
-    useEffect(() => {
+        // Listener untuk sinkronisasi antar Tab browser
         const handleStorageChange = (event: StorageEvent) => {
             if (event.key === CART_KEY) {
                 try {
                     const newValue = event.newValue ? JSON.parse(event.newValue) : [];
-                    // Set flag sync agar useEffect penulis tidak menimpa balik
-                    isSyncingFromStorage.current = true;
+                    isSyncingFromStorage.current = true; // Tandai flag
                     setCart(newValue);
                 } catch (e) {
                     console.error("[Cart] Sync error:", e);
@@ -63,56 +61,62 @@ export const useCart = () => {
         return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
-    // 3. Simpan ke localStorage setiap kali state cart berubah
-    // (Hanya jika perubahan BUKAN berasal dari sinkronisasi tab lain)
+    // 2. [OPTIMIZATION] Debounced Save ke localStorage
     useEffect(() => {
-        if (isHydrated) {
-            if (isSyncingFromStorage.current) {
-                // Reset flag dan jangan tulis ke storage (karena data sudah dari storage)
-                isSyncingFromStorage.current = false;
-                return;
-            }
-            localStorage.setItem(CART_KEY, JSON.stringify(cart));
+        // Jangan simpan jika belum inisialisasi atau update berasal dari tab lain
+        if (!isInitialized) return;
+        
+        if (isSyncingFromStorage.current) {
+            isSyncingFromStorage.current = false;
+            return;
         }
-    }, [cart, isHydrated]);
 
-    // [HELPER] Cek konflik lebih robust (Iterasi seluruh cart, bukan cuma index 0)
+        // Debounce: Tunda penulisan ke disk agar UI tidak blocking saat user spam klik
+        const timeoutId = setTimeout(() => {
+            try {
+                localStorage.setItem(CART_KEY, JSON.stringify(cart));
+            } catch (e) {
+                console.error("[Cart] Save error:", e);
+            }
+        }, DEBOUNCE_DELAY_MS);
+
+        return () => clearTimeout(timeoutId);
+    }, [cart, isInitialized]);
+
+    // [HELPER] Cek konflik lebih robust
     const checkConflict = useCallback((newItem: Omit<CartItem, 'totalPrice'|'id'>): boolean => {
         if (cart.length === 0) return false;
 
-        // Ambil sampel order yang ada (biasanya keranjang harus homogen)
-        // Kita cek apakah item baru bertentangan dengan item APAPUN yang sudah ada
-        const hasConflict = cart.some(existingItem => {
+        // Cek apakah item baru bertentangan dengan item APAPUN yang sudah ada
+        return cart.some(existingItem => {
             const isDifferentProvider = newItem.orderType === 'direct' && newItem.providerId !== existingItem.providerId;
             const isDifferentType = newItem.orderType !== existingItem.orderType;
-            
-            // Aturan Bisnis: Order Basic sebaiknya satu kategori dalam satu checkout (Opsional, tergantung rule)
-            // Jika rule membolehkan mix category di basic, hapus bagian ini.
-            // Di sini kita asumsikan Strict Mode: Satu checkout = Satu tipe flow.
-            
             return isDifferentProvider || isDifferentType;
         });
-
-        return hasConflict;
     }, [cart]);
 
-    // [MODIFIED] Update atau Tambah Item
+    // [ACTION] Update atau Tambah Item
     const upsertItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
-        const totalPrice = item.quantity * item.pricePerUnit;
-
+        
         setCart(prevCart => {
             const existingIndex = prevCart.findIndex(existing => existing.id === itemId);
+            const quantity = item.quantity;
+            const totalPrice = quantity * item.pricePerUnit;
 
-            if (existingIndex >= 0) {
-                // Item sudah ada, update
-                const updated = [...prevCart];
-                
-                if (item.quantity <= 0) {
+            // Hapus item jika quantity <= 0 (Validasi Defensive)
+            if (quantity <= 0) {
+                if (existingIndex >= 0) {
+                    const updated = [...prevCart];
                     updated.splice(existingIndex, 1);
                     return updated;
                 }
+                return prevCart;
+            }
 
+            // Update item yang sudah ada
+            if (existingIndex >= 0) {
+                const updated = [...prevCart];
                 updated[existingIndex] = {
                     ...updated[existingIndex],
                     ...item,
@@ -122,9 +126,7 @@ export const useCart = () => {
                 return updated;
             }
 
-            // Item baru
-            if (item.quantity <= 0) return prevCart;
-
+            // Tambah item baru
             const newItem: CartItem = {
                 ...item,
                 id: itemId,
@@ -135,7 +137,7 @@ export const useCart = () => {
         });
     }, []);
 
-    // [HELPER] Reset Cart dan Tambah Item Baru (Replace Cart)
+    // [ACTION] Reset Cart dan Tambah Item Baru (Replace Cart)
     const resetAndAddItem = useCallback((item: Omit<CartItem, 'totalPrice'|'id'>) => {
         const itemId = getCartItemId(item.serviceId, item.orderType, item.providerId);
         const totalPrice = item.quantity * item.pricePerUnit;
@@ -151,7 +153,7 @@ export const useCart = () => {
 
     const updateItemQuantity = useCallback((itemId: string, quantity: number) => {
         setCart(prevCart => {
-            // Jika quantity 0, filter out (hapus)
+            // Jika quantity 0, hapus item
             if (quantity <= 0) {
                 return prevCart.filter(item => item.id !== itemId);
             }
@@ -175,10 +177,17 @@ export const useCart = () => {
 
     const clearCart = useCallback(() => {
         setCart([]);
+        // Force clear localStorage segera untuk kasus logout/checkout success
+        localStorage.removeItem(CART_KEY);
     }, []);
 
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0);
+    // [OPTIMIZATION] Memoize Derived State
+    const { totalItems, totalAmount } = useMemo(() => {
+        return cart.reduce((acc, item) => ({
+            totalItems: acc.totalItems + item.quantity,
+            totalAmount: acc.totalAmount + item.totalPrice
+        }), { totalItems: 0, totalAmount: 0 });
+    }, [cart]);
 
     return {
         cart,
@@ -190,6 +199,6 @@ export const useCart = () => {
         totalItems,
         totalAmount,
         updateItemQuantity,
-        isHydrated
+        isInitialized // Expose state ini jika UI butuh loading state saat hydration
     };
 };
