@@ -424,7 +424,7 @@ export default function HomePage() {
 
       {/* FLOATING CART - COMPACT & UNINTRUSIVE */}
       {totalItems > 0 && (
-          <Link href={checkoutUrl} className="fixed bottom-20 right-4 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/30 hover:shadow-xl hover:scale-105 transition-all duration-300 animate-fadeIn">
+          <Link href={checkoutUrl} className="fixed bottom-25 right-4 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/30 hover:shadow-xl hover:scale-105 transition-all duration-300 animate-fadeIn">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
               <span className="font-bold text-xs">{totalItems} • {formatCurrency(totalAmount)}</span>
           </Link>

@@ -1,3 +1,4 @@
+// src/components/home/ServiceCategories.tsx
 'use client';
 
 import Link from 'next/link';
@@ -32,7 +33,8 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
     return `/services/${category.slug}`;
   };
 
-  // LOGIKA PEMBATASAN ITEM (High Density: Tetap 8 item max sebelum expand)
+  // LOGIKA PEMBATASAN ITEM (High Density: Max 8 item sebelum expand)
+  // Kita set 7 item + 1 tombol "Lainnya" jika total > 8
   const LIMIT = 7; 
   const shouldShowMoreBtn = categories.length > 8 && !isExpanded;
   const shouldShowLessBtn = isExpanded;
@@ -42,50 +44,48 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
     : categories;
 
   return (
-    // REFINED: Padding vertikal lebih rapat (py-6)
-    <section className="px-4 mt-2 lg:max-w-7xl lg:mx-auto lg:px-8 lg:py-8">
+    <section className="px-4 mt-4 lg:max-w-7xl lg:mx-auto lg:px-8">
       <div className="flex justify-between items-baseline mb-3">
         <h3 className="text-sm font-bold text-gray-900 tracking-tight lg:text-lg">
-          <span className="lg:hidden">Layanan</span>
-          <span className="hidden lg:inline">Jelajahi Kategori</span>
+          Layanan Pilihan
         </h3>
       </div>
 
       {isLoading ? (
         <div className="grid grid-cols-4 lg:grid-cols-8 gap-x-2 gap-y-4 animate-pulse">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5">
-               <div className="w-11 h-11 lg:w-14 lg:h-14 bg-gray-200 rounded-2xl"></div>
-               <div className="w-12 h-2 bg-gray-200 rounded"></div>
+            <div key={i} className="flex flex-col items-center gap-2">
+               <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gray-100 rounded-xl"></div>
+               <div className="w-10 h-2 bg-gray-100 rounded"></div>
             </div>
           ))}
         </div>
       ) : categories.length === 0 ? (
-        <div className="p-4 text-center bg-white rounded-xl border border-gray-100 shadow-sm">
-          <p className="text-xs text-gray-400">Tidak ada layanan.</p>
+        <div className="p-4 text-center bg-white rounded-xl border border-gray-100 shadow-sm border-dashed">
+          <p className="text-xs text-gray-400">Tidak ada kategori layanan.</p>
         </div>
       ) : (
-        // REFINED: Grid lebih rapat (gap-x-2 gap-y-4)
-        <div className="grid grid-cols-4 lg:grid-cols-8 gap-x-2 gap-y-4">
+        // REFINED GRID: gap-x-2 gap-y-3 (Lebih rapat secara vertikal)
+        <div className="grid grid-cols-4 lg:grid-cols-8 gap-x-2 gap-y-3">
           {visibleCategories.map((cat) => (
             <Link
               key={cat.name}
               href={getCategoryLink(cat)}
               className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform group"
             >
-              {/* REFINED: Container Icon diperkecil (w-11 h-11) dengan rounded-2xl (Squircle) */}
-              <div className="relative w-11 h-11 lg:w-14 lg:h-14 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center justify-center p-2.5 lg:group-hover:shadow-md lg:group-hover:border-red-100 transition-all">
+              {/* REFINED: Container Icon w-10 (40px) di mobile. Squircle shape (rounded-xl) */}
+              <div className="relative w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex items-center justify-center p-2 group-hover:border-red-200 group-hover:shadow-md transition-all">
                 <Image
                   src={cat.iconUrl || '/icons/logo-posko.png'}
                   alt={cat.name}
-                  width={24} 
-                  height={24}
-                  className="object-contain w-6 h-6 lg:w-8 lg:h-8"
+                  width={32} 
+                  height={32}
+                  className="object-contain w-5 h-5 lg:w-6 lg:h-6 opacity-80 group-hover:opacity-100 transition-opacity"
                   onError={(e) => { (e.target as HTMLImageElement).src = '/icons/logo-posko.png' }}
                 />
               </div>
-              {/* REFINED: Text size [10px] dengan leading-3 sangat ketat */}
-              <span className="text-[10px] lg:text-xs font-medium text-gray-600 lg:text-gray-700 text-center leading-3 h-6 flex items-center justify-center line-clamp-2 px-0.5 lg:group-hover:text-red-600 transition-colors">
+              {/* REFINED: Text size [10px] dengan leading-tight, tinggi fix agar baris rata */}
+              <span className="text-[10px] lg:text-xs font-medium text-gray-600 lg:text-gray-700 text-center leading-3 h-6 flex items-start justify-center line-clamp-2 px-0.5 group-hover:text-red-600 transition-colors">
                 {cat.name}
               </span>
             </Link>
@@ -97,12 +97,12 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
               onClick={() => setIsExpanded(true)}
               className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform group"
             >
-              <div className="relative w-11 h-11 lg:w-14 lg:h-14 bg-gray-50 rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center p-2.5 lg:group-hover:bg-red-50 lg:group-hover:border-red-100 transition-all">
-                <svg className="w-5 h-5 text-gray-500 lg:group-hover:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="relative w-10 h-10 lg:w-12 lg:h-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed flex items-center justify-center p-2 group-hover:bg-red-50 group-hover:border-red-200 group-hover:border-solid transition-all">
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </div>
-              <span className="text-[10px] lg:text-xs font-bold text-gray-600 lg:text-gray-700 text-center leading-3 h-6 flex items-center justify-center lg:group-hover:text-red-600 transition-colors">
+              <span className="text-[10px] lg:text-xs font-bold text-gray-500 text-center leading-3 h-6 flex items-start justify-center group-hover:text-red-600 transition-colors">
                 Lainnya
               </span>
             </button>
@@ -114,12 +114,12 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
               onClick={() => setIsExpanded(false)}
               className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform group"
             >
-              <div className="relative w-11 h-11 lg:w-14 lg:h-14 bg-red-50 rounded-2xl border border-red-100 shadow-sm flex items-center justify-center p-2.5 lg:group-hover:bg-red-100 transition-all">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="relative w-10 h-10 lg:w-12 lg:h-12 bg-red-50 rounded-xl border border-red-100 flex items-center justify-center p-2 group-hover:bg-red-100 transition-all">
+                <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
                 </svg>
               </div>
-              <span className="text-[10px] lg:text-xs font-bold text-red-600 text-center leading-3 h-6 flex items-center justify-center lg:group-hover:text-red-800 transition-colors">
+              <span className="text-[10px] lg:text-xs font-bold text-red-600 text-center leading-3 h-6 flex items-start justify-center group-hover:text-red-800 transition-colors">
                 Tutup
               </span>
             </button>
