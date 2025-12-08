@@ -1,6 +1,24 @@
 @import "tailwindcss";
-/* --- TAMBAHKAN BAGIAN INI --- */
+
+/* --- SETTING HIGH DENSITY & BASE STYLES --- */
 @layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    /* KUNCI HIGH-DENSITY: Base font 14px di mobile membuat 1rem = 14px.
+       Ini otomatis membuat UI lebih compact tanpa mengubah class Tailwind satu per satu. */
+    font-size: 14px; 
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 16px; /* Kembali ke standar 16px di Desktop */
+    }
+  }
+  
+  body {
+    @apply antialiased text-gray-800 bg-gray-50;
+  }
+
   /* Paksa semua link mewarisi warna & dekorasi text dari parent-nya */
   a {
     color: inherit;
@@ -8,6 +26,7 @@
   }
 }
 /* --------------------------- */
+
 :root {
   --background: #f9fafb; /* gray-50 */
   --foreground: #1f2937; /* gray-800 */
@@ -16,14 +35,12 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  }
+}
 
 /*
-  Leaflet membawa gaya bawaan yang mewarnai elemen <a> di dalam map menjadi biru
-  dan tombol toolbar menjadi hitam. Karena stylesheet tersebut diimport secara
-  global di LocationPicker, warnanya merembet ke UI map dan tidak mengikuti
-  palet aplikasi. Override berikut menyelaraskan warna teks map agar mewarisi
-  warna teks induk sehingga konsisten dengan tema.
+  Leaflet Override:
+  Menyelaraskan warna teks map agar mewarisi warna teks induk 
+  sehingga konsisten dengan tema.
 */
 .leaflet-container a,
 .leaflet-bar a,

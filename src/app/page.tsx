@@ -92,7 +92,7 @@ export default function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // [BARU] Effect untuk Redirect Provider ke Dashboard
+  // Effect untuk Redirect Provider ke Dashboard
   useEffect(() => {
     if (!isLoadingProfile && isProviderMode) {
       router.replace('/dashboard');
@@ -172,13 +172,16 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100">
+    <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100 pb-20 lg:pb-0">
       
-      {/* Mobile Header */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-8 h-8"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
-            <div><h1 className="text-base font-bold text-gray-900 leading-none">POSKO</h1><p className="text-[10px] text-red-500 font-medium mt-0.5">Marketplace Jasa #1 di Indonesia</p></div>
+      {/* Mobile Header - COMPACT VERSION */}
+      <div className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-2.5 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <div className="relative w-7 h-7"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
+            <div>
+              <h1 className="text-sm font-bold text-gray-900 leading-none">POSKO</h1>
+              <p className="text-[9px] text-red-500 font-medium mt-0.5">Jasa Profesional</p>
+            </div>
           </div>
           <div>
             {isLoggedIn ?  (
@@ -193,7 +196,7 @@ export default function HomePage() {
                  </div>
                </Link>
             ) : (
-              <Link href="/login" className="text-[11px] font-bold text-white bg-gray-900 px-4 py-2 rounded-full shadow-md">Masuk</Link>
+              <Link href="/login" className="text-[10px] font-bold text-white bg-gray-900 px-3 py-1.5 rounded-full shadow-sm">Masuk</Link>
             )}
           </div>
       </div>
@@ -286,16 +289,17 @@ export default function HomePage() {
           </div>
       </header>
 
-      {/* HERO SECTION MOBILE */}
-      <section className="lg:hidden px-4 pt-6 pb-2">
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-2 leading-tight">Cari jasa apa <span className="text-red-600 relative">sekarang?  <svg className="absolute w-full h-2 -bottom-1 left-0" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0,5 Q25,0 50,5 T100,5" stroke="currentColor" strokeWidth="2" fill="none" vectorEffect="non-scaling-stroke"/></svg></span></h2>
-        <p className="text-xs text-gray-500 mb-6 max-w-[280px]">Hubungkan dengan ratusan teknisi terverifikasi di sekitar Anda.</p>
+      {/* HERO SECTION MOBILE - COMPACT */}
+      <section className="lg:hidden px-4 pt-4 pb-2">
+        <h2 className="text-xl font-extrabold text-gray-900 mb-1 leading-tight">Cari jasa apa <span className="text-red-600 relative">sekarang?</span></h2>
+        <p className="text-[11px] text-gray-500 mb-4 max-w-[280px]">Hubungkan dengan teknisi terverifikasi di sekitar Anda.</p>
         <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none"><SearchIcon className="w-5 h-5 text-gray-400 group-focus-within:text-red-500 transition-colors"/></div>
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="w-4 h-4 text-gray-400 group-focus-within:text-red-500 transition-colors"/></div>
+            {/* Input Height reduced (py-2.5), Text smaller (text-sm), Shadow lighter */}
             <input 
                 type="text" 
                 placeholder="Cari layanan, teknisi, atau kategori..." 
-                className="w-full pl-11 pr-4 py-3 bg-white border-2 border-gray-200 rounded-2xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 transition-all shadow-sm" 
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all shadow-sm" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
@@ -303,20 +307,20 @@ export default function HomePage() {
         </div>
       </section>
       
-      {/* PROMO / VOUCHERS SECTION */}
+      {/* PROMO / VOUCHERS SECTION - COMPACT */}
       <section className="mt-2 px-4 lg:px-8 max-w-7xl mx-auto">
-         <div className="flex items-center justify-between mb-4">
-             <div className="flex items-center gap-2">
-                <span className="text-xl">🔥</span>
-                <h2 className="text-lg lg:text-2xl font-bold text-gray-900">Promo Spesial Untukmu</h2>
+         <div className="flex items-center justify-between mb-3">
+             <div className="flex items-center gap-1.5">
+                <span className="text-lg">🔥</span>
+                <h2 className="text-sm lg:text-2xl font-bold text-gray-900">Promo Spesial</h2>
              </div>
-             <Link href="/vouchers" className="text-sm font-bold text-red-600 hover:text-red-700 hover:underline">Lihat Semua</Link>
+             <Link href="/vouchers" className="text-[10px] lg:text-sm font-bold text-red-600 hover:text-red-700 hover:underline">Lihat Semua</Link>
          </div>
          
-         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar snap-x">
+         <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x">
              {isLoadingPromos ? (
                 [1,2,3].map(i => (
-                    <div key={i} className="w-[280px] h-36 bg-gray-100 rounded-2xl animate-pulse shrink-0"></div>
+                    <div key={i} className="w-[260px] h-32 bg-gray-100 rounded-xl animate-pulse shrink-0"></div>
                 ))
              ) : promos.length > 0 ? (
                  promos.slice(0, 5).map((promo, idx) => (
@@ -327,8 +331,8 @@ export default function HomePage() {
                     />
                  ))
              ) : (
-                <div className="w-full p-6 bg-gray-50 border border-gray-100 rounded-2xl text-center">
-                    <p className="text-gray-500 text-sm">Belum ada promo tersedia saat ini.</p>
+                <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-center">
+                    <p className="text-gray-500 text-xs">Belum ada promo tersedia.</p>
                 </div>
              )}
          </div>
@@ -360,31 +364,31 @@ export default function HomePage() {
       {/* SECTION BARU: KEUNGGULAN (Mobile & Desktop) */}
       <section className="py-8 lg:py-16 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-            <div className="text-center mb-8 lg:mb-12">
-                <h2 className="text-xl lg:text-3xl font-extrabold text-gray-900">Mengapa Memilih Posko?</h2>
-                <p className="text-sm lg:text-lg text-gray-500 mt-2">Layanan profesional tanpa rasa khawatir</p>
+            <div className="text-center mb-6 lg:mb-12">
+                <h2 className="text-lg lg:text-3xl font-extrabold text-gray-900">Mengapa Memilih Posko?</h2>
+                <p className="text-xs lg:text-lg text-gray-500 mt-1">Layanan profesional tanpa rasa khawatir</p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-10">
-                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
-                    <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-10">
+                <div className="p-4 lg:p-6 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    <h3 className="font-bold text-lg text-gray-900 mb-2">Terverifikasi</h3>
-                    <p className="text-sm text-gray-500">Semua mitra kami telah melalui proses seleksi ketat dan verifikasi identitas.</p>
+                    <h3 className="font-bold text-sm lg:text-lg text-gray-900 mb-1">Terverifikasi</h3>
+                    <p className="text-xs lg:text-sm text-gray-500">Semua mitra kami telah melalui proses seleksi ketat dan verifikasi identitas.</p>
                 </div>
-                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
-                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div className="p-4 lg:p-6 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    <h3 className="font-bold text-lg text-gray-900 mb-2">Harga Transparan</h3>
-                    <p className="text-sm text-gray-500">Ketahui estimasi harga di awal sebelum memesan. Tidak ada biaya tersembunyi.</p>
+                    <h3 className="font-bold text-sm lg:text-lg text-gray-900 mb-1">Harga Transparan</h3>
+                    <p className="text-xs lg:text-sm text-gray-500">Ketahui estimasi harga di awal sebelum memesan. Tidak ada biaya tersembunyi.</p>
                 </div>
-                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 text-center">
-                    <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <div className="p-4 lg:p-6 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                    <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <h3 className="font-bold text-lg text-gray-900 mb-2">Respon Cepat</h3>
-                    <p className="text-sm text-gray-500">Dapatkan layanan segera dengan fitur pencarian real-time mitra terdekat.</p>
+                    <h3 className="font-bold text-sm lg:text-lg text-gray-900 mb-1">Respon Cepat</h3>
+                    <p className="text-xs lg:text-sm text-gray-500">Dapatkan layanan segera dengan fitur pencarian real-time mitra terdekat.</p>
                 </div>
             </div>
         </div>
@@ -392,14 +396,14 @@ export default function HomePage() {
 
       {/* SECTION BARU: CTA / BANNER APP (Mobile & Desktop) */}
       <section className="px-4 py-8 lg:py-16">
-        <div className="max-w-7xl mx-auto bg-gradient-to-r from-gray-900 to-gray-800 rounded-3xl p-8 lg:p-16 relative overflow-hidden text-white flex flex-col md:flex-row items-center justify-between">
+        <div className="max-w-7xl mx-auto bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl lg:rounded-3xl p-6 lg:p-16 relative overflow-hidden text-white flex flex-col md:flex-row items-center justify-between">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="relative z-10 max-w-xl">
-                <h2 className="text-2xl lg:text-4xl font-black mb-4">Butuh Bantuan Mendesak?</h2>
-                <p className="text-gray-300 mb-8 lg:text-lg">Download aplikasi Posko sekarang dan nikmati kemudahan memesan jasa service AC, kebersihan, hingga pijat refleksi dalam satu genggaman.</p>
-                <div className="flex gap-4">
-                    <button className="bg-white text-gray-900 px-6 py-3 rounded-xl font-bold text-sm lg:text-base hover:bg-gray-100 transition-colors">App Store</button>
-                    <button className="bg-white/10 border border-white/20 text-white px-6 py-3 rounded-xl font-bold text-sm lg:text-base hover:bg-white/20 transition-colors">Google Play</button>
+            <div className="relative z-10 max-w-xl text-center md:text-left">
+                <h2 className="text-xl lg:text-4xl font-black mb-3">Butuh Bantuan Mendesak?</h2>
+                <p className="text-gray-300 mb-6 text-xs lg:text-lg">Download aplikasi Posko sekarang dan nikmati kemudahan memesan jasa service AC, kebersihan, hingga pijat refleksi dalam satu genggaman.</p>
+                <div className="flex gap-3 justify-center md:justify-start">
+                    <button className="bg-white text-gray-900 px-4 py-2.5 rounded-xl font-bold text-xs lg:text-base hover:bg-gray-100 transition-colors">App Store</button>
+                    <button className="bg-white/10 border border-white/20 text-white px-4 py-2.5 rounded-xl font-bold text-xs lg:text-base hover:bg-white/20 transition-colors">Google Play</button>
                 </div>
             </div>
             {/* Dekorasi Visual Sederhana */}
@@ -412,7 +416,7 @@ export default function HomePage() {
         </div>
       </section>
       
-      <footer className="bg-gray-50 border-t border-gray-200 py-12 text-center pb-24 lg:pb-12"><p className="text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
+      <footer className="bg-gray-50 border-t border-gray-200 py-8 lg:py-12 text-center pb-24 lg:pb-12"><p className="text-[10px] lg:text-sm text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
 
       {/* FLOATING CHAT REAL-TIME (DESKTOP ONLY) */}
       {isLoggedIn && userProfile && (
@@ -421,18 +425,18 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* FLOATING CART */}
+      {/* FLOATING CART - COMPACT */}
       {totalItems > 0 && (
-          <Link href={checkoutUrl} className="fixed bottom-24 left-4 lg:bottom-8 lg:left-8 z-50 flex items-center gap-2 px-4 py-3 bg-red-600 text-white rounded-full shadow-xl shadow-red-300 hover:shadow-2xl hover:shadow-red-400 hover:scale-105 transition-all duration-300 animate-bounce-slow">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              <span className="font-bold text-sm">{totalItems} Unit | {formatCurrency(totalAmount)}</span>
+          <Link href={checkoutUrl} className="fixed bottom-24 left-4 lg:bottom-8 lg:left-8 z-50 flex items-center gap-2 px-3 py-2.5 bg-red-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 animate-bounce-slow">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              <span className="font-bold text-xs">{totalItems} | {formatCurrency(totalAmount)}</span>
           </Link>
       )}
     </main>
   );
 }
 
-// Updated Promo Card to handle dynamic data
+// Updated Promo Card to handle dynamic data - COMPACT
 function PromoCard({ voucher, index }: { voucher: Voucher, index: number }) {
   // Simple rotation/color variety based on index
   const colors = ['from-red-600 to-orange-600', 'from-blue-600 to-indigo-600', 'from-emerald-600 to-teal-600', 'from-purple-600 to-pink-600'];
@@ -443,28 +447,28 @@ function PromoCard({ voucher, index }: { voucher: Voucher, index: number }) {
     : `Potongan ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(voucher.discountValue)}`;
 
   return (
-    <div className={`w-[280px] h-36 rounded-2xl bg-gradient-to-br ${bgClass} p-5 flex flex-col justify-between text-white shadow-lg relative overflow-hidden shrink-0 group hover:shadow-xl transition-all cursor-pointer`}>
+    <div className={`w-[260px] h-32 rounded-xl bg-gradient-to-br ${bgClass} p-4 flex flex-col justify-between text-white shadow-md relative overflow-hidden shrink-0 group hover:shadow-lg transition-all cursor-pointer`}>
       <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
       
       <div>
         <div className="flex justify-between items-start">
-            <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wide uppercase bg-white/20 backdrop-blur-sm border border-white/10">{voucher.code}</span>
-            <span className="text-[10px] opacity-75">S/d {new Date(voucher.expiryDate).toLocaleDateString('id', { day: 'numeric', month: 'short' })}</span>
+            <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase bg-white/20 backdrop-blur-sm border border-white/10">{voucher.code}</span>
+            <span className="text-[9px] opacity-75">S/d {new Date(voucher.expiryDate).toLocaleDateString('id', { day: 'numeric', month: 'short' })}</span>
         </div>
-        <h3 className="font-bold text-xl mt-3 line-clamp-1" title={discountText}>{discountText}</h3>
-        <p className="text-xs opacity-90 line-clamp-1">{voucher.description}</p>
+        <h3 className="font-bold text-lg mt-2 line-clamp-1" title={discountText}>{discountText}</h3>
+        <p className="text-[10px] opacity-90 line-clamp-1">{voucher.description}</p>
       </div>
       
-      <div className="flex items-center justify-between mt-2">
-         <span className="text-[10px] font-medium opacity-80">Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}</span>
+      <div className="flex items-center justify-between mt-1">
+         <span className="text-[9px] font-medium opacity-80">Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}</span>
          
          {/* [UPDATE] Tampilan jika sudah diklaim */}
          {voucher.isClaimed ? (
-             <span className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white/90 text-gray-500 cursor-default shadow-sm">
+             <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-white/90 text-gray-500 cursor-default shadow-sm">
                 Diklaim
              </span>
          ) : (
-             <Link href="/vouchers" className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">
+             <Link href="/vouchers" className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-white text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">
                 Klaim
              </Link>
          )}
