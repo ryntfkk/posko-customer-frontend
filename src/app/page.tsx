@@ -19,12 +19,12 @@ import TechnicianSection from '@/components/home/TechnicianSection';
 import ServiceCategories from '@/components/home/ServiceCategories';
 import ChatWidget from '@/components/ChatWidget';
 
-// --- ICONS ---
-const SearchIcon = ({ className }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
-const OrderIcon = ({ className = "w-6 h-6" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>;
-const UserIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
+// --- ICONS (Optimized Size) ---
+const SearchIcon = ({ className = "w-4 h-4" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
+const OrderIcon = ({ className = "w-5 h-5" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>;
+const UserIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
 
-const formatCurrency = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+const formatCurrency = (amount: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
 export default function HomePage() {
   const router = useRouter();
@@ -166,27 +166,26 @@ export default function HomePage() {
   if (isProviderMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-red-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-200 border-t-red-600"></div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100 pb-20 lg:pb-0">
+    <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100 pb-24 lg:pb-0">
       
-      {/* Mobile Header - COMPACT VERSION */}
-      <div className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-2.5 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <div className="relative w-7 h-7"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
+      {/* Mobile Header - HIGH DENSITY VERSION */}
+      <div className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between shadow-sm transition-all">
+          <div className="flex items-center gap-2">
+            <div className="relative w-6 h-6"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
             <div>
-              <h1 className="text-sm font-bold text-gray-900 leading-none">POSKO</h1>
-              <p className="text-[9px] text-red-500 font-medium mt-0.5">Jasa Profesional</p>
+              <h1 className="text-sm font-black text-gray-900 leading-none tracking-tight">POSKO<span className="text-red-600">.</span></h1>
             </div>
           </div>
           <div>
             {isLoggedIn ?  (
                <Link href="/profile">
-                 <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative">
+                 <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative active:scale-95 transition-transform">
                    <Image 
                      src={profileAvatar} 
                      alt="Avatar" 
@@ -196,20 +195,20 @@ export default function HomePage() {
                  </div>
                </Link>
             ) : (
-              <Link href="/login" className="text-[10px] font-bold text-white bg-gray-900 px-3 py-1.5 rounded-full shadow-sm">Masuk</Link>
+              <Link href="/login" className="text-[10px] font-bold text-gray-900 bg-gray-100 px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors">Masuk</Link>
             )}
           </div>
       </div>
 
       {/* Desktop Header */}
       <header className="hidden lg:block sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+          <div className="max-w-7xl mx-auto px-8 py-3 flex items-center justify-between">
             <div className="flex items-center gap-10">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="relative w-10 h-10"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
-                <span className="text-xl font-bold text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
+              <Link href="/" className="flex items-center gap-2">
+                <div className="relative w-8 h-8"><Image src="/logo.png" alt="Posko Logo" fill className="object-contain"/></div>
+                <span className="text-xl font-black text-gray-900 tracking-tight">POSKO<span className="text-red-600">.</span></span>
               </Link>
-              <nav className="flex gap-8 text-sm font-bold text-gray-600">
+              <nav className="flex gap-6 text-sm font-bold text-gray-600">
                 <Link href="/" className="hover:text-red-600 transition-colors text-red-600">Beranda</Link>
                 <Link href="/search" className="hover:text-red-600 transition-colors">Cari Jasa</Link>
                 <Link href="#" className="hover:text-red-600 transition-colors">Mitra</Link>
@@ -218,23 +217,23 @@ export default function HomePage() {
             </div>
 
             <div className="flex items-center gap-6">
-              <div className="relative w-72">
+              <div className="relative w-64">
                 <input 
                     type="text" 
-                    placeholder="Cari layanan atau teknisi..." 
-                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all" 
+                    placeholder="Cari layanan..." 
+                    className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition-all placeholder:text-gray-400" 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
                 />
-                <SearchIcon className="absolute left-3.5 top-3 w-4 h-4 text-gray-400" />
+                <SearchIcon className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
               </div>
               
               {isLoggedIn ? (
                  <div className="relative">
-                    <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
-                        <div className="text-right hidden xl:block"><p className="text-xs font-bold text-gray-900">Halo, {isLoadingProfile ? 'Memuat...' : profileName}</p><p className="text-[10px] text-gray-500 truncate max-w-[120px]">{profileEmail}</p></div>
-                        <div className="w-9 h-9 bg-gray-100 rounded-full overflow-hidden border border-gray-200 relative">
+                    <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-2.5 pl-2 pr-1 py-1 rounded-full hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all">
+                        <div className="text-right hidden xl:block"><p className="text-xs font-bold text-gray-900 leading-tight">Halo, {isLoadingProfile ? '...' : profileName.split(' ')[0]}</p></div>
+                        <div className="w-8 h-8 bg-gray-100 rounded-full overflow-hidden border border-gray-200 relative">
                           <Image 
                             src={profileAvatar} 
                             alt="Profile" 
@@ -242,15 +241,14 @@ export default function HomePage() {
                             className="object-cover" 
                           />
                         </div>
-                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isProfileOpen ?  'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                     </button>
                     {/* DROPDOWN DESKTOP */}
                     {isProfileOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)}></div>
-                            <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fadeIn">
-                                <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 relative">
+                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-fadeIn">
+                                <div className="p-4 border-b border-gray-50 bg-gray-50/50 flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 relative">
                                       <Image 
                                         src={profileAvatar} 
                                         alt="Avatar" 
@@ -258,48 +256,48 @@ export default function HomePage() {
                                         className="object-cover"
                                       />
                                     </div>
-                                    <div className="min-w-0"><p className="text-sm font-bold text-gray-900 truncate">{isLoadingProfile ? '...' : profileName}</p><p className="text-[11px] text-gray-500 truncate">{profileEmail}</p><span className="inline-block mt-1 px-2 py-0.5 bg-red-50 text-red-600 text-[9px] font-bold rounded-full border border-red-100">{profileBadge}</span></div>
+                                    <div className="min-w-0"><p className="text-sm font-bold text-gray-900 truncate">{isLoadingProfile ? '...' : profileName}</p><p className="text-[10px] text-gray-500 truncate">{profileEmail}</p><span className="inline-block mt-1 px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-bold rounded uppercase tracking-wider border border-red-100">{profileBadge}</span></div>
                                 </div>
-                                <div className="p-2 space-y-1">
-                                    <Link href="/orders" className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors group">
-                                        <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-600 group-hover:bg-red-100 transition-colors"><OrderIcon className="w-4 h-4"/></div><span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">Pesanan Saya</span></div>
+                                <div className="p-1.5 space-y-0.5">
+                                    <Link href="/orders" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                        <div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center text-red-600 group-hover:bg-red-100 transition-colors"><OrderIcon className="w-3.5 h-3.5"/></div><span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Pesanan Saya</span></div>
                                     </Link>
-                                    <button onClick={handleSwitchModeDesktop} disabled={switching} className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors group disabled:opacity-50">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${hasProviderRole ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-100' : 'bg-green-50 text-green-600 group-hover:bg-green-100'}`}>
-                                                {hasProviderRole ? <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>}
+                                    <button onClick={handleSwitchModeDesktop} disabled={switching} className="w-full flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group disabled:opacity-50">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${hasProviderRole ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-100' : 'bg-green-50 text-green-600 group-hover:bg-green-100'}`}>
+                                                {hasProviderRole ? <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>}
                                             </div>
-                                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">{switching ? 'Memproses...' : hasProviderRole ? (isProviderMode ? 'Mode Customer' : 'Mode Mitra') : 'Daftar Mitra'}</span>
+                                            <span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">{switching ? '...' : hasProviderRole ? (isProviderMode ? 'Mode Customer' : 'Mode Mitra') : 'Daftar Mitra'}</span>
                                         </div>
                                     </button>
-                                    <div className="h-px bg-gray-100 my-1 mx-3"></div>
-                                    <Link href="/profile" className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors group">
-                                        <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 group-hover:bg-gray-100 transition-colors"><UserIcon /></div><span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">Pengaturan</span></div>
+                                    <div className="h-px bg-gray-100 my-1 mx-2"></div>
+                                    <Link href="/profile" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors group">
+                                        <div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center text-gray-600 group-hover:bg-gray-100 transition-colors"><UserIcon /></div><span className="text-xs font-medium text-gray-700 group-hover:text-gray-900">Pengaturan</span></div>
                                     </Link>
                                 </div>
-                                <div className="p-3 bg-gray-50/50 border-t border-gray-100"><button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors">Keluar</button></div>
+                                <div className="p-2 bg-gray-50/50 border-t border-gray-100"><button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors">Keluar</button></div>
                             </div>
                         </>
                     )}
                  </div>
               ) : (
-                <div className="flex gap-3"><Link href="/login" className="text-sm font-bold text-gray-600 hover:text-gray-900 px-4 py-2">Masuk</Link><Link href="/register" className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 px-6 py-2 rounded-full shadow-md transition-all">Daftar</Link></div>
+                <div className="flex gap-2"><Link href="/login" className="text-xs font-bold text-gray-600 hover:text-gray-900 px-3 py-2">Masuk</Link><Link href="/register" className="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-full shadow-sm transition-all">Daftar</Link></div>
               )}
             </div>
           </div>
       </header>
 
-      {/* HERO SECTION MOBILE - COMPACT */}
-      <section className="lg:hidden px-4 pt-4 pb-2">
-        <h2 className="text-xl font-extrabold text-gray-900 mb-1 leading-tight">Cari jasa apa <span className="text-red-600 relative">sekarang?</span></h2>
-        <p className="text-[11px] text-gray-500 mb-4 max-w-[280px]">Hubungkan dengan teknisi terverifikasi di sekitar Anda.</p>
-        <div className="relative group">
+      {/* HERO SECTION MOBILE - HIGH DENSITY */}
+      <section className="lg:hidden px-4 pt-3 pb-2">
+        <h2 className="text-lg font-black text-gray-900 mb-2 leading-tight">Butuh bantuan <span className="text-red-600">apa?</span></h2>
+        
+        <div className="relative group mb-1">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon className="w-4 h-4 text-gray-400 group-focus-within:text-red-500 transition-colors"/></div>
-            {/* Input Height reduced (py-2.5), Text smaller (text-sm), Shadow lighter */}
+            {/* Input Compact Height (h-10 / 40px) */}
             <input 
                 type="text" 
-                placeholder="Cari layanan, teknisi, atau kategori..." 
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all shadow-sm" 
+                placeholder="Cari 'Cuci AC' atau 'Montir'..." 
+                className="w-full pl-9 pr-4 h-10 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all shadow-sm" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
@@ -307,20 +305,20 @@ export default function HomePage() {
         </div>
       </section>
       
-      {/* PROMO / VOUCHERS SECTION - COMPACT */}
+      {/* PROMO / VOUCHERS SECTION - COMPACT REDESIGN */}
       <section className="mt-2 px-4 lg:px-8 max-w-7xl mx-auto">
-         <div className="flex items-center justify-between mb-3">
+         <div className="flex items-center justify-between mb-2">
              <div className="flex items-center gap-1.5">
-                <span className="text-lg">🔥</span>
-                <h2 className="text-sm lg:text-2xl font-bold text-gray-900">Promo Spesial</h2>
+                <span className="text-sm lg:text-base">🔥</span>
+                <h2 className="text-sm lg:text-lg font-bold text-gray-900">Promo Hari Ini</h2>
              </div>
-             <Link href="/vouchers" className="text-[10px] lg:text-sm font-bold text-red-600 hover:text-red-700 hover:underline">Lihat Semua</Link>
+             <Link href="/vouchers" className="text-[10px] lg:text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-1 rounded-full transition-colors">Lihat Semua</Link>
          </div>
          
-         <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar snap-x">
+         <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar snap-x">
              {isLoadingPromos ? (
                 [1,2,3].map(i => (
-                    <div key={i} className="w-[260px] h-32 bg-gray-100 rounded-xl animate-pulse shrink-0"></div>
+                    <div key={i} className="w-56 h-24 bg-gray-100 rounded-xl animate-pulse shrink-0"></div>
                 ))
              ) : promos.length > 0 ? (
                  promos.slice(0, 5).map((promo, idx) => (
@@ -331,8 +329,8 @@ export default function HomePage() {
                     />
                  ))
              ) : (
-                <div className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-center">
-                    <p className="text-gray-500 text-xs">Belum ada promo tersedia.</p>
+                <div className="w-full py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-center">
+                    <p className="text-gray-400 text-[10px]">Belum ada promo tersedia.</p>
                 </div>
              )}
          </div>
@@ -341,82 +339,81 @@ export default function HomePage() {
       {/* HERO SECTION DESKTOP */}
       <section className="hidden lg:block relative bg-white border-b border-gray-100 overflow-hidden mt-6">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-red-50/50 -skew-x-12 translate-x-20"></div>
-        <div className="max-w-7xl mx-auto px-8 py-20 grid grid-cols-2 items-center relative z-10">
+        <div className="max-w-7xl mx-auto px-8 py-16 grid grid-cols-2 items-center relative z-10">
             <div>
-            <div className="inline-flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1 rounded-full text-xs font-bold mb-6 border border-red-100"><span>🚀</span> Marketplace Jasa #1 di Indonesia</div>
-            <h1 className="text-5xl font-black text-gray-900 leading-[1.15] mb-6">Solusi Jasa Profesional <br/>di <span className="text-red-600 relative inline-block">Ujung Jari<svg className="absolute w-full h-3 -bottom-1 left-0" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M0,7 Q50,0 100,7 T200,7" stroke="currentColor" strokeWidth="3" fill="none"/></svg></span></h1>
-            <p className="text-lg text-gray-500 mb-8 max-w-lg leading-relaxed">Temukan teknisi AC, montir, hingga layanan kebersihan terbaik di sekitar Anda dengan harga transparan dan garansi layanan.</p>
-            <div className="flex gap-4"><button className="bg-red-600 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl shadow-red-200 hover:bg-red-700 transition-transform hover:-translate-y-0.5">Mulai Cari Jasa</button><button className="border-2 border-gray-200 text-gray-700 font-bold px-8 py-3.5 rounded-xl hover:border-gray-300 hover:shadow-md transition-all">Jadi Mitra</button></div>
+            <div className="inline-flex items-center gap-2 bg-red-50 text-red-700 px-2.5 py-1 rounded-md text-[10px] font-bold mb-4 border border-red-100 uppercase tracking-wide"><span>🚀</span> Marketplace Jasa #1</div>
+            <h1 className="text-4xl lg:text-5xl font-black text-gray-900 leading-[1.1] mb-4">Solusi Jasa <br/>di <span className="text-red-600 relative inline-block">Ujung Jari<svg className="absolute w-full h-2 -bottom-0 left-0 text-red-200" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M0,7 Q50,0 100,7 T200,7" stroke="currentColor" strokeWidth="4" fill="none"/></svg></span></h1>
+            <p className="text-base text-gray-500 mb-6 max-w-lg leading-relaxed">Temukan teknisi AC, montir, hingga layanan kebersihan terbaik di sekitar Anda dengan harga transparan.</p>
+            <div className="flex gap-3"><button className="bg-red-600 text-white font-bold text-sm px-6 py-3 rounded-lg shadow-lg shadow-red-200 hover:bg-red-700 hover:-translate-y-0.5 transition-all">Mulai Cari Jasa</button><button className="bg-white border border-gray-200 text-gray-700 font-bold text-sm px-6 py-3 rounded-lg hover:bg-gray-50 transition-all">Jadi Mitra</button></div>
             </div>
-            <div className="relative h-96 w-full rounded-3xl bg-gray-100 border border-gray-200 overflow-hidden group shadow-xl">
-                <Image src="https://drive.google.com/uc? export=view&id=1izUc0As5ae1dFrNaiZcWGqDn28nSRnsY" alt="Ilustrasi Teknisi" fill className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
+            <div className="relative h-80 w-full rounded-2xl bg-gray-100 border border-gray-200 overflow-hidden group shadow-lg">
+                <Image src="https://drive.google.com/uc?export=view&id=1izUc0As5ae1dFrNaiZcWGqDn28nSRnsY" alt="Ilustrasi Teknisi" fill className="object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
             </div>
         </div>
       </section>
 
+      {/* CATEGORIES & TECHNICIANS */}
       <ServiceCategories categories={categories} isLoading={isLoadingServices} />
 
       <TechnicianSection 
         userLocation={userProfile?.location ?  { lat: userProfile.location.coordinates[1], lng: userProfile.location.coordinates[0] } : undefined}
       />
       
-      {/* SECTION BARU: KEUNGGULAN (Mobile & Desktop) */}
-      <section className="py-8 lg:py-16 bg-white border-t border-gray-100">
+      {/* SECTION KEUNGGULAN (Compact) */}
+      <section className="py-6 lg:py-12 bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
-            <div className="text-center mb-6 lg:mb-12">
-                <h2 className="text-lg lg:text-3xl font-extrabold text-gray-900">Mengapa Memilih Posko?</h2>
-                <p className="text-xs lg:text-lg text-gray-500 mt-1">Layanan profesional tanpa rasa khawatir</p>
+            <div className="text-center mb-6 lg:mb-10">
+                <h2 className="text-base lg:text-2xl font-black text-gray-900">Kenapa Posko?</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-10">
-                <div className="p-4 lg:p-6 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                    <div className="w-10 h-10 lg:w-12 lg:h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-8">
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center flex flex-row md:flex-col items-center gap-4 md:gap-2 text-left md:text-center">
+                    <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    <h3 className="font-bold text-sm lg:text-lg text-gray-900 mb-1">Terverifikasi</h3>
-                    <p className="text-xs lg:text-sm text-gray-500">Semua mitra kami telah melalui proses seleksi ketat dan verifikasi identitas.</p>
+                    <div>
+                        <h3 className="font-bold text-sm text-gray-900">Terverifikasi</h3>
+                        <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">Mitra kami telah melalui seleksi ketat & cek identitas.</p>
+                    </div>
                 </div>
-                <div className="p-4 lg:p-6 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                    <div className="w-10 h-10 lg:w-12 lg:h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center flex flex-row md:flex-col items-center gap-4 md:gap-2 text-left md:text-center">
+                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
-                    <h3 className="font-bold text-sm lg:text-lg text-gray-900 mb-1">Harga Transparan</h3>
-                    <p className="text-xs lg:text-sm text-gray-500">Ketahui estimasi harga di awal sebelum memesan. Tidak ada biaya tersembunyi.</p>
+                     <div>
+                        <h3 className="font-bold text-sm text-gray-900">Harga Jelas</h3>
+                        <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">Estimasi harga transparan di awal, tanpa biaya siluman.</p>
+                    </div>
                 </div>
-                <div className="p-4 lg:p-6 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                    <div className="w-10 h-10 lg:w-12 lg:h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center flex flex-row md:flex-col items-center gap-4 md:gap-2 text-left md:text-center">
+                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center shrink-0">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
-                    <h3 className="font-bold text-sm lg:text-lg text-gray-900 mb-1">Respon Cepat</h3>
-                    <p className="text-xs lg:text-sm text-gray-500">Dapatkan layanan segera dengan fitur pencarian real-time mitra terdekat.</p>
+                    <div>
+                        <h3 className="font-bold text-sm text-gray-900">Cepat</h3>
+                        <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">Pencarian real-time teknisi terdekat dari lokasi Anda.</p>
+                    </div>
                 </div>
             </div>
         </div>
       </section>
 
-      {/* SECTION BARU: CTA / BANNER APP (Mobile & Desktop) */}
-      <section className="px-4 py-8 lg:py-16">
-        <div className="max-w-7xl mx-auto bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl lg:rounded-3xl p-6 lg:p-16 relative overflow-hidden text-white flex flex-col md:flex-row items-center justify-between">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+      {/* CTA BANNER - COMPACT */}
+      <section className="px-4 py-6 lg:py-12">
+        <div className="max-w-7xl mx-auto bg-gray-900 rounded-2xl p-6 lg:p-10 relative overflow-hidden text-white flex flex-col md:flex-row items-center justify-between shadow-xl">
             <div className="relative z-10 max-w-xl text-center md:text-left">
-                <h2 className="text-xl lg:text-4xl font-black mb-3">Butuh Bantuan Mendesak?</h2>
-                <p className="text-gray-300 mb-6 text-xs lg:text-lg">Download aplikasi Posko sekarang dan nikmati kemudahan memesan jasa service AC, kebersihan, hingga pijat refleksi dalam satu genggaman.</p>
-                <div className="flex gap-3 justify-center md:justify-start">
-                    <button className="bg-white text-gray-900 px-4 py-2.5 rounded-xl font-bold text-xs lg:text-base hover:bg-gray-100 transition-colors">App Store</button>
-                    <button className="bg-white/10 border border-white/20 text-white px-4 py-2.5 rounded-xl font-bold text-xs lg:text-base hover:bg-white/20 transition-colors">Google Play</button>
+                <h2 className="text-lg lg:text-3xl font-black mb-2">Butuh Bantuan Mendesak?</h2>
+                <p className="text-gray-400 mb-4 text-xs lg:text-base">Download aplikasi Posko sekarang. Pesan jasa service dalam satu genggaman.</p>
+                <div className="flex gap-2 justify-center md:justify-start">
+                    <button className="bg-white text-gray-900 px-3 py-2 rounded-lg font-bold text-xs hover:bg-gray-100 transition-colors">App Store</button>
+                    <button className="bg-white/10 border border-white/20 text-white px-3 py-2 rounded-lg font-bold text-xs hover:bg-white/20 transition-colors">Google Play</button>
                 </div>
             </div>
-            {/* Dekorasi Visual Sederhana */}
-            <div className="hidden md:block relative w-64 h-64 lg:w-80 lg:h-80 opacity-80">
-                <div className="absolute inset-0 bg-gradient-to-tr from-red-500 to-orange-500 rounded-full blur-3xl opacity-30"></div>
-                <div className="relative w-full h-full bg-gray-800 rounded-2xl border border-gray-700 flex items-center justify-center transform rotate-6 hover:rotate-0 transition-transform duration-500">
-                     <span className="text-6xl">📱</span>
-                </div>
-            </div>
+            <div className="hidden md:block absolute right-10 top-1/2 -translate-y-1/2 opacity-20 text-[10rem]">📱</div>
         </div>
       </section>
       
-      <footer className="bg-gray-50 border-t border-gray-200 py-8 lg:py-12 text-center pb-24 lg:pb-12"><p className="text-[10px] lg:text-sm text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
+      <footer className="bg-gray-50 border-t border-gray-200 py-6 lg:py-8 text-center pb-24 lg:pb-12"><p className="text-[10px] text-gray-400 font-medium">© 2024 Posko Services. All rights reserved.</p></footer>
 
       {/* FLOATING CHAT REAL-TIME (DESKTOP ONLY) */}
       {isLoggedIn && userProfile && (
@@ -425,51 +422,44 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* FLOATING CART - COMPACT */}
+      {/* FLOATING CART - COMPACT & UNINTRUSIVE */}
       {totalItems > 0 && (
-          <Link href={checkoutUrl} className="fixed bottom-24 left-4 lg:bottom-8 lg:left-8 z-50 flex items-center gap-2 px-3 py-2.5 bg-red-600 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 animate-bounce-slow">
+          <Link href={checkoutUrl} className="fixed bottom-20 right-4 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-full shadow-lg shadow-red-600/30 hover:shadow-xl hover:scale-105 transition-all duration-300 animate-fadeIn">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              <span className="font-bold text-xs">{totalItems} | {formatCurrency(totalAmount)}</span>
+              <span className="font-bold text-xs">{totalItems} • {formatCurrency(totalAmount)}</span>
           </Link>
       )}
     </main>
   );
 }
 
-// Updated Promo Card to handle dynamic data - COMPACT
+// Updated Promo Card - COMPACT LANDSCAPE DESIGN
 function PromoCard({ voucher, index }: { voucher: Voucher, index: number }) {
-  // Simple rotation/color variety based on index
-  const colors = ['from-red-600 to-orange-600', 'from-blue-600 to-indigo-600', 'from-emerald-600 to-teal-600', 'from-purple-600 to-pink-600'];
+  const colors = ['from-red-500 to-orange-500', 'from-blue-500 to-indigo-500', 'from-emerald-500 to-teal-500', 'from-purple-500 to-pink-500'];
   const bgClass = colors[index % colors.length];
   
   const discountText = voucher.discountType === 'percentage' 
-    ? `Diskon ${voucher.discountValue}%` 
-    : `Potongan ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(voucher.discountValue)}`;
+    ? `${voucher.discountValue}% OFF` 
+    : `Hemat ${new Intl.NumberFormat('id-ID', { compactDisplay: "short", notation: "compact" }).format(voucher.discountValue)}`;
 
   return (
-    <div className={`w-[260px] h-32 rounded-xl bg-gradient-to-br ${bgClass} p-4 flex flex-col justify-between text-white shadow-md relative overflow-hidden shrink-0 group hover:shadow-lg transition-all cursor-pointer`}>
-      <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
+    // CARD SIZE: w-56 h-24 (Wide & Short)
+    <div className={`w-56 h-24 rounded-lg bg-gradient-to-r ${bgClass} p-3 flex flex-row items-center justify-between text-white shadow-sm relative overflow-hidden shrink-0 group cursor-pointer snap-start`}>
+      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
       
-      <div>
-        <div className="flex justify-between items-start">
-            <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase bg-white/20 backdrop-blur-sm border border-white/10">{voucher.code}</span>
-            <span className="text-[9px] opacity-75">S/d {new Date(voucher.expiryDate).toLocaleDateString('id', { day: 'numeric', month: 'short' })}</span>
-        </div>
-        <h3 className="font-bold text-lg mt-2 line-clamp-1" title={discountText}>{discountText}</h3>
-        <p className="text-[10px] opacity-90 line-clamp-1">{voucher.description}</p>
+      <div className="flex flex-col justify-between h-full z-10 max-w-[70%]">
+         <span className="text-[10px] font-medium opacity-90 truncate">{voucher.code}</span>
+         <h3 className="font-black text-lg leading-none tracking-tight">{discountText}</h3>
+         <p className="text-[9px] opacity-80 truncate max-w-full">Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}</p>
       </div>
-      
-      <div className="flex items-center justify-between mt-1">
-         <span className="text-[9px] font-medium opacity-80">Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}</span>
-         
-         {/* [UPDATE] Tampilan jika sudah diklaim */}
+
+      <div className="flex flex-col items-end justify-between h-full z-10">
+         <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">🏷️</div>
          {voucher.isClaimed ? (
-             <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-white/90 text-gray-500 cursor-default shadow-sm">
-                Diklaim
-             </span>
+             <span className="text-[9px] font-bold bg-white/90 text-gray-500 px-2 py-0.5 rounded shadow-sm">Klaim</span>
          ) : (
-             <Link href="/vouchers" className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-white text-gray-900 hover:bg-gray-100 transition-colors shadow-sm">
-                Klaim
+             <Link href="/vouchers" className="text-[9px] font-bold bg-white text-gray-900 px-2.5 py-1 rounded shadow-sm hover:bg-gray-50 transition-colors">
+                Ambil
              </Link>
          )}
       </div>
