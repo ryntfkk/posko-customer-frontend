@@ -12,6 +12,7 @@ import { createReview } from '@/features/reviews/api';
 import { Order, OrderStatus } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans';
 import ReviewModal from '@/components/ReviewModal';
+import Receipt from '@/components/Receipt'; // Import Component Receipt
 import 'leaflet/dist/leaflet.css';
 
 // --- LEAFLET COMPONENTS (Client Only) ---
@@ -46,7 +47,8 @@ const Icons = {
   XCircle: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
   Parking: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10v9m4-9v9m-4-9h5a3 3 0 000-6H5v6z" /></svg>,
   Elevator: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>,
-  Info: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+  Info: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+  Printer: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
 };
 
 // --- HELPERS ---
@@ -88,8 +90,9 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isSnapLoaded = useMidtrans();
 
-  // Review State
+  // Review & Receipt State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // State untuk custom icon leaflet
@@ -247,15 +250,20 @@ export default function OrderDetailPage({ params }: PageProps) {
     ? [order.location.coordinates[1], order.location.coordinates[0]] // Swap to [Lat, Lng]
     : [-6.200000, 106.816666];
 
+  // Logic to show Receipt Button (If paid/completed)
+  const canShowReceipt = !['pending', 'cancelled', 'failed'].includes(order.status);
+
   return (
     <div className="min-h-screen bg-gray-50/50 pb-36 font-sans text-gray-900">
       
       {/* 1. COMPACT NAVBAR */}
-      <div className="bg-white sticky top-0 z-20 px-4 h-12 flex items-center shadow-sm border-b border-gray-100">
-        <Link href="/orders" className="p-1.5 -ml-1.5 rounded-full hover:bg-gray-50 text-gray-600">
-          <Icons.ChevronLeft />
-        </Link>
-        <h1 className="ml-2 text-sm font-bold">Rincian Pesanan</h1>
+      <div className="bg-white sticky top-0 z-20 px-4 h-12 flex items-center justify-between shadow-sm border-b border-gray-100">
+        <div className="flex items-center gap-2">
+            <Link href="/orders" className="p-1.5 -ml-1.5 rounded-full hover:bg-gray-50 text-gray-600">
+            <Icons.ChevronLeft />
+            </Link>
+            <h1 className="text-sm font-bold">Rincian Pesanan</h1>
+        </div>
       </div>
 
       <main className="max-w-xl mx-auto p-3 space-y-3">
@@ -347,7 +355,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                  {/* Item Note Display */}
                  {item.note && (
                     <p className="text-[10px] text-gray-400 italic ml-6 pl-1 border-l-2 border-gray-200">
-                      &quot;{item.note}&quot;
+                      "{item.note}"
                     </p>
                  )}
               </div>
@@ -422,6 +430,18 @@ export default function OrderDetailPage({ params }: PageProps) {
                <span>Total Bayar</span>
                <span>{formatCurrency(displayGrandTotal)}</span>
             </div>
+
+            {/* Receipt Button */}
+            {canShowReceipt && (
+                <div className="pt-3 flex justify-center">
+                    <button 
+                        onClick={() => setIsReceiptOpen(true)}
+                        className="text-xs text-blue-600 font-bold flex items-center gap-1.5 hover:text-blue-800 transition-colors bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100"
+                    >
+                        <Icons.Printer /> Lihat Kuitansi / Nota
+                    </button>
+                </div>
+            )}
           </div>
         </div>
 
@@ -535,7 +555,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                   <p className="font-bold text-[10px] text-amber-700 uppercase mb-1 flex items-center gap-1">
                     <Icons.FileText /> Catatan Pesanan
                   </p>
-                  <p className="italic leading-relaxed">&quot;{order.orderNote}&quot;</p>
+                  <p className="italic leading-relaxed">"{order.orderNote}"</p>
                </div>
              )}
         </div>
@@ -619,6 +639,13 @@ export default function OrderDetailPage({ params }: PageProps) {
         onClose={() => setIsReviewModalOpen(false)}
         onSubmit={handleSubmitReview}
         isSubmitting={isSubmittingReview}
+      />
+      
+      {/* Receipt Component (Hidden by default, overlays when open) */}
+      <Receipt 
+        order={order}
+        isOpen={isReceiptOpen}
+        onClose={() => setIsReceiptOpen(false)}
       />
     </div>
   );
