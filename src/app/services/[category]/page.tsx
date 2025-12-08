@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import { fetchProviders } from '@/features/providers/api';
 import { fetchProfile } from '@/features/auth/api';
 import { Provider } from '@/features/providers/types';
@@ -19,17 +20,34 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// --- TYPES ---
-interface ProviderServiceItem {
-  serviceId?: {
-    _id: string;
-    name: string;
-    category: string;
-    iconUrl?: string;
-  };
-  price: number;
-  isActive: boolean;
+// --- HELPER FUNCTIONS (Diadaptasi dari TechnicianSection) ---
+
+// Helper: Menghitung jarak (Haversine Formula) dalam KM
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius bumi dalam KM
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c;
+  return d.toFixed(1); 
 }
+
+// Helper: Format harga ringkas (cth: 50rb, 1.2jt)
+const formatCompactPrice = (price: number) => {
+  if (price >= 1000000) {
+    return (price / 1000000).toFixed(1).replace(/\.0$/, '') + 'jt';
+  }
+  if (price >= 1000) {
+    return (price / 1000).toFixed(0) + 'rb';
+  }
+  return price.toString();
+};
+
 
 // --- ICONS (Optimized Size) ---
 const Icons = {
@@ -200,31 +218,6 @@ export default function ServiceCategoryPage() {
     router.push(`/provider/${providerId}`);
   };
 
-  const getStartingPriceLabel = (provider: Provider) => {
-    if (!provider.services || provider.services.length === 0) return 'Hubungi CS';
-    const activeServices = provider.services.filter((s: ProviderServiceItem) => s.isActive);
-    if (activeServices.length === 0) return 'Bervariasi';
-    
-    const prices = activeServices.map((s: ProviderServiceItem) => s.price);
-    const minPrice = Math.min(...prices);
-    return `Rp${new Intl.NumberFormat('id-ID').format(minPrice)}`;
-  };
-
-  const getRatingLabel = (provider: Provider) => {
-    if (provider.rating && provider.rating > 0) {
-      return provider.rating.toFixed(1);
-    }
-    return 'Baru';
-  };
-
-  const getLocationLabel = (provider: Provider) => {
-    const addr = provider.userId?.address;
-    if (!addr) return 'Lokasi Mitra';
-    if (addr.district) return `Kec. ${addr.district}`;
-    if (addr.city) return addr.city;
-    return 'Lokasi Mitra';
-  };
-
   const filterOptions = [
     { value: 'distance', label: 'Terdekat' },
     { value: 'price_asc', label: 'Harga Terendah' },
@@ -361,7 +354,7 @@ export default function ServiceCategoryPage() {
             </h1>
             {!isLoading && (
               <span className="text-[10px] lg:text-xs text-gray-500">
-                Lokasi: {userProfile?.address?.district ? `Kec. ${userProfile.address.district}` : 'Sekitar Anda'}
+                di sekitar {userProfile?.address?.district ? `Kec. ${userProfile.address.district}` : 'Sekitar Anda'}
               </span>
             )}
           </div>
@@ -370,7 +363,11 @@ export default function ServiceCategoryPage() {
           {isLoading ? (
              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-5 animate-pulse">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="bg-white rounded-xl h-48 border border-gray-100"></div>
+                  <div key={i} className="w-full flex flex-col gap-2">
+                     <div className="aspect-[4/3] bg-gray-100 rounded-xl" />
+                     <div className="h-3 w-3/4 bg-gray-100 rounded" />
+                     <div className="h-2 w-1/2 bg-gray-100 rounded" />
+                  </div>
                 ))}
              </div>
           ) : providers.length === 0 ? (
@@ -386,74 +383,120 @@ export default function ServiceCategoryPage() {
           ) : (
             // GRID: Mobile 2 Kolom (grid-cols-2), Desktop 5 Kolom (grid-cols-5)
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-5">
-              {providers.map((provider) => (
-                <div 
-                  key={provider._id}
-                  onClick={() => handleOpenProvider(provider._id)}
-                  className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden cursor-pointer hover:border-red-200 hover:shadow-md transition-all group flex flex-col h-full"
-                >
-                  {/* THUMBNAIL (Compact Height) */}
-                  <div className="relative h-28 lg:h-40 bg-gray-100 overflow-hidden shrink-0">
-                    <Image 
-                      src={provider.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider.userId?.fullName || 'User'}`} 
-                      alt={provider.userId?.fullName || 'Mitra'} 
-                      fill 
-                      sizes="(max-width: 768px) 50vw, 20vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                    />
-                    
-                    {/* Rating Badge */}
-                    <div className="absolute bottom-1.5 left-1.5 bg-black/50 backdrop-blur-[2px] rounded px-1.5 py-0.5 flex items-center gap-0.5 text-[9px] lg:text-[10px] font-bold text-white">
-                      <span className="text-yellow-400">★</span> {getRatingLabel(provider)}
-                    </div>
-                    
-                    {/* Distance Badge */}
-                    {provider.distance && (
-                       <div className="absolute bottom-1.5 right-1.5 bg-white/90 backdrop-blur-[2px] rounded px-1.5 py-0.5 flex items-center gap-0.5 text-[9px] lg:text-[10px] font-bold text-gray-700 shadow-sm">
-                         <span className="text-red-500"><Icons.MapPinSolid /></span>
-                         {(provider.distance / 1000).toFixed(1)} km
-                       </div>
-                    )}
-                  </div>
+              {providers.map((prov) => {
+                 // --- Logic Jarak (Same as TechnicianSection) ---
+                 let distanceStr = null;
+                 // Prioritaskan jarak dari backend, jika tidak ada hitung manual client side
+                 if (prov.distance) {
+                     distanceStr = (prov.distance / 1000).toFixed(1);
+                 } else if (userProfile?.location?.coordinates && prov.userId?.location?.coordinates) {
+                     const [userLng, userLat] = userProfile.location.coordinates;
+                     const provLng = prov.userId.location.coordinates[0];
+                     const provLat = prov.userId.location.coordinates[1];
+                     distanceStr = calculateDistance(userLat, userLng, provLat, provLng);
+                 }
 
-                  {/* CONTENT (Vertical Compact) */}
-                  <div className="p-2.5 lg:p-3 flex-1 flex flex-col">
-                    <div className="flex justify-between items-start gap-1">
-                        <h4 className="text-xs lg:text-sm font-bold text-gray-900 line-clamp-1 group-hover:text-red-600 transition-colors">
-                           {provider.userId?.fullName || 'Mitra'}
-                        </h4>
-                        {/* Online Dot */}
-                        {provider.isOnline && <span className="w-1.5 h-1.5 bg-green-500 rounded-full shrink-0 mt-1"></span>}
-                    </div>
-                    
-                    <p className="text-[10px] text-gray-500 truncate mt-0.5 mb-1.5 flex items-center gap-1">
-                       <Icons.Location /> {getLocationLabel(provider)}
-                    </p>
+                 // --- Helpers Services & Price ---
+                 const activeServices = prov.services || [];
+                 
+                 // 1. Ambil nama services (Max 2 item agar compact)
+                 const serviceNames = activeServices
+                    .filter(s => s.isActive && s.serviceId?.name)
+                    .map(s => s.serviceId.name)
+                    .slice(0, 2)
+                    .join(', ');
+                 
+                 // 2. Tentukan teks services
+                 const serviceDisplay = serviceNames || 'Belum mendaftar layanan';
 
-                    {/* Services Tags (Ultra Compact) */}
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {provider.services
-                        .filter(s => s.isActive)
-                        .slice(0, 1) // Cuma tampilkan 1 service utama di mobile biar ga penuh
-                        .map((svc, idx) => (
-                          <span key={idx} className="text-[9px] bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded border border-gray-100 line-clamp-1">
-                            {svc.serviceId?.name}
-                          </span>
-                        ))
-                      }
-                      {provider.services.filter(s => s.isActive).length > 1 && (
-                         <span className="text-[9px] text-gray-400 px-1">+{provider.services.filter(s => s.isActive).length - 1}</span>
+                 const getMinPrice = () => {
+                     if (activeServices.length === 0) return 0;
+                     return Math.min(...activeServices.map((s) => s.price || 0));
+                 };
+                 const minPrice = getMinPrice();
+
+                 // Helper Lokasi
+                 const getLocationLabel = () => {
+                    const addr = prov.userId?.address;
+                    if (!addr) return 'Lokasi Mitra';
+                    if (addr.district) return `Kec. ${addr.district}`;
+                    if (addr.city) return addr.city;
+                    return 'Lokasi Mitra';
+                 };
+
+                 return (
+                  <Link
+                    href={`/provider/${prov._id}`}
+                    key={prov._id}
+                    className="bg-white rounded-xl border border-gray-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col w-full group hover:shadow-md hover:border-red-100 transition-all duration-300 h-full"
+                  >
+                    {/* IMAGE AREA (Aspect 4:3) */}
+                    <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
+                      <Image
+                        src={prov.userId?.profilePictureUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${prov.userId?.fullName || 'default'}`}
+                        alt={prov.userId?.fullName || 'Mitra'}
+                        fill
+                        sizes="(max-width: 768px) 50vw, 20vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+
+                      {/* Rating Badge */}
+                      <div className="absolute bottom-1.5 left-1.5 z-20 flex items-center gap-0.5 bg-black/60 backdrop-blur-[2px] px-1.5 py-0.5 rounded-md text-[9px] font-bold text-white border border-white/10">
+                        <span className='text-yellow-400 text-[8px]'>★</span>
+                        <span>{(prov.rating && prov.rating > 0) ? prov.rating.toFixed(1) : 'Baru'}</span>
+                      </div>
+
+                      {/* Online Dot */}
+                      {prov.isOnline && (
+                        <div className="absolute top-1.5 right-1.5 z-20 w-2 h-2 bg-green-500 rounded-full border border-white shadow-sm animate-pulse"></div>
                       )}
                     </div>
 
-                    {/* Price Footer */}
-                    <div className="mt-auto pt-2 border-t border-gray-50">
-                       <p className="text-[9px] text-gray-400">Mulai dari</p>
-                       <p className="text-xs lg:text-sm font-bold text-red-600">{getStartingPriceLabel(provider)}</p>
+                    {/* CONTENT AREA */}
+                    <div className="p-2 flex flex-col flex-1 gap-0.5">
+                      <h4 className="font-bold text-xs text-gray-900 truncate leading-tight group-hover:text-red-600 transition-colors">
+                        {prov.userId?.fullName || 'Mitra Posko'}
+                      </h4>
+
+                      {/* --- SERVICES SECTION --- */}
+                      <div className="flex items-center gap-1 mb-0.5">
+                        <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <p className="text-[10px] text-gray-500 truncate w-full">
+                            {serviceDisplay}
+                            {activeServices.length > 2 && <span className="text-[9px] align-top ml-0.5">+</span>}
+                        </p>
+                      </div>
+                      
+                      {/* Lokasi & Jarak */}
+                      <div className="flex items-center gap-1 text-[9px] text-gray-400 leading-tight">
+                        <span className="truncate max-w-[60%]">{getLocationLabel()}</span>
+                        {distanceStr && (
+                          <>
+                            <span className="shrink-0">•</span>
+                            <span className="shrink-0 text-gray-500 font-medium">{distanceStr}km</span>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="mt-auto pt-2 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-[8px] text-gray-400 leading-none mb-0.5">Mulai</span>
+                            <span className="text-[10px] lg:text-xs font-bold text-red-600 leading-none">
+                                {minPrice > 0 ? formatCompactPrice(minPrice) : 'Hubungi'}
+                            </span>
+                        </div>
+                        {/* Action Icon */}
+                        <div className="w-5 h-5 rounded-full bg-red-50 text-red-400 group-hover:bg-red-600 group-hover:text-white flex items-center justify-center transition-colors">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  </Link>
+                 );
+              })}
             </div>
           )}
         </main>
