@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { fetchProviders, FetchProvidersParams } from '@/features/providers/api';
 import { Provider } from '@/features/providers/types';
+import { useLanguage } from '@/context/LanguageContext'; // [BARU]
 
 interface TechnicianSectionProps {
   userLocation?: {
@@ -41,6 +42,7 @@ const formatCompactPrice = (price: number) => {
 };
 
 export default function TechnicianSection({ userLocation }: TechnicianSectionProps) {
+  const { t } = useLanguage(); // [BARU]
   const [providers, setProviders] = useState<Provider[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -74,7 +76,8 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-3 px-4 lg:px-8">
             <div>
-              <h2 className="text-sm lg:text-lg font-bold text-gray-900">Mitra Terdekat</h2>
+              {/* [UPDATE] t() */}
+              <h2 className="text-sm lg:text-lg font-bold text-gray-900">{t('home.nearbyTitle')}</h2>
             </div>
           </div>
           <div className="flex gap-3 px-4 lg:px-8 pb-2 overflow-hidden">
@@ -96,9 +99,9 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
     return (
       <section className="py-4 lg:py-8 bg-white border-t border-gray-50">
          <div className="max-w-7xl mx-auto px-4 lg:px-8">
-            <h2 className="text-sm lg:text-lg font-bold text-gray-900 mb-3">Mitra Terdekat</h2>
+            <h2 className="text-sm lg:text-lg font-bold text-gray-900 mb-3">{t('home.nearbyTitle')}</h2>
             <div className="bg-gray-50 rounded-xl p-4 text-center border border-dashed border-gray-200">
-              <p className="text-gray-400 text-xs">Belum ada mitra di area ini.</p>
+              <p className="text-gray-400 text-xs">{t('home.noNearby')}</p>
             </div>
         </div>
       </section>
@@ -111,11 +114,11 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
         {/* HEADER */}
         <div className="flex items-center justify-between mb-3 lg:mb-5 px-4 lg:px-8">
           <div>
-            <h2 className="text-sm lg:text-lg font-bold text-gray-900">Mitra Terdekat</h2>
-            <p className="text-[10px] text-gray-500 hidden lg:block">Teknisi profesional siap membantu Anda</p>
+            <h2 className="text-sm lg:text-lg font-bold text-gray-900">{t('home.nearbyTitle')}</h2>
+            <p className="text-[10px] text-gray-500 hidden lg:block">{t('home.nearbySubtitle')}</p>
           </div>
           <Link href="/search" className="text-[10px] lg:text-xs font-bold text-red-600 hover:bg-red-50 px-2 py-1 rounded-full transition-colors flex items-center gap-1">
-            Lihat Semua
+            {t('common.viewAll')}
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
           </Link>
         </div>
@@ -193,8 +196,6 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
                     {prov.userId?.fullName || 'Mitra Posko'}
                   </h4>
 
-                  {/* --- NEW: SERVICES SECTION --- */}
-                  {/* Menampilkan list service secara compact, text kecil, abu-abu */}
                   <div className="flex items-center gap-1 mb-0.5">
                     <svg className="w-2.5 h-2.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -219,9 +220,10 @@ export default function TechnicianSection({ userLocation }: TechnicianSectionPro
 
                   <div className="mt-auto pt-2 flex items-center justify-between">
                     <div className="flex flex-col">
-                        <span className="text-[8px] text-gray-400 leading-none mb-0.5">Mulai</span>
+                        {/* [UPDATE] t() */}
+                        <span className="text-[8px] text-gray-400 leading-none mb-0.5">{t('common.start')}</span>
                         <span className="text-[10px] lg:text-xs font-bold text-red-600 leading-none">
-                            {minPrice > 0 ? formatCompactPrice(minPrice) : 'Hubungi'}
+                            {minPrice > 0 ? formatCompactPrice(minPrice) : t('common.contact')}
                         </span>
                     </div>
                     {/* Action Icon */}

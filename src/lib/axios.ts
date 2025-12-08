@@ -1,3 +1,4 @@
+// src/lib/axios.ts
 import axios from 'axios';
 
 // --- KONFIGURASI INSTANCE AXIOS ---
@@ -33,9 +34,16 @@ api.interceptors.request.use(
   (config) => {
     try {
       const token = localStorage.getItem('posko_token');
+      // UPDATE: Ambil bahasa dari localStorage
+      const lang = localStorage.getItem('posko_lang') || 'id';
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      
+      // UPDATE: Kirim header Accept-Language ke backend
+      config.headers['Accept-Language'] = lang;
+
     } catch (e) {
       console.error('Error accessing localStorage:', e);
     }

@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
+import { useLanguage } from '@/context/LanguageContext'; // [BARU] Import
 
 interface CategoryData {
   name: string;
@@ -17,7 +18,7 @@ interface ServiceCategoriesProps {
 }
 
 export default function ServiceCategories({ categories, isLoading }: ServiceCategoriesProps) {
-  // State
+  const { t } = useLanguage(); // [BARU] Hook
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Helper Link Generation
@@ -34,7 +35,6 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
   };
 
   // LOGIKA PEMBATASAN ITEM (High Density: Max 8 item sebelum expand)
-  // Kita set 7 item + 1 tombol "Lainnya" jika total > 8
   const LIMIT = 7; 
   const shouldShowMoreBtn = categories.length > 8 && !isExpanded;
   const shouldShowLessBtn = isExpanded;
@@ -46,8 +46,9 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
   return (
     <section className="px-4 mt-4 lg:max-w-7xl lg:mx-auto lg:px-8">
       <div className="flex justify-between items-baseline mb-3">
+        {/* [UPDATE] Menggunakan t() */}
         <h3 className="text-sm font-bold text-gray-900 tracking-tight lg:text-lg">
-          Layanan Pilihan
+          {t('home.categoriesTitle')}
         </h3>
       </div>
 
@@ -62,10 +63,10 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
         </div>
       ) : categories.length === 0 ? (
         <div className="p-4 text-center bg-white rounded-xl border border-gray-100 shadow-sm border-dashed">
-          <p className="text-xs text-gray-400">Tidak ada kategori layanan.</p>
+          {/* [UPDATE] Menggunakan t() */}
+          <p className="text-xs text-gray-400">{t('home.noCategories')}</p>
         </div>
       ) : (
-        // REFINED GRID: gap-x-2 gap-y-3 (Lebih rapat secara vertikal)
         <div className="grid grid-cols-4 lg:grid-cols-8 gap-x-2 gap-y-3">
           {visibleCategories.map((cat) => (
             <Link
@@ -73,7 +74,6 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
               href={getCategoryLink(cat)}
               className="flex flex-col items-center gap-1.5 active:scale-95 transition-transform group"
             >
-              {/* REFINED: Container Icon w-10 (40px) di mobile. Squircle shape (rounded-xl) */}
               <div className="relative w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex items-center justify-center p-2 group-hover:border-red-200 group-hover:shadow-md transition-all">
                 <Image
                   src={cat.iconUrl || '/icons/logo-posko.png'}
@@ -84,14 +84,12 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
                   onError={(e) => { (e.target as HTMLImageElement).src = '/icons/logo-posko.png' }}
                 />
               </div>
-              {/* REFINED: Text size [10px] dengan leading-tight, tinggi fix agar baris rata */}
               <span className="text-[10px] lg:text-xs font-medium text-gray-600 lg:text-gray-700 text-center leading-3 h-6 flex items-start justify-center line-clamp-2 px-0.5 group-hover:text-red-600 transition-colors">
                 {cat.name}
               </span>
             </Link>
           ))}
 
-          {/* TOMBOL LAINNYA - Compact Style */}
           {shouldShowMoreBtn && (
             <button
               onClick={() => setIsExpanded(true)}
@@ -102,13 +100,13 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </div>
+              {/* [UPDATE] Menggunakan t() */}
               <span className="text-[10px] lg:text-xs font-bold text-gray-500 text-center leading-3 h-6 flex items-start justify-center group-hover:text-red-600 transition-colors">
-                Lainnya
+                {t('common.others')}
               </span>
             </button>
           )}
 
-          {/* TOMBOL TUTUP - Compact Style */}
           {shouldShowLessBtn && (
             <button
               onClick={() => setIsExpanded(false)}
@@ -119,8 +117,9 @@ export default function ServiceCategories({ categories, isLoading }: ServiceCate
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
                 </svg>
               </div>
+              {/* [UPDATE] Menggunakan t() */}
               <span className="text-[10px] lg:text-xs font-bold text-red-600 text-center leading-3 h-6 flex items-start justify-center group-hover:text-red-800 transition-colors">
-                Tutup
+                {t('common.close')}
               </span>
             </button>
           )}

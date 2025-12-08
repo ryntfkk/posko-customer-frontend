@@ -3,9 +3,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useLanguage } from '@/context/LanguageContext'; // [BARU]
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { t } = useLanguage(); // [BARU]
   
   // Helper untuk cek active state
   const isActive = (path: string) => {
@@ -32,7 +34,7 @@ export default function BottomNav() {
       <nav className="bg-white/95 backdrop-blur-md border border-gray-100 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] rounded-2xl px-2 py-3.5 flex justify-between items-center max-w-sm mx-auto">
 
         {/* --- HOME --- */}
-        <Link href="/" className="flex-1 flex flex-col items-center justify-center group">
+        <Link href="/" className="flex-1 flex flex-col items-center justify-center group" title={t('nav.home')}>
            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={isActive('/') ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isActive('/') ? "0" : "2"}
              className={`${iconBaseClass} ${isActive('/') ? activeClass : inactiveClass}`}>
              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
@@ -40,7 +42,7 @@ export default function BottomNav() {
         </Link>
 
         {/* --- ORDERS --- */}
-        <Link href="/orders" className="flex-1 flex flex-col items-center justify-center group">
+        <Link href="/orders" className="flex-1 flex flex-col items-center justify-center group" title={t('nav.orders')}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={isActive('/orders') ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isActive('/orders') ? "0" : "2"}
             className={`${iconBaseClass} ${isActive('/orders') ? activeClass : inactiveClass}`}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -48,7 +50,7 @@ export default function BottomNav() {
         </Link>
 
         {/* --- CHAT --- */}
-        <Link href="/chat" className="flex-1 flex flex-col items-center justify-center group">
+        <Link href="/chat" className="flex-1 flex flex-col items-center justify-center group" title={t('nav.chat')}>
           <div className="relative">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={isActive('/chat') ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isActive('/chat') ? "0" : "2"}
                 className={`${iconBaseClass} ${isActive('/chat') ? activeClass : inactiveClass}`}>
@@ -58,7 +60,7 @@ export default function BottomNav() {
         </Link>
 
         {/* --- PROFILE --- */}
-        <Link href="/profile" className="flex-1 flex flex-col items-center justify-center group">
+        <Link href="/profile" className="flex-1 flex flex-col items-center justify-center group" title={t('nav.profile')}>
           <div className="relative">
              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={isActive('/profile') ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isActive('/profile') ? "0" : "2"}
                 className={`${iconBaseClass} ${isActive('/profile') ? activeClass : inactiveClass}`}>
