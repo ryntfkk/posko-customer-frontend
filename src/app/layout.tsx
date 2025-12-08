@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import BottomNav from "@/components/BottomNav"; // [NEW] Import BottomNav
+import BottomNav from "@/components/BottomNav"; 
+import QueryProvider from "@/providers/QueryProvider"; // [NEW] Import Provider
 
 // Konfigurasi Font dari Google (Otomatis Download)
 const geistSans = Geist({
@@ -29,14 +30,16 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900 pb-24 lg:pb-0`} // [UPDATE] Tambahkan padding bottom global untuk mobile nav
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900 pb-24 lg:pb-0`} 
         suppressHydrationWarning={true}
       >
-        <LanguageSwitcher />
-        <main className="min-h-screen">
-          {children}
-        </main>
-        <BottomNav /> {/* [NEW] Pasang Navigasi disini */}
+        <QueryProvider>
+          <LanguageSwitcher />
+          <main className="min-h-screen">
+            {children}
+          </main>
+          <BottomNav />
+        </QueryProvider>
       </body>
     </html>
   );
