@@ -13,6 +13,7 @@ import { Service } from '@/features/services/types';
 import { voucherApi } from '@/features/vouchers/api';
 import { Voucher } from '@/features/vouchers/types';
 import { useCart } from '@/features/cart/useCart';
+import LanguageSwitcher from '@/components/LanguageSwitcher'; // [NEW] Import LanguageSwitcher
 
 // --- KOMPONEN MODULAR ---
 import TechnicianSection from '@/components/home/TechnicianSection';
@@ -182,7 +183,9 @@ export default function HomePage() {
               <h1 className="text-sm font-black text-gray-900 leading-none tracking-tight">POSKO<span className="text-red-600">.</span></h1>
             </div>
           </div>
-          <div>
+          {/* [NEW] Wrap with flex to include LanguageSwitcher on Mobile */}
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             {isLoggedIn ?  (
                <Link href="/profile">
                  <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 overflow-hidden relative active:scale-95 transition-transform">
@@ -228,6 +231,9 @@ export default function HomePage() {
                 />
                 <SearchIcon className="absolute left-3 top-2.5 w-3.5 h-3.5 text-gray-400" />
               </div>
+
+              {/* [NEW] LanguageSwitcher for Desktop */}
+              <LanguageSwitcher />
               
               {isLoggedIn ? (
                  <div className="relative">

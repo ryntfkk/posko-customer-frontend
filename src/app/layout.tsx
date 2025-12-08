@@ -2,9 +2,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
+// import LanguageSwitcher from "@/components/LanguageSwitcher"; // [DIHAPUS]
 import BottomNav from "@/components/BottomNav"; 
-import QueryProvider from "@/providers/QueryProvider"; // [NEW] Import Provider
+import QueryProvider from "@/providers/QueryProvider";
 
 // Konfigurasi Font dari Google (Otomatis Download)
 const geistSans = Geist({
@@ -34,7 +34,7 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <QueryProvider>
-          <LanguageSwitcher />
+          {/* <LanguageSwitcher /> [DIHAPUS] agar tidak muncul global/floating lagi */}
           <main className="min-h-screen">
             {children}
           </main>

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser, switchRole } from '@/features/auth/api';
 import { jwtDecode } from 'jwt-decode';
+import LanguageSwitcher from '@/components/LanguageSwitcher'; // [NEW] Import LanguageSwitcher
 
 const EyeIcon = () => (
   <svg className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,6 +150,11 @@ export default function LoginPage() {
             Posko<span className="text-red-600">.</span>
           </span>
         </Link>
+
+        {/* [NEW] Language Switcher - Positioned Top Right */}
+        <div className="absolute top-8 right-6 lg:right-8 z-20">
+          <LanguageSwitcher />
+        </div>
 
         <div className="max-w-md w-full mx-auto mt-10 lg:mt-0">
           <div className="mb-10">

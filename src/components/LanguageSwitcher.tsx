@@ -3,7 +3,11 @@
 
 import { useState, useEffect } from 'react';
 
-export default function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+  className?: string;
+}
+
+export default function LanguageSwitcher({ className = '' }: LanguageSwitcherProps) {
   const [lang, setLang] = useState('id');
 
   useEffect(() => {
@@ -31,8 +35,9 @@ export default function LanguageSwitcher() {
   return (
     <button
       onClick={toggleLanguage}
-      // Posisi: bottom-24 pada mobile agar tidak tertutup nav, bottom-8 pada desktop
-      className="fixed bottom-24 right-4 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 px-3 py-2 bg-white/90 backdrop-blur-md border border-gray-200 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:shadow-xl hover:scale-105 hover:bg-white transition-all duration-300 group"
+      // Kita menghapus 'fixed bottom-...' dan menggantinya dengan styling button standar yang rapi.
+      // Class 'className' dari props ditambahkan di akhir agar parent bisa override posisi (misal: absolute top-4 right-4).
+      className={`flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-300 group ${className}`}
       title={lang === 'id' ? 'Ganti Bahasa' : 'Change Language'}
     >
       <span className="text-lg leading-none drop-shadow-sm">
