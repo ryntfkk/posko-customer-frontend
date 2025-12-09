@@ -1,13 +1,10 @@
 @tailwind base;
-@tailwind components; /* TAMBAHKAN INI */
-@tailwind utilities;  /* TAMBAHKAN INI (SANGAT PENTING) */
+@tailwind components;
+@tailwind utilities;
 
-/* --- SETTING BASE STYLES --- */
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
-    /* UPDATE: Menghapus font-size: 14px; agar rem unit tetap standar (16px).
-       Kita akan mengontrol kepadatan (density) langsung di komponen menggunakan text-xs/text-sm. */
     scroll-behavior: smooth;
   }
   
@@ -15,13 +12,13 @@
     @apply antialiased text-gray-800 bg-gray-50;
   }
 
-  /* Paksa semua link mewarisi warna & dekorasi text dari parent-nya */
+  /* Reset untuk link agar tidak memiliki gaya default browser yang mengganggu */
   a {
     color: inherit;
     text-decoration: inherit;
   }
 
-  /* Utility untuk menyembunyikan scrollbar tapi tetap bisa di-scroll (Clean UI) */
+  /* Utility untuk menyembunyikan scrollbar (Clean UI) */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -30,32 +27,36 @@
     scrollbar-width: none;  /* Firefox */
   }
 }
-/* --------------------------- */
 
 :root {
-  --background: #f9fafb; /* gray-50 */
-  --foreground: #1f2937; /* gray-800 */
+  --background: #f9fafb; /* Sesuai dengan gray-50 */
+  --foreground: #1f2937; /* Sesuai dengan gray-800 */
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-}
-
-/*
-  Leaflet Override:
-  Menyelaraskan warna teks map agar mewarisi warna teks induk 
-  sehingga konsisten dengan tema.
+/* Leaflet Styles Override
+   Penting: Ini memastikan tampilan Popup dan Control Peta 
+   selaras dengan desain aplikasi dan tidak terlihat "kuno".
 */
-.leaflet-container a,
-.leaflet-bar a,
-.leaflet-control-attribution,
-.leaflet-control-attribution a {
-  color: inherit;
-  text-decoration: none;
+.leaflet-container {
+  z-index: 10;
+  font-family: inherit !important;
 }
 
-/* Animasi Fade In */
+.leaflet-container a {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem !important; /* rounded-xl */
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+}
+
+/* Animasi Custom */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -65,11 +66,11 @@ body {
   animation: fadeIn 0.3s ease-out forwards;
 }
 
-/* Animasi Bounce halus untuk notifikasi */
 @keyframes bounce-slow {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-5px); }
 }
+
 .animate-bounce-slow {
   animation: bounce-slow 2s infinite;
 }
