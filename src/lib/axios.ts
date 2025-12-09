@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // --- KONFIGURASI INSTANCE AXIOS ---
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://43.218.105.11:4000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.poskojasa.com/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
