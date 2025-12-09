@@ -1,4 +1,6 @@
 @tailwind base;
+@tailwind components; /* TAMBAHKAN INI */
+@tailwind utilities;  /* TAMBAHKAN INI (SANGAT PENTING) */
 
 /* --- SETTING BASE STYLES --- */
 @layer base {
