@@ -1,9 +1,8 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* Mengabaikan error ESLint dan TypeScript saat proses build.
-    Ini SANGAT PENTING saat debugging deploy di Amplify agar build tidak gagal 
-    hanya karena masalah styling kode atau tipe data minor.
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  /* Next.js 14 Config 
+    Kita menonaktifkan linting dan type checking saat build 
+    agar deploy tidak gagal karena masalah kode minor.
   */
   eslint: {
     ignoreDuringBuilds: true,
@@ -11,7 +10,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  
   images: {
     unoptimized: true,
     // [FIX] Izinkan SVG dari domain eksternal (Dicebear)
@@ -21,20 +19,19 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'drive.google.com', // Mengizinkan gambar dari Google Drive
+        hostname: 'drive.google.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com', // (Opsional) Tetap simpan jika masih pakai Unsplash
+        hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'api.dicebear.com',
-        // Opsional: Anda dapat membatasi path jika diperlukan
       },
       {
         protocol: 'https',
