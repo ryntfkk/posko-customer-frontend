@@ -95,7 +95,8 @@ export function LocationPicker({ initialLat, initialLng, onLocationChange }: Loc
 // --- KOMPONEN FILE UPLOADER ---
 
 interface AttachmentUploaderProps {
-  attachments: { url: string; type: string; description: string; file?: File }[]; 
+  // [FIX] Menambahkan tanda tanya (?) pada description agar opsional
+  attachments: { url: string; type: string; description?: string; file?: File }[]; 
   onAdd: (file: File, description: string) => void;
   onRemove: (index: number) => void;
 }
