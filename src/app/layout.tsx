@@ -1,19 +1,15 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google"; // [FIX] Ganti Geist dengan Inter yang support Next.js 14
 import "./globals.css";
 import BottomNav from "@/components/BottomNav"; 
 import QueryProvider from "@/providers/QueryProvider";
-import { LanguageProvider } from "@/context/LanguageContext"; // [BARU]
+import { LanguageProvider } from "@/context/LanguageContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// [FIX] Inisialisasi font Inter
+const inter = Inter({ 
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-inter", // Opsional: untuk keperluan Tailwind jika diperlukan
 });
 
 export const metadata: Metadata = {
@@ -29,11 +25,11 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900 pb-24 lg:pb-0`} 
+        // [FIX] Gunakan inter.className menggantikan variable Geist
+        className={`${inter.className} antialiased bg-gray-50 text-gray-900 pb-24 lg:pb-0`} 
         suppressHydrationWarning={true}
       >
         <QueryProvider>
-          {/* [BARU] Wrap aplikasi dengan LanguageProvider */}
           <LanguageProvider>
             <main className="min-h-screen">
               {children}
