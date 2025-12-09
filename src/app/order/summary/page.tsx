@@ -22,9 +22,9 @@ import { Voucher } from '@/features/vouchers/types';
 // Import komponen lokal
 import { AttachmentUploader } from '@/components/OrderComponents'; 
 
-// Import Dynamic untuk Map
+// Import Dynamic untuk Map (FIX: Mengambil dari file LocationPicker terpisah)
 const LocationPicker = dynamic(
-  () => import('@/components/OrderComponents').then((mod) => mod.LocationPicker),
+  () => import('@/components/LocationPicker'),
   { 
     ssr: false, 
     loading: () => <div className="w-full h-[300px] bg-gray-200 animate-pulse rounded-xl flex items-center justify-center text-gray-500 text-sm">Memuat Peta...</div>
