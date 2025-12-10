@@ -21,10 +21,10 @@ export const uploadApi = {
     // Key 'image' ini harus sesuai dengan uploadS3.single('image') di backend
     formData.append('image', file);
 
-    // [FIX] Menggunakan endpoint '/api/upload'
-    // Jika axios baseURL adalah '/api/proxy', maka request akan ke '/api/proxy/api/upload'
-    // Backend (setelah rewrite proxy) akan menerima '/api/upload' yang sudah kita buat di Langkah 1.
-    const response = await api.post<UploadResponse>('/api/upload', formData, {
+    // [CORRECTION] Hapus prefix '/api'.
+    // Axios baseURL sudah menyertakan '/api' (atau proxy yang mengarah ke sana).
+    // Jadi '/upload' akan menjadi '.../api/upload' yang benar.
+    const response = await api.post<UploadResponse>('/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
