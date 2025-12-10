@@ -56,6 +56,15 @@ const nextConfig = {
       },
     ],
   },
+  // [SOLUSI CORS] Rewrite request ke /api/proxy agar diteruskan ke server backend asli oleh Next.js
+  async rewrites() {
+    return [
+      {
+        source: '/api/proxy/:path*',
+        destination: 'https://api.poskojasa.com/api/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

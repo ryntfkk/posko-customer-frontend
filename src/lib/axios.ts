@@ -2,10 +2,11 @@ import axios from 'axios';
 
 // --- KONFIGURASI INSTANCE AXIOS ---
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.poskojasa.com/api',
+  // [FIX] Menggunakan endpoint proxy lokal untuk menghindari CORS
+  // Request ke '/api/proxy/...' akan diteruskan Next.js ke 'https://api.poskojasa.com/api/...'
+  baseURL: '/api/proxy',
   timeout: 30000,
-  // [FIX] Jangan set Content-Type default di sini agar tidak mengganggu upload FormData (gambar)
-  // Axios akan otomatis mengatur Content-Type: application/json untuk object biasa
+  // Content-Type dibiarkan kosong agar otomatis diset (penting untuk FormData/Upload)
 });
 
 // --- STATE UNTUK QUEUE REFRESH TOKEN ---
@@ -84,9 +85,12 @@ api.interceptors.response.use(
         }
 
         // Panggil endpoint refresh token
-        // Gunakan axios create baru tanpa interceptor untuk menghindari loop
+        // Gunakan axios create baru tanpa interceptor
+        // [NOTE] Kita tetap gunakan URL lengkap untuk refresh token jika perlu, 
+        // tapi menggunakan instance baru agar aman. 
+        // Di sini kita pakai baseURL instance 'api' yang sekarang sudah '/api/proxy'
         const response = await axios.post(
-          `${api.defaults.baseURL}/auth/refresh-token`,
+          '/api/proxy/auth/refresh-token',
           { refreshToken }
         );
 
@@ -96,7 +100,7 @@ api.interceptors.response.use(
         localStorage.setItem('posko_token', accessToken);
         localStorage.setItem('posko_refresh_token', newRefreshToken);
         
-        // Update default header instance untuk request selanjutnya
+        // Update default header instance
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
         // Proses antrian yang menunggu dengan token baru
@@ -114,9 +118,8 @@ api.interceptors.response.use(
         localStorage.removeItem('posko_token');
         localStorage.removeItem('posko_refresh_token');
         
-        // Redirect ke login jika belum di sana
+        // Redirect ke login
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-           // Menggunakan window.location agar halaman refresh total dan state bersih
            window.location.href = '/login';
         }
         
