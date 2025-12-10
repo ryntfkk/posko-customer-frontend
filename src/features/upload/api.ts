@@ -21,7 +21,8 @@ export const uploadApi = {
     formData.append('image', file);
 
     // Header 'Content-Type': 'multipart/form-data' akan otomatis diset oleh browser/axios saat ada FormData
-    const response = await api.post<UploadResponse>('/upload', formData);
+    // [FIX] Mengubah endpoint '/upload' menjadi '/uploads' agar sesuai dengan route backend umum
+    const response = await api.post<UploadResponse>('/uploads', formData);
     
     // Mengembalikan full URL dari S3
     return response.data.data.url;

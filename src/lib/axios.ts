@@ -1,13 +1,11 @@
-// src/lib/axios.ts
 import axios from 'axios';
 
 // --- KONFIGURASI INSTANCE AXIOS ---
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://api.poskojasa.com/api',
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // [FIX] Jangan set Content-Type default di sini agar tidak mengganggu upload FormData (gambar)
+  // Axios akan otomatis mengatur Content-Type: application/json untuk object biasa
 });
 
 // --- STATE UNTUK QUEUE REFRESH TOKEN ---
@@ -34,14 +32,13 @@ api.interceptors.request.use(
   (config) => {
     try {
       const token = localStorage.getItem('posko_token');
-      // UPDATE: Ambil bahasa dari localStorage
       const lang = localStorage.getItem('posko_lang') || 'id';
 
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
       
-      // UPDATE: Kirim header Accept-Language ke backend
+      // Kirim header Accept-Language
       config.headers['Accept-Language'] = lang;
 
     } catch (e) {
@@ -87,7 +84,7 @@ api.interceptors.response.use(
         }
 
         // Panggil endpoint refresh token
-        // Kita pakai axios instance baru agar tidak kena interceptor ini lagi
+        // Gunakan axios create baru tanpa interceptor untuk menghindari loop
         const response = await axios.post(
           `${api.defaults.baseURL}/auth/refresh-token`,
           { refreshToken }
@@ -99,7 +96,7 @@ api.interceptors.response.use(
         localStorage.setItem('posko_token', accessToken);
         localStorage.setItem('posko_refresh_token', newRefreshToken);
         
-        // Update default header instance
+        // Update default header instance untuk request selanjutnya
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
         // Proses antrian yang menunggu dengan token baru
@@ -113,18 +110,18 @@ api.interceptors.response.use(
         // Jika gagal refresh (token expired/invalid), reject semua antrian
         processQueue(refreshError, null);
         
-        // Bersihkan storage dan redirect ke login
+        // Bersihkan storage
         localStorage.removeItem('posko_token');
         localStorage.removeItem('posko_refresh_token');
         
-        // Hindari redirect loop jika sudah di halaman login
+        // Redirect ke login jika belum di sana
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+           // Menggunakan window.location agar halaman refresh total dan state bersih
            window.location.href = '/login';
         }
         
         return Promise.reject(refreshError);
       } finally {
-        // Reset flag refreshing
         isRefreshing = false;
       }
     }
