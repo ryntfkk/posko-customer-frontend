@@ -20,10 +20,20 @@ export const uploadApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    // Header 'Content-Type': 'multipart/form-data' akan otomatis diset oleh browser/axios saat ada FormData
-    // [FIX] Mengubah endpoint '/uploads' menjadi '/upload' agar sesuai dengan route backend (src/modules/upload/routes.js)
-    const response = await api.post<UploadResponse>('/upload', formData);
+    // [FIX] Mengubah endpoint '/uploads' menjadi '/upload' (singular)
+    // Sesuai dengan route di backend: app.use('/api/upload', ...) di src/index.js
+    // Kami juga menambahkan header eksplisit untuk memastikan boundary FormData terkirim dengan benar
+    const response = await api.post<UploadResponse>('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data', 
+      },
+    });
     
+    // Validasi response structure untuk menghindari crash jika data dari server tidak sesuai
+    if (!response.data || !response.data.data || !response.data.data.url) {
+      throw new Error('Invalid response from server during upload');
+    }
+
     // Mengembalikan full URL dari S3
     return response.data.data.url;
   },

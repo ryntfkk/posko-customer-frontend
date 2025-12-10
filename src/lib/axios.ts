@@ -1,22 +1,44 @@
 import axios from 'axios';
 
+// --- VALIDASI ENV URL ---
+// Fungsi helper untuk memastikan URL API valid dan tidak menyebabkan crash
+const getBaseUrl = () => {
+  // Cek environment variable
+  let url = process.env.NEXT_PUBLIC_API_URL;
+
+  // Jika env tidak ada, kosong, atau undefined, gunakan fallback hardcoded
+  // Ini mencegah error "TypeError: Failed to construct 'URL': Invalid URL"
+  if (!url || url.trim() === '') {
+    // Pastikan ini alamat Backend EC2 Anda yang benar (tanpa trailing slash)
+    return 'https://api.poskojasa.com/api'; 
+  }
+
+  // Hapus trailing slash jika tidak sengaja tertulis (misal: .../api/ -> .../api)
+  if (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+
+  return url;
+};
+
 // --- KONFIGURASI INSTANCE AXIOS ---
-const api = axios. create({
-  // [FIX] Menggunakan endpoint proxy lokal untuk menghindari CORS
-  // Request ke '/api/proxy/.. .' akan diteruskan Next.js ke 'https://api.poskojasa.com/api/.. .'
-  baseURL: '/api/proxy',
-  timeout:  30000,
-  // Content-Type dibiarkan kosong agar otomatis diset (penting untuk FormData/Upload)
+const api = axios.create({
+  baseURL: getBaseUrl(),
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  // withCredentials: true, // Nyalakan jika menggunakan cookie, matikan jika token via header murni
 });
 
 // --- STATE UNTUK QUEUE REFRESH TOKEN ---
 let isRefreshing = false;
-let failedQueue:  Array<{
+let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (error: any) => void;
 }> = [];
 
-const processQueue = (error: any, token:  string | null = null) => {
+const processQueue = (error: any, token: string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -32,16 +54,19 @@ const processQueue = (error: any, token:  string | null = null) => {
 api.interceptors.request.use(
   (config) => {
     try {
-      const token = localStorage. getItem('posko_token');
-      const lang = localStorage.getItem('posko_lang') || 'id';
+      // Pastikan window tersedia (Client Side execution check)
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('posko_token');
+        const lang = localStorage.getItem('posko_lang') || 'id';
 
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        if (token && config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        
+        if (config.headers) {
+          config.headers['Accept-Language'] = lang;
+        }
       }
-      
-      // Kirim header Accept-Language
-      config.headers['Accept-Language'] = lang;
-
     } catch (e) {
       console.error('Error accessing localStorage:', e);
     }
@@ -54,7 +79,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error. config;
+    const originalRequest = error.config;
 
     // Jika error 401 Unauthorized dan belum pernah diretry
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -62,10 +87,12 @@ api.interceptors.response.use(
       // 1. Jika sedang refreshing, masukkan request ke antrian
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
-          failedQueue. push({ resolve, reject });
+          failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+            }
             return api(originalRequest);
           })
           .catch((err) => {
@@ -78,51 +105,58 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = localStorage.getItem('posko_refresh_token');
+        // Ambil refresh token dari storage
+        // Cek window dulu untuk keamanan SSR
+        let refreshToken = null;
+        if (typeof window !== 'undefined') {
+          refreshToken = localStorage.getItem('posko_refresh_token');
+        }
         
         if (!refreshToken) {
           throw new Error('No refresh token available');
         }
 
-        // [FIX] Buat axios instance tanpa interceptor untuk refresh token
-        // Gunakan endpoint proxy yang sudah dikonfigurasi di next.config.mjs
-        const refreshAxios = axios.create({
-          baseURL: '/api/proxy',
-          timeout: 30000,
-        });
-
-        const response = await refreshAxios.post(
-          '/auth/refresh-token',
+        // Panggil endpoint refresh token menggunakan axios instance BARU (tanpa interceptor)
+        // Gunakan getBaseUrl() agar konsisten
+        const response = await axios.post(
+          `${getBaseUrl()}/auth/refresh-token`,
           { refreshToken }
         );
 
         const { accessToken, refreshToken: newRefreshToken } = response.data.data.tokens;
 
         // Simpan token baru
-        localStorage. setItem('posko_token', accessToken);
-        localStorage.setItem('posko_refresh_token', newRefreshToken);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('posko_token', accessToken);
+          localStorage.setItem('posko_refresh_token', newRefreshToken);
+        }
         
-        // Update default header instance
-        api.defaults.headers. common['Authorization'] = `Bearer ${accessToken}`;
+        // Update default header instance untuk request selanjutnya
+        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
 
         // Proses antrian yang menunggu dengan token baru
         processQueue(null, accessToken);
 
         // Ulangi request original yang gagal tadi
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        }
         return api(originalRequest);
 
       } catch (refreshError) {
         // Jika gagal refresh (token expired/invalid), reject semua antrian
         processQueue(refreshError, null);
         
-        // Bersihkan storage
-        localStorage.removeItem('posko_token');
-        localStorage.removeItem('posko_refresh_token');
-        
-        // Redirect ke login
-        if (typeof window !== 'undefined' && !window.location.pathname. startsWith('/login')) {
-           window.location.href = '/login';
+        // Bersihkan storage dan redirect ke login
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('posko_token');
+          localStorage.removeItem('posko_refresh_token');
+          
+          // Redirect jika user tidak sedang di halaman login/register
+          if (!window.location.pathname.startsWith('/login') && 
+              !window.location.pathname.startsWith('/register')) {
+             window.location.href = '/login';
+          }
         }
         
         return Promise.reject(refreshError);
