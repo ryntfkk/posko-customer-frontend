@@ -18,19 +18,13 @@ export const uploadApi = {
    */
   uploadImage: async (file: File): Promise<string> => {
     const formData = new FormData();
-    // Key 'image' ini harus sesuai dengan uploadS3.single('image') di backend
     formData.append('image', file);
 
-    // [CORRECTION] Hapus prefix '/api'.
-    // Axios baseURL sudah menyertakan '/api' (atau proxy yang mengarah ke sana).
-    // Jadi '/upload' akan menjadi '.../api/upload' yang benar.
-    const response = await api.post<UploadResponse>('/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Header 'Content-Type': 'multipart/form-data' akan otomatis diset oleh browser/axios saat ada FormData
+    // [FIX] Mengubah endpoint '/uploads' menjadi '/upload' agar sesuai dengan route backend (src/modules/upload/routes.js)
+    const response = await api.post<UploadResponse>('/upload', formData);
     
-    // Mengembalikan full URL dari S3 (req.file.location dari backend)
+    // Mengembalikan full URL dari S3
     return response.data.data.url;
   },
 };

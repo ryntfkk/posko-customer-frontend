@@ -12,7 +12,7 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
-    // Izinkan SVG dari domain eksternal (Dicebear)
+    // [FIX] Izinkan SVG dari domain eksternal (Dicebear)
     dangerouslyAllowSVG: true,
     // Opsional: Tambahkan header keamanan untuk SVG
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
@@ -47,24 +47,24 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
-      // Konfigurasi Domain AWS S3
+      // [BARU] Konfigurasi Domain AWS S3
       {
         protocol: 'https',
-        hostname: 'posko-storage-prod.s3.ap-southeast-3.amazonaws.com', 
+        hostname: 'posko-storage-prod.s3.ap-southeast-1.amazonaws.com', 
         port: '',
         pathname: '/**',
       },
     ],
   },
-  // [SOLUSI UTAMA] Menambahkan Rewrite untuk Proxy
+  // [LANGKAH 2] Menambahkan konfigurasi Rewrites (Proxy)
   async rewrites() {
     return [
       {
-        // Menangkap semua request yang diawali /api/proxy/
+        // Menangkap semua request yang diawali dengan /api/proxy
         source: '/api/proxy/:path*',
-        // Meneruskannya ke Backend asli
-        // :path* akan menyalin sisa URL (misal 'upload' -> '/api/upload' di backend)
-        destination: `${process.env.NEXT_PUBLIC_API_URL_ORIGIN || 'https://api.poskojasa.com'}/api/:path*`, 
+        // Meneruskannya ke Backend EC2 yang sebenarnya
+        // Gunakan variable environment BACKEND_URL jika ada, atau fallback ke default
+        destination: `${process.env.BACKEND_URL || 'https://api.poskojasa.com/api'}/:path*`,
       },
     ];
   },
