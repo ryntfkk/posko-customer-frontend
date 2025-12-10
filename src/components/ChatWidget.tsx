@@ -1,11 +1,9 @@
-// src/components/ChatWidget.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import Image from 'next/image';
 import api from '@/lib/axios';
-// [FIX 1] Import User type to avoid 'any'
 import { User } from '@/features/auth/types';
 
 // --- ICONS ---
@@ -34,21 +32,37 @@ interface ChatRoom {
   updatedAt: string;
 }
 
-// [FIX 1] Use User type instead of any
 export default function ChatWidget({ user }: { user: User }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [newMessage, setNewMessage] = useState('');
   
-  // [FIX 2] Use useRef for socket to avoid setState in useEffect causing cascading renders
   const socketRef = useRef<Socket | null>(null);
   
   const [isUnread, setIsUnread] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:4000';
+  // [FIX] Menggunakan logika URL yang lebih aman untuk menghindari malformed URL (seperti 'wss://https/...')
+  const getSocketUrl = () => {
+    // 1. Coba ambil dari env var khusus socket jika ada
+    if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+      return process.env.NEXT_PUBLIC_SOCKET_URL;
+    }
+    // 2. Jika tidak, ambil dari API_URL dan ambil origin-nya (protocol + domain + port)
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      try {
+        const url = new URL(process.env.NEXT_PUBLIC_API_URL);
+        return url.origin; // Contoh: 'https://api.poskojasa.com/api' -> 'https://api.poskojasa.com'
+      } catch (e) {
+        console.error('Invalid API URL in env', e);
+      }
+    }
+    // 3. Fallback terakhir
+    return 'http://localhost:4000';
+  };
 
+  const SOCKET_URL = getSocketUrl();
   const myId = user?._id || user?.userId;
 
   useEffect(() => {
@@ -99,7 +113,6 @@ export default function ChatWidget({ user }: { user: User }) {
       });
     });
 
-    // [FIX 2] Store socket in ref instead of state
     socketRef.current = newSocket;
 
     return () => { 
@@ -112,8 +125,6 @@ export default function ChatWidget({ user }: { user: User }) {
   useEffect(() => {
     if (isOpen && activeRoom) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        // [FIX 3] Removed setIsUnread(false) from here to avoid cascading updates.
-        // It is now handled in the toggle handler.
     }
   }, [activeRoom?.messages, isOpen, activeRoom]);
 
@@ -157,7 +168,6 @@ export default function ChatWidget({ user }: { user: User }) {
             <div 
                 onClick={() => {
                     setIsOpen(!isOpen);
-                    // [FIX 3] Handle unread clearing here
                     if (!isOpen) setIsUnread(false);
                 }}
                 className={`h-12 px-4 flex items-center justify-between cursor-pointer shrink-0 ${
