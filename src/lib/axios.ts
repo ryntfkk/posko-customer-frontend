@@ -1,22 +1,22 @@
 import axios from 'axios';
 
 // --- KONFIGURASI INSTANCE AXIOS ---
-const api = axios.create({
+const api = axios. create({
   // [FIX] Menggunakan endpoint proxy lokal untuk menghindari CORS
-  // Request ke '/api/proxy/...' akan diteruskan Next.js ke 'https://api.poskojasa.com/api/...'
+  // Request ke '/api/proxy/.. .' akan diteruskan Next.js ke 'https://api.poskojasa.com/api/.. .'
   baseURL: '/api/proxy',
-  timeout: 30000,
+  timeout:  30000,
   // Content-Type dibiarkan kosong agar otomatis diset (penting untuk FormData/Upload)
 });
 
 // --- STATE UNTUK QUEUE REFRESH TOKEN ---
 let isRefreshing = false;
-let failedQueue: Array<{
+let failedQueue:  Array<{
   resolve: (token: string) => void;
   reject: (error: any) => void;
 }> = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: any, token:  string | null = null) => {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
@@ -32,7 +32,7 @@ const processQueue = (error: any, token: string | null = null) => {
 api.interceptors.request.use(
   (config) => {
     try {
-      const token = localStorage.getItem('posko_token');
+      const token = localStorage. getItem('posko_token');
       const lang = localStorage.getItem('posko_lang') || 'id';
 
       if (token) {
@@ -54,7 +54,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const originalRequest = error. config;
 
     // Jika error 401 Unauthorized dan belum pernah diretry
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -62,7 +62,7 @@ api.interceptors.response.use(
       // 1. Jika sedang refreshing, masukkan request ke antrian
       if (isRefreshing) {
         return new Promise(function (resolve, reject) {
-          failedQueue.push({ resolve, reject });
+          failedQueue. push({ resolve, reject });
         })
           .then((token) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
@@ -84,24 +84,26 @@ api.interceptors.response.use(
           throw new Error('No refresh token available');
         }
 
-        // Panggil endpoint refresh token
-        // Gunakan axios create baru tanpa interceptor
-        // [NOTE] Kita tetap gunakan URL lengkap untuk refresh token jika perlu, 
-        // tapi menggunakan instance baru agar aman. 
-        // Di sini kita pakai baseURL instance 'api' yang sekarang sudah '/api/proxy'
-        const response = await axios.post(
-          '/api/proxy/auth/refresh-token',
+        // [FIX] Buat axios instance tanpa interceptor untuk refresh token
+        // Gunakan endpoint proxy yang sudah dikonfigurasi di next.config.mjs
+        const refreshAxios = axios.create({
+          baseURL: '/api/proxy',
+          timeout: 30000,
+        });
+
+        const response = await refreshAxios.post(
+          '/auth/refresh-token',
           { refreshToken }
         );
 
         const { accessToken, refreshToken: newRefreshToken } = response.data.data.tokens;
 
         // Simpan token baru
-        localStorage.setItem('posko_token', accessToken);
+        localStorage. setItem('posko_token', accessToken);
         localStorage.setItem('posko_refresh_token', newRefreshToken);
         
         // Update default header instance
-        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        api.defaults.headers. common['Authorization'] = `Bearer ${accessToken}`;
 
         // Proses antrian yang menunggu dengan token baru
         processQueue(null, accessToken);
@@ -119,7 +121,7 @@ api.interceptors.response.use(
         localStorage.removeItem('posko_refresh_token');
         
         // Redirect ke login
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        if (typeof window !== 'undefined' && !window.location.pathname. startsWith('/login')) {
            window.location.href = '/login';
         }
         
