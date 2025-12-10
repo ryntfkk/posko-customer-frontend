@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { fetchProfile, updateProfile } from '@/features/auth/api';
+import { uploadApi } from '@/features/upload/api'; // [IMPORT BARU] Untuk upload ke S3
 import { User } from '@/features/auth/types';
 
 export default function EditProfilePage() {
@@ -81,9 +82,9 @@ export default function EditProfilePage() {
         return;
       }
 
-      // Validasi Ukuran (Max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        setFileError('Ukuran file terlalu besar. Maksimal 2MB');
+      // Validasi Ukuran (Max 5MB sesuai S3 limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setFileError('Ukuran file terlalu besar. Maksimal 5MB');
         return;
       }
 
@@ -134,7 +135,7 @@ export default function EditProfilePage() {
     return true;
   };
 
-  // 5.Submit Data
+  // 5.Submit Data (MODIFIED for S3 Integration)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -148,17 +149,26 @@ export default function EditProfilePage() {
     setIsSaving(true);
 
     try {
-      // Gunakan FormData untuk mengakomodir upload file
-      const payload = new FormData();
-      payload.append('fullName', formData.fullName.trim());
-      payload.append('phoneNumber', formData.phoneNumber.trim());
-      payload.append('birthDate', formData.birthDate);
-      payload.append('gender', formData.gender);
+      let uploadedImageUrl = user?.profilePictureUrl;
 
-      // Hanya append file jika ada file baru yang dipilih
+      // 1. Jika ada file baru dipilih, upload ke S3 terlebih dahulu
       if (selectedFile) {
-        payload.append('profilePicture', selectedFile);
+        try {
+          // Menggunakan helper uploadApi yang sudah dibuat di Step 3
+          uploadedImageUrl = await uploadApi.uploadImage(selectedFile);
+        } catch (uploadErr) {
+          throw new Error('Gagal mengupload gambar. Pastikan koneksi internet stabil.');
+        }
       }
+
+      // 2. Kirim data update profil (sebagai JSON, bukan FormData)
+      const payload = {
+        fullName: formData.fullName.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
+        birthDate: formData.birthDate,
+        gender: formData.gender,
+        profilePictureUrl: uploadedImageUrl // URL dari S3 (atau URL lama jika tidak diubah)
+      };
 
       await updateProfile(payload);
 
@@ -171,7 +181,7 @@ export default function EditProfilePage() {
       }, 1500);
     } catch (error: any) {
       console.error('Gagal update:', error);
-      const errorMsg = error.response?.data?.message || 'Gagal memperbarui profil. Silakan coba lagi.';
+      const errorMsg = error.response?.data?.message || error.message || 'Gagal memperbarui profil. Silakan coba lagi.';
       setErrorMessage(errorMsg);
     } finally {
       setIsSaving(false);

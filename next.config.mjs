@@ -32,6 +32,8 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'api.dicebear.com',
+        port: '',
+        pathname: '/**',
       },
       {
         protocol: 'https',
@@ -42,6 +44,13 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+      // [BARU] Konfigurasi Domain AWS S3
+      {
+        protocol: 'https',
+        hostname: 'posko-storage-prod.s3.ap-southeast-1.amazonaws.com', 
         port: '',
         pathname: '/**',
       },
