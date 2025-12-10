@@ -56,12 +56,15 @@ const nextConfig = {
       },
     ],
   },
-  // [SOLUSI CORS] Rewrite request ke /api/proxy agar diteruskan ke server backend asli oleh Next.js
+  // [SOLUSI UTAMA] Menambahkan Rewrite untuk Proxy
   async rewrites() {
     return [
       {
+        // Menangkap semua request yang diawali /api/proxy/
         source: '/api/proxy/:path*',
-        destination: 'https://api.poskojasa.com/api/:path*',
+        // Meneruskannya ke Backend asli
+        // :path* akan menyalin sisa URL (misal 'upload' -> '/api/upload')
+        destination: `${process.env.BACKEND_URL || 'https://api.poskojasa.com'}/api/:path*`, 
       },
     ];
   },
