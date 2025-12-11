@@ -1,7 +1,7 @@
 // src/app/orders/[orderId]/page.tsx
 'use client';
 
-import { useEffect, useState, use, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -80,11 +80,11 @@ const formatTime = (dateStr?: string) => {
 };
 
 interface PageProps {
-  params: Promise<{ orderId: string }>;
+  params: { orderId: string };
 }
 
 export default function OrderDetailPage({ params }: PageProps) {
-  const { orderId } = use(params);
+  const { orderId } = params;
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -223,11 +223,10 @@ export default function OrderDetailPage({ params }: PageProps) {
     return map[status] || map.pending;
   };
 
-  // [FIX] Update logika filter untuk mencakup 'approved_unpaid' juga
   const unpaidAdditionalFees = useMemo(() => {
     if (!order?.additionalFees) return 0;
     return order.additionalFees
-      .filter(f => ['pending_approval', 'approved_unpaid'].includes(f.status))
+      .filter(f => f.status === 'pending_approval')
       .reduce((acc, f) => acc + f.amount, 0);
   }, [order]);
 
@@ -325,10 +324,9 @@ export default function OrderDetailPage({ params }: PageProps) {
                    <Icons.Phone />
                  </a>
                )}
-               {/* [FIX] Tombol Chat dihidupkan dengan Link */}
-               <Link href="/chat" className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+               <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                  <Icons.Chat />
-               </Link>
+               </button>
             </div>
           </div>
         )}
