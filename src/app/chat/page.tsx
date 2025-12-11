@@ -11,7 +11,27 @@ import { listOrders } from '@/features/orders/api';
 import { User } from '@/features/auth/types';
 import { Order, PopulatedProvider } from '@/features/orders/types';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000';
+// --- HELPER: SOCKET URL DETERMINATION ---
+const getSocketUrl = () => {
+  // 1. Prioritas Utama: Env Var khusus Socket
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+    return process.env.NEXT_PUBLIC_SOCKET_URL.trim();
+  }
+  
+  // 2. Prioritas Kedua: Ambil Origin dari API URL (Backend HTTP)
+  // Contoh: 'https://api.poskojasa.com/api' -> 'https://api.poskojasa.com'
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    try {
+      const url = new URL(process.env.NEXT_PUBLIC_API_URL);
+      return url.origin; 
+    } catch (e) {
+      console.warn('Invalid API URL for socket fallback');
+    }
+  }
+
+  // 3. Fallback Terakhir (Hanya untuk local dev jika env kosong)
+  return 'http://localhost:4000';
+};
 
 // --- ICONS ---
 const BackIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>;
@@ -81,8 +101,20 @@ export default function ChatPage() {
         setActiveOrders(activeOnly);
 
         // Socket Connection
-        const newSocket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
+        const socketUrl = getSocketUrl();
+        console.log('Connecting socket to:', socketUrl);
         
+        const newSocket = io(socketUrl, { 
+          auth: { token }, 
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: 5
+        });
+        
+        newSocket.on('connect_error', (err) => {
+          console.error('Socket connection error:', err.message);
+        });
+
         newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
           // Update List Room (Move to top)
           setRooms(prev => {
@@ -187,6 +219,8 @@ export default function ChatPage() {
         const formData = new FormData();
         formData.append('file', previewImage.file);
 
+        // Pastikan endpoint ini sesuai dengan backend Anda
+        // Jika endpoint upload chat berbeda, sesuaikan string '/chat/upload'
         const res = await api.post('/chat/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
@@ -342,7 +376,8 @@ export default function ChatPage() {
                                     {msg.attachment?.type === 'image' && (
                                         <div className={`mb-1 overflow-hidden rounded-2xl border ${isMe ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}>
                                             <Image 
-                                                src={`${process.env.NEXT_PUBLIC_API_URL}${msg.attachment.url}`} 
+                                                // Gunakan helper API URL agar gambar load benar di production
+                                                src={msg.attachment.url.startsWith('http') ? msg.attachment.url : `${process.env.NEXT_PUBLIC_API_URL}${msg.attachment.url}`} 
                                                 alt="Attachment" 
                                                 width={200} height={200} 
                                                 className="w-full h-auto object-cover max-h-60"

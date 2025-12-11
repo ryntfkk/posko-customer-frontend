@@ -58,13 +58,18 @@ const nextConfig = {
   },
   // [LANGKAH 2] Menambahkan konfigurasi Rewrites (Proxy)
   async rewrites() {
+    // Bersihkan environment variable dari spasi
+    const backendUrl = (process.env.BACKEND_URL || 'https://api.poskojasa.com/api').trim();
+    
+    // Pastikan tidak ada double slash di akhir backendUrl sebelum digabung
+    const cleanBackendUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
+
     return [
       {
         // Menangkap semua request yang diawali dengan /api/proxy
         source: '/api/proxy/:path*',
         // Meneruskannya ke Backend EC2 yang sebenarnya
-        // Gunakan variable environment BACKEND_URL jika ada, atau fallback ke default
-        destination: `${process.env.BACKEND_URL || 'https://api.poskojasa.com/api'}/:path*`,
+        destination: `${cleanBackendUrl}/:path*`,
       },
     ];
   },

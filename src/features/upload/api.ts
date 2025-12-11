@@ -20,21 +20,40 @@ export const uploadApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    // [FIX] Mengubah endpoint '/uploads' menjadi '/upload' (singular)
-    // Sesuai dengan route di backend: app.use('/api/upload', ...) di src/index.js
-    // Kami juga menambahkan header eksplisit untuk memastikan boundary FormData terkirim dengan benar
-    const response = await api.post<UploadResponse>('/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data', 
-      },
-    });
-    
-    // Validasi response structure untuk menghindari crash jika data dari server tidak sesuai
-    if (!response.data || !response.data.data || !response.data.data.url) {
-      throw new Error('Invalid response from server during upload');
-    }
+    try {
+      // Menggunakan endpoint '/upload' sesuai route backend
+      // Header Content-Type: multipart/form-data tidak perlu diset manual secara eksplisit di Axios terbaru
+      // karena browser otomatis mengatur boundary-nya saat mendeteksi FormData.
+      // Namun, jika ingin eksplisit, pastikan tidak merusak boundary.
+      const response = await api.post<UploadResponse>('/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
-    // Mengembalikan full URL dari S3
-    return response.data.data.url;
+      // Debugging: Log response dari server untuk memastikan formatnya
+      // console.log('Upload Response:', response.data);
+
+      // Validasi response structure yang lebih robust
+      // Backend Anda mengembalikan: { message: "...", data: { url: "...", ... } }
+      const responseData = response.data;
+      
+      if (responseData && responseData.data && responseData.data.url) {
+        return responseData.data.url;
+      }
+      
+      // Fallback check jika backend mengembalikan struktur flat (opsional)
+      if ((responseData as any).url) {
+        return (responseData as any).url;
+      }
+
+      console.error('Invalid Upload Response Structure:', responseData);
+      throw new Error('Format respon server tidak dikenali saat upload.');
+
+    } catch (error: any) {
+      console.error('Upload Error Detail:', error.response?.data || error.message);
+      // Lempar error yang lebih user-friendly
+      throw new Error(error.response?.data?.message || 'Gagal mengupload gambar. Silakan coba lagi.');
+    }
   },
 };

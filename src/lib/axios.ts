@@ -3,17 +3,26 @@ import axios from 'axios';
 // --- VALIDASI ENV URL ---
 // Fungsi helper untuk memastikan URL API valid dan tidak menyebabkan crash
 const getBaseUrl = () => {
-  // Cek environment variable
-  let url = process.env.NEXT_PUBLIC_API_URL;
+  // 1. Ambil environment variable dan bersihkan spasi (trim)
+  // Penting: .trim() mencegah error "Invalid URL" jika ada spasi di .env
+  let url = process.env.NEXT_PUBLIC_API_URL?.trim();
 
-  // Jika env tidak ada, kosong, atau undefined, gunakan fallback hardcoded
-  // Ini mencegah error "TypeError: Failed to construct 'URL': Invalid URL"
-  if (!url || url.trim() === '') {
+  // 2. Jika env tidak ada, kosong, atau undefined, gunakan fallback hardcoded
+  if (!url || url === '') {
     // Pastikan ini alamat Backend EC2 Anda yang benar (tanpa trailing slash)
     return 'https://api.poskojasa.com/api'; 
   }
 
-  // Hapus trailing slash jika tidak sengaja tertulis (misal: .../api/ -> .../api)
+  // 3. Validasi format URL agar tidak crash saat digunakan oleh Axios/URL constructor
+  try {
+    // Test construct URL, jika gagal akan masuk catch
+    new URL(url.startsWith('http') ? url : `https://${url}`);
+  } catch (e) {
+    console.error('⚠️ Malformed NEXT_PUBLIC_API_URL:', url, e);
+    return 'https://api.poskojasa.com/api'; // Fallback aman
+  }
+
+  // 4. Hapus trailing slash jika tidak sengaja tertulis (misal: .../api/ -> .../api)
   if (url.endsWith('/')) {
     url = url.slice(0, -1);
   }

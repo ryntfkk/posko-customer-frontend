@@ -32,6 +32,27 @@ interface ChatRoom {
   updatedAt: string;
 }
 
+// --- HELPER SOCKET URL ---
+const getSocketUrl = () => {
+  // 1. Prioritas Utama: Env Var khusus Socket
+  if (process.env.NEXT_PUBLIC_SOCKET_URL) {
+    return process.env.NEXT_PUBLIC_SOCKET_URL.trim();
+  }
+  
+  // 2. Prioritas Kedua: Ambil Origin dari API URL
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    try {
+      const url = new URL(process.env.NEXT_PUBLIC_API_URL);
+      return url.origin; // Contoh: 'https://api.poskojasa.com/api' -> 'https://api.poskojasa.com'
+    } catch (e) {
+      console.error('Invalid API URL in env', e);
+    }
+  }
+  
+  // 3. Fallback Terakhir (Local dev)
+  return 'http://localhost:4000';
+};
+
 export default function ChatWidget({ user }: { user: User }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
@@ -43,25 +64,6 @@ export default function ChatWidget({ user }: { user: User }) {
   const [isUnread, setIsUnread] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // [FIX] Menggunakan logika URL yang lebih aman untuk menghindari malformed URL (seperti 'wss://https/...')
-  const getSocketUrl = () => {
-    // 1. Coba ambil dari env var khusus socket jika ada
-    if (process.env.NEXT_PUBLIC_SOCKET_URL) {
-      return process.env.NEXT_PUBLIC_SOCKET_URL;
-    }
-    // 2. Jika tidak, ambil dari API_URL dan ambil origin-nya (protocol + domain + port)
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      try {
-        const url = new URL(process.env.NEXT_PUBLIC_API_URL);
-        return url.origin; // Contoh: 'https://api.poskojasa.com/api' -> 'https://api.poskojasa.com'
-      } catch (e) {
-        console.error('Invalid API URL in env', e);
-      }
-    }
-    // 3. Fallback terakhir
-    return 'http://localhost:4000';
-  };
-
   const SOCKET_URL = getSocketUrl();
   const myId = user?._id || user?.userId;
 
@@ -73,7 +75,7 @@ export default function ChatWidget({ user }: { user: User }) {
 
     const newSocket = io(SOCKET_URL, { 
       auth: { token },
-      path: '/socket.io',
+      path: '/socket.io', // Default path socket.io
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
@@ -81,11 +83,12 @@ export default function ChatWidget({ user }: { user: User }) {
     });
 
     newSocket.on('connect', () => {
-      console.log('✅ Socket connected:', newSocket.id);
+      console.log('✅ ChatWidget Socket connected:', newSocket.id);
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('❌ Socket connection error:', error);
+      // Hanya log sebagai warning agar tidak spam error merah di console
+      console.warn('⚠️ ChatWidget Socket connection failed:', error.message);
     });
 
     newSocket.on('receive_message', (data: { roomId: string, message: Message }) => {
@@ -116,7 +119,7 @@ export default function ChatWidget({ user }: { user: User }) {
     socketRef.current = newSocket;
 
     return () => { 
-      console.log('🔌 Disconnecting socket...');
+      // console.log('🔌 Disconnecting ChatWidget socket...');
       newSocket.disconnect(); 
       socketRef.current = null;
     };

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { fetchProfile, updateProfile } from '@/features/auth/api';
-import { uploadApi } from '@/features/upload/api'; // [IMPORT BARU] Untuk upload ke S3
+import { uploadApi } from '@/features/upload/api';
 import { User } from '@/features/auth/types';
 
 export default function EditProfilePage() {
@@ -32,11 +32,14 @@ export default function EditProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
-  // 1.Load Profil Saat Ini
+  // 1. Load Profil Saat Ini
   useEffect(() => {
+    let isMounted = true;
     const loadData = async () => {
       try {
         const res = await fetchProfile();
+        if (!isMounted) return;
+
         const profile = res.data.profile;
         setUser(profile);
 
@@ -44,31 +47,36 @@ export default function EditProfilePage() {
         setFormData({
           fullName: profile.fullName || '',
           phoneNumber: profile.phoneNumber || '',
-          birthDate: profile.birthDate ?  new Date(profile.birthDate).toISOString().split('T')[0] : '',
+          // Handle tanggal agar sesuai format input type="date" (YYYY-MM-DD)
+          birthDate: profile.birthDate ? new Date(profile.birthDate).toISOString().split('T')[0] : '',
           gender: (profile as any).gender || '',
         });
 
-        // Set preview image awal
+        // Set preview image awal dari profile URL
         setPreviewImage(profile.profilePictureUrl || null);
       } catch (error) {
         console.error('Gagal memuat profil:', error);
-        setErrorMessage('Gagal memuat profil.Silakan login kembali.');
-        setTimeout(() => router.push('/login'), 2000);
+        if (isMounted) {
+          setErrorMessage('Gagal memuat profil. Silakan login kembali.');
+          setTimeout(() => router.push('/login'), 2000);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     loadData();
+
+    return () => { isMounted = false; };
   }, [router]);
 
   // 2. Handle Perubahan Input Text
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrorMessage(null);
+    setErrorMessage(null); // Clear error saat user mengetik
   };
 
-  // 3.Handle Pilih Gambar dengan Validasi
+  // 3. Handle Pilih Gambar dengan Validasi
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     setErrorMessage(null);
@@ -77,12 +85,12 @@ export default function EditProfilePage() {
       const file = e.target.files[0];
 
       // Validasi Tipe File
-      if (! file.type.startsWith('image/')) {
-        setFileError('Hanya file gambar yang diperbolehkan (JPG, PNG, etc)');
+      if (!file.type.startsWith('image/')) {
+        setFileError('Hanya file gambar yang diperbolehkan (JPG, PNG)');
         return;
       }
 
-      // Validasi Ukuran (Max 5MB sesuai S3 limit)
+      // Validasi Ukuran (Max 5MB sesuai standar S3/Backend)
       if (file.size > 5 * 1024 * 1024) {
         setFileError('Ukuran file terlalu besar. Maksimal 5MB');
         return;
@@ -106,28 +114,33 @@ export default function EditProfilePage() {
       return false;
     }
 
-    // Validasi Nomor HP (Format dasar)
+    // Validasi Nomor HP (Format dasar Indonesia)
     if (formData.phoneNumber && formData.phoneNumber.trim().length > 0) {
-      const phoneRegex = /^(\+62|0)[0-9]{9,14}$/;
+      // Regex sederhana untuk +62 atau 08
+      const phoneRegex = /^(\+62|0)[0-9]{8,14}$/;
       if (!phoneRegex.test(formData.phoneNumber.replace(/\s/g, ''))) {
         setErrorMessage('Format nomor HP tidak valid. Gunakan format 08xx atau +62xx');
         return false;
       }
     }
 
-    // Validasi Tanggal Lahir
+    // Validasi Tanggal Lahir (Minimal 13 tahun)
     if (formData.birthDate) {
       const birthDate = new Date(formData.birthDate);
       const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
 
       if (age < 13) {
-        setErrorMessage('Usia minimal 13 tahun');
+        setErrorMessage('Usia minimal 13 tahun untuk mendaftar');
         return false;
       }
 
       if (birthDate > today) {
-        setErrorMessage('Tanggal lahir tidak boleh di masa depan');
+        setErrorMessage('Tanggal lahir tidak valid');
         return false;
       }
     }
@@ -135,14 +148,15 @@ export default function EditProfilePage() {
     return true;
   };
 
-  // 5.Submit Data (MODIFIED for S3 Integration)
+  // 5. Submit Data (Logic Utama)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    // Validasi form terlebih dahulu
-    if (! validateForm()) {
+    // Validasi form lokal
+    if (!validateForm()) {
+      window.scrollTo(0, 0);
       return;
     }
 
@@ -151,38 +165,49 @@ export default function EditProfilePage() {
     try {
       let uploadedImageUrl = user?.profilePictureUrl;
 
-      // 1. Jika ada file baru dipilih, upload ke S3 terlebih dahulu
+      // STEP 1: Upload Image ke S3 (Jika ada file baru)
       if (selectedFile) {
         try {
-          // Menggunakan helper uploadApi yang sudah dibuat di Step 3
           uploadedImageUrl = await uploadApi.uploadImage(selectedFile);
-        } catch (uploadErr) {
-          throw new Error('Gagal mengupload gambar. Pastikan koneksi internet stabil.');
+        } catch (uploadErr: any) {
+          console.error('Upload Error:', uploadErr);
+          setErrorMessage(`Gagal upload foto: ${uploadErr.message}`);
+          setIsSaving(false);
+          window.scrollTo(0, 0);
+          return; // Stop proses jika upload gagal
         }
       }
 
-      // 2. Kirim data update profil (sebagai JSON, bukan FormData)
+      // STEP 2: Update Profile Data ke Backend
       const payload = {
         fullName: formData.fullName.trim(),
         phoneNumber: formData.phoneNumber.trim(),
         birthDate: formData.birthDate,
         gender: formData.gender,
-        profilePictureUrl: uploadedImageUrl // URL dari S3 (atau URL lama jika tidak diubah)
+        profilePictureUrl: uploadedImageUrl // Kirim URL baru atau yang lama
       };
 
       await updateProfile(payload);
 
       setSuccessMessage('Profil berhasil diperbarui!');
       
-      // Delay redirect untuk user bisa melihat success message
+      // Update state user lokal agar UI langsung berubah tanpa refresh
+      setUser((prev: any) => ({
+        ...prev,
+        ...payload
+      }));
+
+      // Delay redirect sedikit agar user membaca pesan sukses
       setTimeout(() => {
         router.push('/profile');
-        router.refresh();
+        router.refresh(); // Refresh server component data
       }, 1500);
+
     } catch (error: any) {
-      console.error('Gagal update:', error);
-      const errorMsg = error.response?.data?.message || error.message || 'Gagal memperbarui profil. Silakan coba lagi.';
+      console.error('Update Error:', error);
+      const errorMsg = error.response?.data?.message || error.message || 'Gagal memperbarui profil.';
       setErrorMessage(errorMsg);
+      window.scrollTo(0, 0);
     } finally {
       setIsSaving(false);
     }
@@ -213,7 +238,7 @@ export default function EditProfilePage() {
         
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2 animate-pulse">
             <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -235,14 +260,16 @@ export default function EditProfilePage() {
           
           {/* Section Foto Profil */}
           <div className="flex flex-col items-center gap-3 py-4">
-            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            <div className="relative group cursor-pointer" onClick={() => !isSaving && fileInputRef.current?.click()}>
               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-200 relative">
-                {previewImage ?  (
+                {previewImage ? (
                   <Image 
                     src={previewImage} 
                     alt="Preview" 
                     fill 
-                    className="object-cover" 
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    priority
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -263,7 +290,7 @@ export default function EditProfilePage() {
             
             {/* File Error */}
             {fileError && (
-              <p className="text-xs text-red-600 font-medium">{fileError}</p>
+              <p className="text-xs text-red-600 font-bold bg-red-50 px-2 py-1 rounded">{fileError}</p>
             )}
             
             {/* Hidden Input File */}
@@ -271,7 +298,7 @@ export default function EditProfilePage() {
               type="file" 
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept="image/*"
+              accept="image/png, image/jpeg, image/jpg"
               className="hidden"
             />
           </div>
@@ -289,7 +316,8 @@ export default function EditProfilePage() {
                 onChange={handleChange}
                 placeholder="Masukkan nama lengkap"
                 required
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none"
+                disabled={isSaving}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none disabled:bg-gray-100 disabled:text-gray-400"
               />
             </div>
 
@@ -298,8 +326,7 @@ export default function EditProfilePage() {
               <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Email (Tidak dapat diubah)</label>
               <input 
                 type="email"
-                name="email"
-                value={formData.phoneNumber === '' ? user?.email || '' : user?.email || ''}
+                value={user?.email || ''}
                 disabled
                 className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-600 cursor-not-allowed"
               />
@@ -314,7 +341,8 @@ export default function EditProfilePage() {
                 value={formData.phoneNumber}
                 onChange={handleChange}
                 placeholder="Contoh: 08123456789"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none"
+                disabled={isSaving}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none disabled:bg-gray-100"
               />
             </div>
 
@@ -327,7 +355,8 @@ export default function EditProfilePage() {
                         name="birthDate"
                         value={formData.birthDate}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none"
+                        disabled={isSaving}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none disabled:bg-gray-100"
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -337,7 +366,8 @@ export default function EditProfilePage() {
                             name="gender"
                             value={formData.gender}
                             onChange={handleChange}
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none appearance-none"
+                            disabled={isSaving}
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all outline-none appearance-none disabled:bg-gray-100"
                         >
                             <option value="">Pilih</option>
                             <option value="Laki-laki">Laki-laki</option>
@@ -364,7 +394,7 @@ export default function EditProfilePage() {
               {isSaving ? (
                 <>
                   <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                  Menyimpan...
+                  {selectedFile ? 'Mengupload & Menyimpan...' : 'Menyimpan Perubahan...'}
                 </>
               ) : (
                 'Simpan Perubahan'
