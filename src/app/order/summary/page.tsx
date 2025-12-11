@@ -18,6 +18,8 @@ import { User, Address, GeoLocation } from '@/features/auth/types';
 import { settingsApi } from '@/features/settings/api';
 import { voucherApi } from '@/features/vouchers/api';
 import { Voucher } from '@/features/vouchers/types';
+// [FIX] Import API Provider untuk mengambil data jadwal real-time
+import { fetchProviderById } from '@/features/providers/api';
 
 // Import komponen lokal
 import { AttachmentUploader } from '@/components/OrderComponents'; 
@@ -121,6 +123,12 @@ function OrderSummaryContent() {
   const selectedProviderId = searchParams?.get('providerId') || null;
   const categoryParam = searchParams?.get('category') || null;
 
+  // [FIX] State untuk menyimpan jadwal Provider yang diambil dari API (bukan Cart)
+  const [providerSchedule, setProviderSchedule] = useState<{ bookedDates: string[]; blockedDates: string[] }>({
+    bookedDates: [],
+    blockedDates: []
+  });
+
   // Filter Keranjang
   const activeCartItems = useMemo(() => {
     return cart.filter((item) => {
@@ -142,20 +150,28 @@ function OrderSummaryContent() {
 
   const currentTotalAmount = activeCartItems.reduce((sum, item) => sum + item.totalPrice, 0);
 
-  // [LANGKAH 2] Ekstrak provider data untuk validasi tanggal
-  const providerData = useMemo(() => {
-    if (checkoutType === 'direct' && activeCartItems.length > 0) {
-      const firstItem = activeCartItems[0];
-      // Ambil bookedDates dan blockedDates dari cart item (jika ada)
-      return {
-        bookedDates: (firstItem as any).bookedDates || [],
-        blockedDates: (firstItem as any).blockedDates || []
+  // [FIX] useEffect untuk mengambil data jadwal Provider secara LIVE
+  useEffect(() => {
+    if (checkoutType === 'direct' && selectedProviderId) {
+      const fetchSchedule = async () => {
+        try {
+          const res = await fetchProviderById(selectedProviderId);
+          // Asumsi API mengembalikan provider dengan field bookedDates & blockedDates
+          // Jika backend belum support, ini akan default ke array kosong tanpa error
+          const data = res.data;
+          setProviderSchedule({
+            bookedDates: data.bookedDates || [],
+            blockedDates: data.blockedDates || []
+          });
+        } catch (error) {
+          console.error("Gagal memuat jadwal provider:", error);
+        }
       };
+      fetchSchedule();
     }
-    return { bookedDates: [], blockedDates: [] };
-  }, [checkoutType, activeCartItems]);
+  }, [checkoutType, selectedProviderId]);
 
-  // [LANGKAH 2] Helper function untuk cek apakah tanggal tidak tersedia
+  // [FIX] Helper function validasi menggunakan state providerSchedule yang benar
   const isDateUnavailable = useCallback((dateString: string): { unavailable: boolean; reason: string } => {
     if (!dateString) return { unavailable: false, reason: '' };
     
@@ -170,7 +186,7 @@ function OrderSummaryContent() {
     }
     
     // Cek blockedDates (Libur manual oleh mitra)
-    const isBlocked = providerData.blockedDates.some((d: string) => {
+    const isBlocked = providerSchedule.blockedDates.some((d: string) => {
       const blockedDate = d.split('T')[0];
       return blockedDate === dateOnly;
     });
@@ -180,7 +196,7 @@ function OrderSummaryContent() {
     }
     
     // Cek bookedDates (Sudah ada order aktif)
-    const isBooked = providerData.bookedDates.some((d: string) => {
+    const isBooked = providerSchedule.bookedDates.some((d: string) => {
       const bookedDate = d.split('T')[0];
       return bookedDate === dateOnly;
     });
@@ -190,7 +206,7 @@ function OrderSummaryContent() {
     }
     
     return { unavailable: false, reason: '' };
-  }, [providerData]);
+  }, [providerSchedule]);
 
   // Load User Profile, Settings, & Vouchers
   useEffect(() => {
@@ -866,7 +882,7 @@ function OrderSummaryContent() {
               >
                 {isProcessing ? (
                   <>
-                    <svg className="animate-spin h-4 w-4 md:h-5 md:w-5 text-white" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-4 w-4 md:h-5 md:w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -917,7 +933,7 @@ function OrderSummaryContent() {
                             className="px-4 py-2 bg-gray-900 text-white font-bold rounded-xl disabled:bg-gray-300 hover:bg-gray-800 transition-colors flex items-center gap-2"
                         >
                             {isCheckingVoucher && (
-                                <svg className="animate-spin h-4 w-4 text-white" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             )}
                             Pakai
                         </button>

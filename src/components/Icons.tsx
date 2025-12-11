@@ -1,6 +1,6 @@
 // src/features/providers/components/Icons.tsx
 
-// Interface untuk props (agar TypeScript tidak error)
+// Interface untuk props agar TypeScript mengenali className
 interface IconProps {
   className?: string;
 }

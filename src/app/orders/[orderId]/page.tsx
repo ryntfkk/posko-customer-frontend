@@ -223,10 +223,11 @@ export default function OrderDetailPage({ params }: PageProps) {
     return map[status] || map.pending;
   };
 
+  // [FIX] Update logika filter untuk mencakup 'approved_unpaid' juga
   const unpaidAdditionalFees = useMemo(() => {
     if (!order?.additionalFees) return 0;
     return order.additionalFees
-      .filter(f => f.status === 'pending_approval')
+      .filter(f => ['pending_approval', 'approved_unpaid'].includes(f.status))
       .reduce((acc, f) => acc + f.amount, 0);
   }, [order]);
 
@@ -324,9 +325,10 @@ export default function OrderDetailPage({ params }: PageProps) {
                    <Icons.Phone />
                  </a>
                )}
-               <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+               {/* [FIX] Tombol Chat dihidupkan dengan Link */}
+               <Link href="/chat" className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                  <Icons.Chat />
-               </button>
+               </Link>
             </div>
           </div>
         )}
