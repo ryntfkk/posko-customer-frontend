@@ -2,63 +2,6 @@
 import axios from '@/lib/axios';
 import { CreateOrderPayload, OrderListResponse, OrderResponse, OrderStatus } from './types';
 
-// Helper: Convert Object to FormData dengan Bracket Notation (untuk array/nested object)
-// Backend Express + Multer biasanya bisa membaca format: items[0][serviceId]
-const objectToFormData = (
-  obj: any, 
-  form?: FormData, 
-  namespace?: string
-): FormData => {
-  const fd = form || new FormData();
-  let formKey;
-
-  for (const property in obj) {
-    if (obj.hasOwnProperty(property)) {
-      if (namespace) {
-        formKey = namespace + '[' + property + ']';
-      } else {
-        formKey = property;
-      }
-
-      const value = obj[property];
-
-      // Jika value adalah Date, convert ke ISO string
-      if (value instanceof Date) {
-        fd.append(formKey, value.toISOString());
-      }
-      // Jika value adalah array dan bukan File (karena File treated as object)
-      else if (Array.isArray(value)) {
-        // Khusus attachments yang punya File, kita append langsung sebagai file
-        if (property === 'attachments' && !namespace) {
-             value.forEach((att: any) => {
-                 if (att.file instanceof File) {
-                     fd.append('attachments', att.file);
-                 }
-                 // Metadata attachment (url/type/desc) bisa dikirim jika perlu,
-                 // tapi backend controller kita saat ini men-generate URL dari S3.
-                 // Jika ada description, kita bisa kirim sebagai array terpisah atau JSON string.
-                 // Disini kita abaikan metadata url/type karena akan di-override S3.
-             });
-        } else {
-             // Array biasa (seperti items), kita rekursif
-             value.forEach((item, index) => {
-                 objectToFormData(item, fd, `${formKey}[${index}]`);
-             });
-        }
-      } 
-      // Jika object biasa (bukan File), rekursif
-      else if (typeof value === 'object' && !(value instanceof File) && value !== null) {
-        objectToFormData(value, fd, formKey);
-      } 
-      // Value primitif (string, number, boolean)
-      else {
-        fd.append(formKey, value);
-      }
-    }
-  }
-  return fd;
-};
-
 // Fetch single order
 export const fetchOrderById = async (orderId: string): Promise<OrderResponse> => {
   const { data } = await axios.get(`/orders/${orderId}`);
@@ -80,21 +23,47 @@ export const listOrders = async (
   return data;
 };
 
-// Create new order (Updated for File Upload)
+// Create new order (Updated for S3 Upload & JSON Serialization)
 export const createOrder = async (payload: CreateOrderPayload): Promise<OrderResponse> => {
-  // Cek apakah ada file yang perlu diupload di attachments
-  const hasFile = payload.attachments?.some((att: any) => att.file instanceof File);
+  // Cek apakah ada file yang perlu diupload di attachments (bypass type checking dengan any)
+  const attachments = (payload.attachments as any[]) || [];
+  const hasFile = attachments.some((att: any) => att.file instanceof File);
 
   if (hasFile) {
-    // Gunakan FormData jika ada file
-    const formData = objectToFormData(payload);
+    const formData = new FormData();
+
+    // 1. Append Attachments (Files)
+    attachments.forEach((att: any) => {
+        if (att.file instanceof File) {
+            formData.append('attachments', att.file);
+        }
+    });
+
+    // 2. Append Data Fields (Stringify Object/Array agar terbaca Validator Backend)
+    (Object.keys(payload) as (keyof CreateOrderPayload)[]).forEach(key => {
+        if (key === 'attachments') return; // Skip attachments yang sudah diproses
+
+        const value = payload[key];
+        
+        if (value === undefined || value === null) return;
+
+        if (typeof value === 'object' && !(value instanceof Date)) {
+            // Serialize Object/Array ke JSON String (misal: items, address, dll)
+            // Ini penting agar backend menerima { items: [...] } bukan pecahan form data
+            formData.append(key, JSON.stringify(value));
+        } else if (value instanceof Date) {
+            formData.append(key, value.toISOString());
+        } else {
+            // Primitive values (number, string, boolean)
+            formData.append(key, String(value));
+        }
+    });
     
-    // Header 'Content-Type': 'multipart/form-data' biasanya otomatis diset oleh browser/axios 
-    // saat mendeteksi FormData, tapi kita biarkan axios mengaturnya.
+    // Header Content-Type: multipart/form-data otomatis diatur oleh axios/browser
     const { data } = await axios.post('/orders', formData);
     return data;
   } else {
-    // Gunakan JSON biasa jika tidak ada file (mempertahankan backward compatibility)
+    // Gunakan JSON biasa jika tidak ada file (Backward Compatibility)
     const { data } = await axios.post('/orders', payload);
     return data;
   }
