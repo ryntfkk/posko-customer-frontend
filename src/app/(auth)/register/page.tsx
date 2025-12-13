@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic'; 
 import { registerUser } from '@/features/auth/api';
 import { RegisterPayload } from '@/features/auth/types';
+import { fetchProvinces, fetchRegionChildren, Region } from '@/features/regions/api';
 
 // Load Peta Dynamic (CSR)
 const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
@@ -20,9 +21,7 @@ const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   )
 });
 
-interface Region { id: string; name: string; }
-
-// [NEW] Interface untuk password strength
+// Interface untuk password strength
 interface PasswordStrength {
   hasMinLength: boolean;
   hasLowercase: boolean;
@@ -40,7 +39,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // [NEW] State untuk Password Strength
+  // State untuk Password Strength
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({
     hasMinLength: false,
     hasLowercase: false,
@@ -82,15 +81,18 @@ export default function RegisterPage() {
     longitude: null as number | null,
   });
 
-  // Load Provinsi saat mount
+  // Load Provinsi saat mount (Menggunakan API Internal)
   useEffect(() => {
-    fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json')
-      .then(res => res.json())
-      .then(setProvinces)
+    fetchProvinces()
+      .then(res => {
+        if (res.success) {
+          setProvinces(res.data);
+        }
+      })
       .catch(console.error);
   }, []);
 
-  // [NEW] Check password strength saat user mengetik
+  // Check password strength saat user mengetik
   const checkPasswordStrength = (password: string) => {
     setPasswordStrength({
       hasMinLength: password.length >= 8,
@@ -100,7 +102,7 @@ export default function RegisterPage() {
     });
   };
 
-  // [NEW] Hitung skor password untuk progress bar
+  // Hitung skor password untuk progress bar
   const getPasswordScore = (): number => {
     const { hasMinLength, hasLowercase, hasUppercase, hasNumber } = passwordStrength;
     let score = 0;
@@ -111,7 +113,7 @@ export default function RegisterPage() {
     return score;
   };
 
-  // [NEW] Warna berdasarkan skor password
+  // Warna berdasarkan skor password
   const getPasswordScoreColor = (): string => {
     const score = getPasswordScore();
     if (score === 0) return 'bg-gray-200';
@@ -121,7 +123,7 @@ export default function RegisterPage() {
     return 'bg-green-500';
   };
 
-  // [NEW] Label kekuatan password
+  // Label kekuatan password
   const getPasswordStrengthLabel = (): string => {
     const score = getPasswordScore();
     if (score === 0) return '';
@@ -131,7 +133,7 @@ export default function RegisterPage() {
     return 'Kuat';
   };
 
-  // Handler Wilayah
+  // Handler Wilayah (Menggunakan fetchRegionChildren)
   const handleRegionChange = (type: 'province' | 'city' | 'district' | 'village', e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     const index = e.target.selectedIndex;
@@ -153,10 +155,12 @@ export default function RegisterPage() {
         addressVillage: '', 
         addressPostalCode: '' 
       }));
+      
       if(id) {
-        fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${id}.json`)
-          .then(r => r.json())
-          .then(setCities)
+        fetchRegionChildren(id)
+          .then(res => {
+            if (res.success) setCities(res.data);
+          })
           .catch(console.error);
       }
     } 
@@ -173,10 +177,12 @@ export default function RegisterPage() {
         addressVillage: '', 
         addressPostalCode: '' 
       }));
+
       if(id) {
-        fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${id}.json`)
-          .then(r => r.json())
-          .then(setDistricts)
+        fetchRegionChildren(id)
+          .then(res => {
+            if (res.success) setDistricts(res.data);
+          })
           .catch(console.error);
       }
     } 
@@ -190,16 +196,19 @@ export default function RegisterPage() {
         addressVillage: '', 
         addressPostalCode: '' 
       }));
+
       if(id) {
-        fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${id}.json`)
-          .then(r => r.json())
-          .then(setVillages)
+        fetchRegionChildren(id)
+          .then(res => {
+            if (res.success) setVillages(res.data);
+          })
           .catch(console.error);
       }
     }
     else if (type === 'village') {
       setSelectedVillageId(id);
-      const dummyPostalCode = id ?  `1${id.substring(0, 4)}` : ''; 
+      // Logic dummy postal code: jika id valid, ambil substring untuk simulasi
+      const dummyPostalCode = id ? `1${id.substring(0, 4)}` : ''; 
       setFormData(prev => ({ 
         ...prev, 
         addressVillage: text, 
@@ -208,7 +217,7 @@ export default function RegisterPage() {
     }
   };
 
-  // [UPDATED] Handler change dengan pengecekan password
+  // Handler change dengan pengecekan password
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -237,7 +246,7 @@ export default function RegisterPage() {
       },
       (error) => {
         console.error(error);
-        alert("Gagal mengambil lokasi.Pastikan GPS aktif dan izinkan akses lokasi pada browser.");
+        alert("Gagal mengambil lokasi. Pastikan GPS aktif dan izinkan akses lokasi pada browser.");
       },
       { enableHighAccuracy: true }
     );
@@ -261,7 +270,7 @@ export default function RegisterPage() {
     setTimeout(() => setPhoneStatus('verified'), 1500);
   };
 
-  // [UPDATED] Validasi per step yang lebih lengkap
+  // Validasi per step yang lebih lengkap
   const validateStep = (): string => {
     setErrorMsg('');
     
@@ -353,7 +362,7 @@ export default function RegisterPage() {
     setStep(prev => prev - 1);
   };
 
-  // [UPDATED] Submit dengan redirect langsung ke home
+  // Submit dengan redirect langsung ke home
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -409,14 +418,13 @@ export default function RegisterPage() {
       
       await registerUser(payload);
       
-      // [FIX] Redirect langsung ke home karena user sudah auto-login setelah register
+      // Redirect langsung ke home karena user sudah auto-login setelah register
       router.push('/');
       router.refresh();
       
     } catch (error) {
-      // ✅ FIX 3: Mengganti 'any' dengan type assertion
       const err = error as { response?: { data?: { message?: string } } };
-      const errorMessage = err.response?.data?.message || 'Gagal mendaftar.Silakan coba lagi.';
+      const errorMessage = err.response?.data?.message || 'Gagal mendaftar. Silakan coba lagi.';
       setErrorMsg(errorMessage);
     } finally {
       setIsLoading(false);
@@ -602,7 +610,7 @@ export default function RegisterPage() {
                         </button>
                       </div>
                       
-                      {/* [NEW] Password Strength Indicator */}
+                      {/* Password Strength Indicator */}
                       {formData.password && (
                         <div className="mt-2 space-y-2">
                           {/* Progress Bar */}
@@ -724,7 +732,7 @@ export default function RegisterPage() {
                         </button>
                       </div>
                       
-                      {/* [NEW] Password Match Indicator */}
+                      {/* Password Match Indicator */}
                       {formData.confirmPassword && (
                         <div className="flex items-center gap-1 mt-1">
                           {formData.password === formData.confirmPassword ? (

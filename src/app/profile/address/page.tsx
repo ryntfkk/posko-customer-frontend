@@ -1,4 +1,3 @@
-// src/app/profile/address/page.tsx
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -7,8 +6,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { fetchProfile, updateProfile } from '@/features/auth/api';
 import { User, Address } from '@/features/auth/types';
-// [BARU] Kita import 'api' dari axios helper untuk request ke backend sendiri
-import api from '@/lib/axios';
+import { fetchProvinces, fetchRegionChildren, Region } from '@/features/regions/api';
 
 // Load Component Map secara Dynamic (Client Side Only) untuk menghindari error SSR
 const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
@@ -20,11 +18,6 @@ const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
     </div>
   )
 });
-
-interface Region { 
-  id: string; 
-  name: string; 
-}
 
 export default function AddressPage() {
   const router = useRouter();
@@ -68,14 +61,15 @@ export default function AddressPage() {
     villages: false
   });
 
-  // 1.Load Data User & Provinsi (DARI BACKEND LOKAL) saat pertama kali buka
+  // 1.Load Data User & Provinsi saat pertama kali buka
   useEffect(() => {
     const initData = async () => {
       try {
-        // [UPDATE] Fetch Provinces dari Backend Sendiri
-        // Tidak lagi ke emsifa.com
-        const provRes = await api.get('/regions/provinces');
-        setProvinces(provRes.data);
+        // Fetch Provinces dari Backend Internal
+        const provRes = await fetchProvinces();
+        if (provRes.success) {
+          setProvinces(provRes.data);
+        }
 
         // Fetch User Profile
         const profileRes = await fetchProfile();
@@ -104,7 +98,7 @@ export default function AddressPage() {
         }
       } catch (error) {
         console.error("Gagal memuat data:", error);
-        setErrorMessage('Gagal memuat data wilayah. Pastikan server backend berjalan.');
+        setErrorMessage('Gagal memuat data. Pastikan koneksi internet stabil.');
       } finally {
         setLoading(false);
       }
@@ -113,7 +107,7 @@ export default function AddressPage() {
     initData();
   }, []);
 
-  // 2.Handler Perubahan Dropdown Wilayah (FETCH DARI BACKEND LOKAL)
+  // 2.Handler Perubahan Dropdown Wilayah
   const handleRegionChange = (type: 'province' | 'city' | 'district' | 'village', e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
     const index = e.target.selectedIndex;
@@ -141,12 +135,13 @@ export default function AddressPage() {
 
       if(id) {
         setWilayahLoading(prev => ({ ...prev, cities: true }));
-        // [UPDATE] Fetch Kota dari Backend Sendiri
-        api.get(`/regions/regencies/${id}`)
-          .then(res => setCities(res.data))
+        fetchRegionChildren(id)
+          .then(res => {
+            if (res.success) setCities(res.data);
+          })
           .catch(err => {
             console.error(err);
-            setErrorMessage('Gagal memuat data kota.');
+            setErrorMessage('Gagal memuat data kota. Silakan coba lagi.');
           })
           .finally(() => setWilayahLoading(prev => ({ ...prev, cities: false })));
       }
@@ -168,12 +163,13 @@ export default function AddressPage() {
 
       if(id) {
         setWilayahLoading(prev => ({ ...prev, districts: true }));
-        // [UPDATE] Fetch Kecamatan dari Backend Sendiri
-        api.get(`/regions/districts/${id}`)
-          .then(res => setDistricts(res.data))
+        fetchRegionChildren(id)
+          .then(res => {
+            if (res.success) setDistricts(res.data);
+          })
           .catch(err => {
             console.error(err);
-            setErrorMessage('Gagal memuat data kecamatan.');
+            setErrorMessage('Gagal memuat data kecamatan. Silakan coba lagi.');
           })
           .finally(() => setWilayahLoading(prev => ({ ...prev, districts: false })));
       }
@@ -192,12 +188,13 @@ export default function AddressPage() {
 
       if(id) {
         setWilayahLoading(prev => ({ ...prev, villages: true }));
-        // [UPDATE] Fetch Kelurahan dari Backend Sendiri
-        api.get(`/regions/villages/${id}`)
-          .then(res => setVillages(res.data))
+        fetchRegionChildren(id)
+          .then(res => {
+            if (res.success) setVillages(res.data);
+          })
           .catch(err => {
             console.error(err);
-            setErrorMessage('Gagal memuat data kelurahan.');
+            setErrorMessage('Gagal memuat data kelurahan. Silakan coba lagi.');
           })
           .finally(() => setWilayahLoading(prev => ({ ...prev, villages: false })));
       }
