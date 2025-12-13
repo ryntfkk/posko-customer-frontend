@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Clock, AlertCircle, ChevronRight, Rocket } from "lucide-react";
+import Image from "next/image"; // Import Image dari Next.js
+import { X, ChevronRight } from "lucide-react"; // Hapus import Rocket
 
 const ComingSoonModal = () => {
   const [showModal, setShowModal] = useState(false);
@@ -16,8 +17,8 @@ const ComingSoonModal = () => {
   const targetDate = new Date("2026-01-01T00:00:00").getTime();
 
   useEffect(() => {
-    // Cek Local Storage (Gunakan key '_v5' untuk melihat perubahan terbaru ini)
-    const hasSeenPopup = localStorage.getItem("hasSeenComingSoonPopup_v5");
+    // Cek Local Storage (Gunakan key '_v6' untuk melihat perubahan logo ini)
+    const hasSeenPopup = localStorage.getItem("hasSeenComingSoonPopup_v6");
     
     if (!hasSeenPopup) {
       setShowModal(true);
@@ -47,7 +48,7 @@ const ComingSoonModal = () => {
   }, [targetDate]);
 
   const handleClose = () => {
-    localStorage.setItem("hasSeenComingSoonPopup_v5", "true");
+    localStorage.setItem("hasSeenComingSoonPopup_v6", "true");
     setShowModal(false);
     document.body.style.overflow = "auto";
   };
@@ -67,7 +68,7 @@ const ComingSoonModal = () => {
         {/* Animated Gradient Border */}
         <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-600 via-white to-blue-600 animate-gradient-xy opacity-80"></div>
         
-        {/* Modal Inner Content - SEKARANG SEMI-TRANSPARAN (bg-opacity/90 + backdrop-blur) */}
+        {/* Modal Inner Content - SEMI-TRANSPARAN */}
         <div className="relative h-full w-full overflow-hidden rounded-2xl bg-[#0f172a]/90 backdrop-blur-xl p-6 text-center border border-white/10">
           
           {/* Background Decoration */}
@@ -92,11 +93,15 @@ const ComingSoonModal = () => {
                {/* Cincin Dalam (Merah) - Berputar Cepat Lawan Arah */}
                <div className="absolute inset-2 rounded-full border-2 border-transparent border-b-red-600 border-l-red-600 opacity-80 animate-[spin_2s_linear_infinite_reverse] shadow-[0_0_20px_rgba(220,38,38,0.4)]"></div>
 
-               {/* Inti (Putih) */}
-               <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-gray-800/80 to-black/80 border border-white/10 z-10 shadow-inner backdrop-blur-sm">
-                  <Rocket 
-                    size={26} 
-                    className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-pulse" 
+               {/* Inti (Putih) dengan LOGO POSKO */}
+               <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-gray-800/80 to-black/80 border border-white/10 z-10 shadow-inner backdrop-blur-sm overflow-hidden">
+                  {/* Menggunakan Next Image untuk logo */}
+                  <Image 
+                    src="/logo.png" 
+                    alt="Posko Logo" 
+                    width={30} 
+                    height={30}
+                    className="drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] animate-pulse object-contain"
                   />
                </div>
 
@@ -118,12 +123,12 @@ const ComingSoonModal = () => {
             </div>
             
             <h3 className="text-2xl font-black text-white tracking-tight leading-none">
-              Something <span className="italic text-blue-500">Big</span> is <br/> 
-              Coming <span className="text-red-500">Soon.</span>
+              We are <span className="text-blue-500">The Pioneer</span> of <br/> 
+              Indonesian <span className="text-red-500">Services</span>
             </h3>
             
             <p className="text-[11px] text-gray-300 px-4 font-light leading-relaxed">
-              Persiapkan diri Anda untuk revolusi layanan jasa terbaik yang pernah ada.
+              Your Problems, Solved Here. Indonesia’s First Service Marketplace.
             </p>
           </div>
 
@@ -145,7 +150,7 @@ const ComingSoonModal = () => {
             >
               <div className="absolute inset-0 bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 opacity-0 group-hover:opacity-10 transition-opacity"></div>
               <span className="text-xs font-black uppercase tracking-wider text-black">
-                Nantikan Kami
+                Enter Posko 
               </span>
               <ChevronRight size={14} className="text-red-600 group-hover:translate-x-1 transition-transform"/>
             </button>
