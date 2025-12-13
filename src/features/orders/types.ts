@@ -159,6 +159,10 @@ export interface Order {
   
   // [BARU] Field untuk Auto-Complete
   waitingApprovalAt?: string; 
+
+  // [BARU] Tambahan Field untuk Midtrans & Expiry
+  snapToken?: string;
+  snapExpiryTime?: string; // Menyimpan waktu kadaluarsa dari backend
   
   createdAt: string;
   updatedAt: string;

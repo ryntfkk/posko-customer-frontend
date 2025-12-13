@@ -79,6 +79,14 @@ const formatTime = (dateStr?: string) => {
   });
 };
 
+// [BARU] Helper untuk memformat countdown
+const formatCountdown = (ms: number) => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
 interface PageProps {
   params: Promise<{ orderId: string }>;
 }
@@ -94,6 +102,10 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // [BARU] Payment Timer State
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [isPaymentExpired, setIsPaymentExpired] = useState(false);
 
   // State untuk custom icon leaflet
   const [redIcon, setRedIcon] = useState<any>(null);
@@ -128,6 +140,38 @@ export default function OrderDetailPage({ params }: PageProps) {
     };
     loadOrder();
   }, [orderId]);
+
+  // [BARU] Effect untuk menghitung mundur waktu pembayaran
+  useEffect(() => {
+    if (order?.status === 'pending' && order.snapExpiryTime) {
+      const expiryTimestamp = new Date(order.snapExpiryTime).getTime();
+      
+      // Fungsi untuk update timer
+      const updateTimer = () => {
+        const now = new Date().getTime();
+        const diff = expiryTimestamp - now;
+        
+        if (diff <= 0) {
+          setTimeLeft(0);
+          setIsPaymentExpired(true);
+        } else {
+          setTimeLeft(diff);
+          setIsPaymentExpired(false);
+        }
+      };
+
+      // Jalankan sekali saat mount
+      updateTimer();
+      
+      // Interval setiap 1 detik
+      const timerInterval = setInterval(updateTimer, 1000);
+      
+      return () => clearInterval(timerInterval);
+    } else {
+      setTimeLeft(null);
+      setIsPaymentExpired(false);
+    }
+  }, [order]);
 
   // Handle Pay All Pending Fees
   const handlePayment = async () => {
@@ -308,6 +352,26 @@ export default function OrderDetailPage({ params }: PageProps) {
              <div className={`h-full ${['completed'].includes(order.status) ? 'bg-green-500 w-1/4' : 'w-0'} transition-all duration-500`}></div>
           </div>
         </div>
+
+        {/* [BARU] WARNING BANNER (PAYMENT EXPIRY) */}
+        {order.status === 'pending' && timeLeft !== null && (
+          <div className={`rounded-xl p-3 flex items-start gap-3 shadow-sm border ${isPaymentExpired ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+             <div className={`shrink-0 mt-0.5 ${isPaymentExpired ? 'text-red-600' : 'text-amber-600'}`}>
+                <Icons.Clock />
+             </div>
+             <div>
+                <p className={`text-[10px] font-bold uppercase mb-0.5 ${isPaymentExpired ? 'text-red-800' : 'text-amber-800'}`}>
+                   {isPaymentExpired ? 'Pembayaran Kadaluarsa' : 'Selesaikan Pembayaran'}
+                </p>
+                <p className={`text-xs leading-relaxed ${isPaymentExpired ? 'text-red-900' : 'text-amber-900'}`}>
+                   {isPaymentExpired 
+                     ? 'Batas waktu pembayaran telah habis. Pesanan ini akan dibatalkan otomatis.'
+                     : <>Sisa waktu pembayaran: <span className="font-bold font-mono text-sm ml-1">{formatCountdown(timeLeft)}</span></>
+                   }
+                </p>
+             </div>
+          </div>
+        )}
 
         {/* [BARU] WARNING BANNER (AUTO COMPLETE DEADLINE) */}
         {autoCompleteDeadline && (
@@ -625,10 +689,16 @@ export default function OrderDetailPage({ params }: PageProps) {
         {order.status === 'pending' && (
           <button 
             onClick={handlePayment} 
-            disabled={isActionLoading}
-            className="flex-1 h-10 bg-red-600 text-white text-xs font-bold rounded-lg shadow-md shadow-red-100 active:scale-95 transition-all flex items-center justify-center gap-2"
+            disabled={isActionLoading || isPaymentExpired} // Disable jika expired
+            className={`flex-1 h-10 text-white text-xs font-bold rounded-lg shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${
+                isPaymentExpired 
+                ? 'bg-gray-400 cursor-not-allowed shadow-none' 
+                : 'bg-red-600 shadow-red-100 hover:bg-red-700'
+            }`}
           >
-            {isActionLoading ? '...' : <><Icons.CreditCard /> Bayar Sekarang</>}
+            {isActionLoading ? '...' : (
+                isPaymentExpired ? 'Kadaluarsa' : <><Icons.CreditCard /> Bayar Sekarang {timeLeft && `(${formatCountdown(timeLeft)})`}</>
+            )}
           </button>
         )}
 
