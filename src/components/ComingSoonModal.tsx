@@ -128,7 +128,7 @@ const ComingSoonModal = () => {
             </h3>
             
             <p className="text-[11px] text-gray-300 px-4 font-light leading-relaxed">
-              Your Problems, Solved Here. Indonesia’s First Service Marketplace.
+              Your Problems, Solved Here.<br/>Indonesia’s First Service Marketplace.
             </p>
           </div>
 
