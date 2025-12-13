@@ -1,7 +1,7 @@
 // src/app/orders/[orderId]/page.tsx
 'use client';
 
-import { useEffect, useState, use, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react'; // [FIX] Hapus 'use'
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -12,7 +12,7 @@ import { createReview } from '@/features/reviews/api';
 import { Order, OrderStatus } from '@/features/orders/types';
 import useMidtrans from '@/hooks/useMidtrans';
 import ReviewModal from '@/components/ReviewModal';
-import Receipt from '@/components/Receipt'; // Import Component Receipt
+import Receipt from '@/components/Receipt'; 
 import 'leaflet/dist/leaflet.css';
 
 // --- LEAFLET COMPONENTS (Client Only) ---
@@ -33,7 +33,7 @@ const MapRecenter = dynamic(() => import('react-leaflet').then((mod) => {
     };
 }), { ssr: false });
 
-// --- ICONS (SVG) - Size Adjusted for Mobile (Smaller) ---
+// --- ICONS (SVG) ---
 const Icons = {
   ChevronLeft: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>,
   MapPin: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
@@ -64,10 +64,10 @@ const formatCurrency = (amount: number) => {
 const formatDate = (dateStr?: string) => {
   if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('id-ID', {
-    weekday: 'short', // Short day format for compact view
+    weekday: 'short', 
     day: 'numeric',
     month: 'short',
-    year: '2-digit', // '25' instead of '2025'
+    year: '2-digit',
   });
 };
 
@@ -79,7 +79,6 @@ const formatTime = (dateStr?: string) => {
   });
 };
 
-// [BARU] Helper untuk memformat countdown
 const formatCountdown = (ms: number) => {
   const totalSeconds = Math.floor(ms / 1000);
   const m = Math.floor(totalSeconds / 60);
@@ -88,11 +87,14 @@ const formatCountdown = (ms: number) => {
 };
 
 interface PageProps {
-  params: Promise<{ orderId: string }>;
+  // [FIX] Untuk Next.js 14, params adalah object biasa, bukan Promise
+  params: { orderId: string };
 }
 
 export default function OrderDetailPage({ params }: PageProps) {
-  const { orderId } = use(params);
+  // [FIX] Akses langsung params tanpa hook use()
+  const { orderId } = params;
+  
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -103,7 +105,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  // [BARU] Payment Timer State
+  // Payment Timer State
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isPaymentExpired, setIsPaymentExpired] = useState(false);
 
@@ -117,7 +119,7 @@ export default function OrderDetailPage({ params }: PageProps) {
       const icon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [20, 32], // Lebih kecil untuk mobile
+        iconSize: [20, 32], 
         iconAnchor: [10, 32],
         popupAnchor: [1, -28],
         shadowSize: [32, 32]
@@ -138,15 +140,16 @@ export default function OrderDetailPage({ params }: PageProps) {
         setIsLoading(false);
       }
     };
-    loadOrder();
+    if (orderId) {
+        loadOrder();
+    }
   }, [orderId]);
 
-  // [BARU] Effect untuk menghitung mundur waktu pembayaran
+  // Effect untuk menghitung mundur waktu pembayaran
   useEffect(() => {
     if (order?.status === 'pending' && order.snapExpiryTime) {
       const expiryTimestamp = new Date(order.snapExpiryTime).getTime();
       
-      // Fungsi untuk update timer
       const updateTimer = () => {
         const now = new Date().getTime();
         const diff = expiryTimestamp - now;
@@ -160,12 +163,8 @@ export default function OrderDetailPage({ params }: PageProps) {
         }
       };
 
-      // Jalankan sekali saat mount
       updateTimer();
-      
-      // Interval setiap 1 detik
       const timerInterval = setInterval(updateTimer, 1000);
-      
       return () => clearInterval(timerInterval);
     } else {
       setTimeLeft(null);
@@ -173,7 +172,6 @@ export default function OrderDetailPage({ params }: PageProps) {
     }
   }, [order]);
 
-  // Handle Pay All Pending Fees
   const handlePayment = async () => {
     if (!isSnapLoaded) return alert("Sistem sedang memuat...");
     setIsActionLoading(true);
@@ -276,11 +274,10 @@ export default function OrderDetailPage({ params }: PageProps) {
 
   const hasUnpaidFees = unpaidAdditionalFees > 0;
 
-  // [BARU] Hitung deadline auto-complete (48 Jam)
   const autoCompleteDeadline = useMemo(() => {
     if (order?.status === 'waiting_approval' && order.waitingApprovalAt) {
       const start = new Date(order.waitingApprovalAt);
-      return new Date(start.getTime() + 48 * 60 * 60 * 1000); // +48 Jam
+      return new Date(start.getTime() + 48 * 60 * 60 * 1000); 
     }
     return null;
   }, [order?.status, order?.waitingApprovalAt]);
@@ -300,10 +297,9 @@ export default function OrderDetailPage({ params }: PageProps) {
   const displayGrandTotal = order.totalAmount + totalAdditionalFees;
 
   const mapCenter: [number, number] = order.location?.coordinates 
-    ? [order.location.coordinates[1], order.location.coordinates[0]] // Swap to [Lat, Lng]
+    ? [order.location.coordinates[1], order.location.coordinates[0]]
     : [-6.200000, 106.816666];
 
-  // Logic to show Receipt Button (If paid/completed)
   const canShowReceipt = !['pending', 'cancelled', 'failed'].includes(order.status);
 
   return (
@@ -344,7 +340,6 @@ export default function OrderDetailPage({ params }: PageProps) {
             </div>
           </div>
           
-          {/* Thin Progress Bar */}
           <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden flex">
              <div className={`h-full ${['paid', 'searching', 'accepted', 'on_the_way', 'working', 'waiting_approval', 'completed'].includes(order.status) ? 'bg-green-500 w-1/4' : 'w-0'} transition-all duration-500`}></div>
              <div className={`h-full ${['accepted', 'on_the_way', 'working', 'waiting_approval', 'completed'].includes(order.status) ? 'bg-green-500 w-1/4' : 'w-0'} transition-all duration-500`}></div>
@@ -353,7 +348,7 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* [BARU] WARNING BANNER (PAYMENT EXPIRY) */}
+        {/* WARNING BANNER (PAYMENT EXPIRY) */}
         {order.status === 'pending' && timeLeft !== null && (
           <div className={`rounded-xl p-3 flex items-start gap-3 shadow-sm border ${isPaymentExpired ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
              <div className={`shrink-0 mt-0.5 ${isPaymentExpired ? 'text-red-600' : 'text-amber-600'}`}>
@@ -373,7 +368,7 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* [BARU] WARNING BANNER (AUTO COMPLETE DEADLINE) */}
+        {/* WARNING BANNER (AUTO COMPLETE DEADLINE) */}
         {autoCompleteDeadline && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3 shadow-sm">
                 <div className="shrink-0 text-amber-600 mt-0.5">
@@ -419,7 +414,7 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* 4. DETAILS & FEES (Enhanced Items) */}
+        {/* 4. DETAILS & FEES */}
         <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
           <div className="p-3 border-b border-gray-50 bg-gray-50/30">
              <h3 className="text-xs font-bold flex items-center gap-1.5 text-gray-700">
@@ -428,7 +423,6 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
           
           <div className="p-3 space-y-3">
-            {/* Services with Notes */}
             {order.items.map((item, i) => (
               <div key={i} className="flex flex-col gap-1 text-xs">
                  <div className="flex justify-between items-start">
@@ -440,7 +434,6 @@ export default function OrderDetailPage({ params }: PageProps) {
                     </div>
                     <span className="font-semibold text-gray-900">{formatCurrency(item.price * item.quantity)}</span>
                  </div>
-                 {/* Item Note Display */}
                  {item.note && (
                     <p className="text-[10px] text-gray-400 italic ml-6 pl-1 border-l-2 border-gray-200">
                       "{item.note}"
@@ -519,7 +512,6 @@ export default function OrderDetailPage({ params }: PageProps) {
                <span>{formatCurrency(displayGrandTotal)}</span>
             </div>
 
-            {/* Receipt Button */}
             {canShowReceipt && (
                 <div className="pt-3 flex justify-center">
                     <button 
@@ -533,13 +525,12 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* 5. LOCATION & PROPERTY DETAILS (Enhanced) */}
+        {/* 5. LOCATION & PROPERTY DETAILS */}
         <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
             <div className="p-3 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
                <h3 className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                  <Icons.MapPin /> Lokasi & Properti
                </h3>
-               {/* Link to external map */}
                <a 
                   href={`http://maps.google.com/maps?q=${mapCenter[0]},${mapCenter[1]}`}
                   target="_blank"
@@ -550,7 +541,6 @@ export default function OrderDetailPage({ params }: PageProps) {
                </a>
             </div>
 
-            {/* ADDRESS SECTION */}
             {order.shippingAddress && (
               <div className="p-3 text-xs border-b border-gray-50">
                  <p className="font-semibold text-gray-900 mb-0.5">{order.shippingAddress.detail}</p>
@@ -561,7 +551,6 @@ export default function OrderDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* PROPERTY DETAIL BADGES */}
             {order.propertyDetails && (
                <div className="p-3 bg-blue-50/30 flex flex-wrap gap-2 border-b border-gray-50">
                   {order.propertyDetails.type && (
@@ -587,7 +576,6 @@ export default function OrderDetailPage({ params }: PageProps) {
                </div>
             )}
             
-            {/* PROPERTY ACCESS NOTE */}
             {order.propertyDetails?.accessNote && (
                <div className="p-3 bg-yellow-50/50 text-[10px] text-yellow-800 flex gap-2">
                   <div className="shrink-0 mt-0.5"><Icons.Info /></div>
@@ -598,7 +586,6 @@ export default function OrderDetailPage({ params }: PageProps) {
                </div>
             )}
             
-            {/* MAP DISPLAY (Height reduced) */}
             <div className="h-40 w-full z-0 relative">
                <MapContainer 
                   key={mapCenter.toString()}
@@ -621,9 +608,8 @@ export default function OrderDetailPage({ params }: PageProps) {
             </div>
         </div>
 
-        {/* 6. CONTACT & NOTE (Compact Grid) */}
+        {/* 6. CONTACT & NOTE */}
         <div className="grid grid-cols-1 gap-3">
-             {/* CONTACT CARD */}
              {order.customerContact && (
                 <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100 flex justify-between items-center">
                    <div className="text-xs">
@@ -637,7 +623,6 @@ export default function OrderDetailPage({ params }: PageProps) {
                 </div>
              )}
 
-             {/* ORDER NOTE CARD */}
              {order.orderNote && (
                <div className="bg-amber-50 rounded-xl p-3 border border-amber-100 text-xs text-amber-900">
                   <p className="font-bold text-[10px] text-amber-700 uppercase mb-1 flex items-center gap-1">
@@ -648,7 +633,7 @@ export default function OrderDetailPage({ params }: PageProps) {
              )}
         </div>
 
-        {/* 7. ATTACHMENTS (Smaller Grid) */}
+        {/* 7. ATTACHMENTS */}
         {order.attachments && order.attachments.length > 0 && (
            <div className="space-y-2 pt-1">
               <h3 className="text-[10px] font-bold text-gray-400 px-1 uppercase tracking-wide">Foto Kondisi Awal</h3>
@@ -662,7 +647,7 @@ export default function OrderDetailPage({ params }: PageProps) {
            </div>
         )}
 
-        {/* 8. COMPLETION EVIDENCE (Smaller Grid) */}
+        {/* 8. COMPLETION EVIDENCE */}
         {order.completionEvidence && order.completionEvidence.length > 0 && (
            <div className="bg-green-50 rounded-xl p-3 border border-green-100 space-y-2 mt-2">
               <h3 className="text-xs font-bold text-green-800 flex items-center gap-1.5">
@@ -682,14 +667,13 @@ export default function OrderDetailPage({ params }: PageProps) {
 
       </main>
 
-      {/* 9. FLOATING BOTTOM ACTION BAR (Compact & High Z-Index) */}
+      {/* 9. FLOATING BOTTOM ACTION BAR */}
       <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-100 flex gap-2 z-[100] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
         
-        {/* ACTION BUTTONS (h-10 text-xs) */}
         {order.status === 'pending' && (
           <button 
             onClick={handlePayment} 
-            disabled={isActionLoading || isPaymentExpired} // Disable jika expired
+            disabled={isActionLoading || isPaymentExpired} 
             className={`flex-1 h-10 text-white text-xs font-bold rounded-lg shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 ${
                 isPaymentExpired 
                 ? 'bg-gray-400 cursor-not-allowed shadow-none' 
@@ -735,7 +719,6 @@ export default function OrderDetailPage({ params }: PageProps) {
         isSubmitting={isSubmittingReview}
       />
       
-      {/* Receipt Component (Hidden by default, overlays when open) */}
       <Receipt 
         order={order}
         isOpen={isReceiptOpen}
