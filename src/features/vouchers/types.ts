@@ -14,6 +14,7 @@ export interface Voucher {
   applicableServices?: Array<{ _id: string; name: string } | string>; // Bisa array object atau string ID
   claimedAt?: string;
   isClaimed?: boolean; // [UPDATE] Penanda apakah sudah diklaim
+  imageUrl?: string; // [BARU] URL Gambar Voucher dari S3
 }
 
 
@@ -25,6 +26,7 @@ export interface CheckVoucherResult {
    discountValue: number;
    estimatedDiscount: number;
    eligibleTotal: number; // [BARU] Total belanja yang valid kena diskon
+   imageUrl?: string; // [BARU] URL Gambar Voucher
 }
 
 export interface VoucherListResponse {
@@ -60,4 +62,5 @@ export interface CheckVoucherResponse {
   discountValue: number;
   estimatedDiscount: number; // Field Penting!
   eligibleTotal: number;     // Field Penting!
+  imageUrl?: string;         // [BARU] URL Gambar Voucher
 }

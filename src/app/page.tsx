@@ -446,31 +446,56 @@ export default function HomePage() {
 function PromoCard({ voucher, index }: { voucher: Voucher, index: number }) {
   const { language } = useLanguage();
   const colors = ['from-red-500 to-orange-500', 'from-blue-500 to-indigo-500', 'from-emerald-500 to-teal-500', 'from-purple-500 to-pink-500'];
+  // Fallback gradient logic
   const bgClass = colors[index % colors.length];
-  
+
   const discountText = voucher.discountType === 'percentage' 
     ? `${voucher.discountValue}% OFF` 
     : `${language === 'id' ? 'Hemat' : 'Save'} ${new Intl.NumberFormat(language === 'id' ? 'id-ID' : 'en-US', { compactDisplay: "short", notation: "compact" }).format(voucher.discountValue)}`;
 
   return (
     // CARD SIZE: w-56 h-24 (Wide & Short)
-    <div className={`w-56 h-24 rounded-lg bg-gradient-to-r ${bgClass} p-3 flex flex-row items-center justify-between text-white shadow-sm relative overflow-hidden shrink-0 group cursor-pointer snap-start`}>
-      <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
+    // Gunakan background gradient HANYA jika voucher.imageUrl tidak ada
+    <div className={`w-56 h-24 rounded-lg p-3 flex flex-row items-center justify-between text-white shadow-sm relative overflow-hidden shrink-0 group cursor-pointer snap-start transition-all hover:shadow-md ${!voucher.imageUrl ? `bg-gradient-to-r ${bgClass}` : 'bg-gray-900'}`}>
       
+      {/* BACKGROUND IMAGE / GRADIENT LOGIC */}
+      {voucher.imageUrl ? (
+        <>
+          <Image 
+            src={voucher.imageUrl}
+            alt={voucher.code}
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
+            sizes="(max-width: 768px) 100vw, 300px"
+          />
+          {/* Overlay Gelap agar text tetap terbaca di atas gambar */}
+          <div className="absolute inset-0 bg-black/60 group-hover:bg-black/50 transition-colors"></div>
+        </>
+      ) : (
+        // Fallback decoration for gradient (Bola-bola cahaya)
+        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:bg-white/20 transition-all"></div>
+      )}
+
+      {/* CONTENT (Text & Button) */}
       <div className="flex flex-col justify-between h-full z-10 max-w-[70%]">
-         <span className="text-[10px] font-medium opacity-90 truncate">{voucher.code}</span>
-         <h3 className="font-black text-lg leading-none tracking-tight">{discountText}</h3>
-         <p className="text-[9px] opacity-80 truncate max-w-full">Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}</p>
+         {/* Kode Voucher dengan background semi-transparan agar kontras */}
+         <span className="text-[10px] font-medium opacity-90 truncate bg-black/20 px-1.5 py-0.5 rounded w-fit backdrop-blur-sm border border-white/10">
+            {voucher.code}
+         </span>
+         <h3 className="font-black text-lg leading-none tracking-tight drop-shadow-sm">{discountText}</h3>
+         <p className="text-[9px] opacity-90 truncate max-w-full font-medium text-gray-100">
+            Min. {new Intl.NumberFormat('id-ID').format(voucher.minPurchase)}
+         </p>
       </div>
 
       <div className="flex flex-col items-end justify-between h-full z-10">
-         <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">🏷️</div>
+         <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-[10px] backdrop-blur-md border border-white/20">🏷️</div>
          {voucher.isClaimed ? (
              <span className="text-[9px] font-bold bg-white/90 text-gray-500 px-2 py-0.5 rounded shadow-sm">
                 {language === 'id' ? 'Klaim' : 'Claimed'}
              </span>
          ) : (
-             <Link href="/vouchers" className="text-[9px] font-bold bg-white text-gray-900 px-2.5 py-1 rounded shadow-sm hover:bg-gray-50 transition-colors">
+             <Link href="/vouchers" className="text-[9px] font-bold bg-white text-gray-900 px-2.5 py-1 rounded shadow-sm hover:bg-gray-100 transition-colors">
                 {language === 'id' ? 'Ambil' : 'Get'}
              </Link>
          )}

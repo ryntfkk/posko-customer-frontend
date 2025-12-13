@@ -47,7 +47,7 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
-      // [BARU] Konfigurasi Domain AWS S3
+      // [BARU] Konfigurasi Domain AWS S3 - Pastikan Hostname ini Sesuai Bucket Anda!
       {
         protocol: 'https',
         hostname: 'posko-storage-prod.s3.ap-southeast-1.amazonaws.com', 
