@@ -1,6 +1,14 @@
-// src/app/page.tsx
 'use client';
-
+import {
+  Headphones,
+  MonitorSmartphone,
+  Settings,
+  Wrench,
+  MapPin,
+  Clock,
+  Phone,
+  Mail,
+} from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useMemo } from 'react';
@@ -26,6 +34,10 @@ import ChatWidget from '@/components/ChatWidget';
 import HomeBanner from '@/components/home/HomeBanner';
 import BecomePartnerSection from '@/components/home/BecomePartnerSection';
 import Footer from '@/components/Footer';
+
+// --- IMPORT TEMPORARY MODAL ---
+import ComingSoonModal from "../components/ComingSoonModal";
+// ------------------------------
 
 // --- ICONS ---
 const SearchIcon = ({ className = "w-4 h-4" }: { className?: string }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
@@ -185,6 +197,10 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-gray-50 text-gray-800 font-sans selection:bg-red-100">
+      {/* --- TEMPORARY COMING SOON MODAL --- */}
+      {/* HAPUS KODE INI SETELAH TANGGAL 1 JANUARI 2025 */}
+      <ComingSoonModal />
+      {/* ------------------------------------------- */}
       
       {/* MOBILE HEADER */}
       <div className="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-100 px-4 py-2.5 flex items-center justify-between shadow-sm transition-all">
