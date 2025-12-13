@@ -1,7 +1,7 @@
 // src/app/orders/[orderId]/page.tsx
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, use, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -80,11 +80,11 @@ const formatTime = (dateStr?: string) => {
 };
 
 interface PageProps {
-  params: { orderId: string };
+  params: Promise<{ orderId: string }>;
 }
 
 export default function OrderDetailPage({ params }: PageProps) {
-  const { orderId } = params;
+  const { orderId } = use(params);
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -232,6 +232,15 @@ export default function OrderDetailPage({ params }: PageProps) {
 
   const hasUnpaidFees = unpaidAdditionalFees > 0;
 
+  // [BARU] Hitung deadline auto-complete (48 Jam)
+  const autoCompleteDeadline = useMemo(() => {
+    if (order?.status === 'waiting_approval' && order.waitingApprovalAt) {
+      const start = new Date(order.waitingApprovalAt);
+      return new Date(start.getTime() + 48 * 60 * 60 * 1000); // +48 Jam
+    }
+    return null;
+  }, [order?.status, order?.waitingApprovalAt]);
+
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"/></div>;
   if (!order) return <div className="p-8 text-center text-xs text-gray-500">Pesanan tidak ditemukan</div>;
 
@@ -299,6 +308,21 @@ export default function OrderDetailPage({ params }: PageProps) {
              <div className={`h-full ${['completed'].includes(order.status) ? 'bg-green-500 w-1/4' : 'w-0'} transition-all duration-500`}></div>
           </div>
         </div>
+
+        {/* [BARU] WARNING BANNER (AUTO COMPLETE DEADLINE) */}
+        {autoCompleteDeadline && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3 shadow-sm">
+                <div className="shrink-0 text-amber-600 mt-0.5">
+                    <Icons.Clock />
+                </div>
+                <div>
+                    <p className="text-[10px] font-bold text-amber-800 uppercase mb-0.5">Konfirmasi Otomatis</p>
+                    <p className="text-xs text-amber-900 leading-relaxed">
+                        Sistem akan menyelesaikan pesanan ini secara otomatis pada <span className="font-bold">{formatDate(autoCompleteDeadline.toISOString())}, {formatTime(autoCompleteDeadline.toISOString())}</span> jika Anda tidak melakukan konfirmasi.
+                    </p>
+                </div>
+            </div>
+        )}
 
         {/* 3. COMPACT PROVIDER CARD */}
         {providerData && (

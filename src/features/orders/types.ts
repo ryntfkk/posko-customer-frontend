@@ -157,6 +157,9 @@ export interface Order {
   additionalFees?: AdditionalFee[];
   completionEvidence?: Attachment[];
   
+  // [BARU] Field untuk Auto-Complete
+  waitingApprovalAt?: string; 
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -171,5 +174,5 @@ export interface OrderListResponse {
   messageKey?: string;
   message?: string;
   data: Order[];
-  meta?: PaginationMeta; // [UPDATED] Ditambahkan optional meta
+  meta?: PaginationMeta; 
 }
